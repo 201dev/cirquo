@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Graphify generated output
+graphify-out/
+
+# OpenCode dependencies
+.opencode/
