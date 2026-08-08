@@ -47,7 +47,7 @@ docs/
 
 - Folder structure: `src/`, `convex/`, `public/`, `docs/`
 - Convex schema with 5 tables: `users`, `merchants`, `surplusItems`, `orders`, `recoveryBatches`
-- Basic Convex queries (6 read-only functions, no mutations yet)
+- Basic Convex queries (6 internal read-only functions, no mutations yet; expose only after M1 auth guards)
 - React Router with role-based layouts (Consumer, Merchant, Processor, Admin)
 - Placeholder UI components (shadcn/ui primitives + 3 custom commons)
 - Responsive mobile-first layout with Capacitor Android setup

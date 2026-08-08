@@ -26,5 +26,12 @@ dist-ssr
 # Graphify generated output
 graphify-out/
 
+# Convex-generated bindings and local deployment selection
+convex/_generated/
+
+# Capacitor/Android local build output
+android/.gradle/
+android/local.properties
+
 # OpenCode dependencies
 .opencode/

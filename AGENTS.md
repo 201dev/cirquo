@@ -137,7 +137,7 @@ The full index is [`docs/README.md`](docs/README.md). 43 documents cover product
 
 **Version 0.1.0 — scaffold only. Roughly 15% of the MVP.**
 
-✅ Exists: Vite + Bun + TypeScript toolchain, oxlint, React Router with four role layouts, 17 shadcn/ui primitives, three custom components (`PageHeader`, `SummaryCard`, `RoleShell`), a Convex schema with 5 tables, **6 read-only queries**, 9 placeholder pages rendering `src/constants/mock-data.ts`, Capacitor Android, PWA manifest, Tailwind v4 OKLCH tokens.
+✅ Exists: Vite + Bun + TypeScript toolchain, oxlint, React Router with four role layouts, 17 shadcn/ui primitives, three custom components (`PageHeader`, `SummaryCard`, `RoleShell`), a Convex schema with 5 tables, **6 internal read-only queries**, 9 placeholder pages rendering `src/constants/mock-data.ts`, Capacitor Android, PWA manifest, Tailwind v4 OKLCH tokens. The queries stay internal until M1 adds authentication guards.
 
 📋 Does not exist: the `materialFlowLedger` table, **any mutation at all**, authentication, Mapbox, Midtrans, scheduled functions, impact calculation, notifications, QR pickup, admin tooling.
 
@@ -319,3 +319,17 @@ If something conflicts with [`docs/product/PRD.md`](docs/product/PRD.md), the PR
 
 **Built for DSDC ANFORCOM 2026**  
 **Cirquo — Closing the Loop, Saving Every Meal**
+
+<!-- convex-ai-start -->
+
+This project uses [Convex](https://convex.dev) as its backend.
+
+When working on Convex code, **always read
+`convex/_generated/ai/guidelines.md` first** for important guidelines on
+how to correctly use Convex APIs and patterns. The file contains rules that
+override what you may have learned about Convex from training data.
+
+Convex agent skills for common tasks can be installed by running
+`npx convex ai-files install`.
+
+<!-- convex-ai-end -->

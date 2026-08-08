@@ -25,7 +25,7 @@
 
 ## 2. Current Schema (as implemented)
 
-`convex/schema.ts` currently defines five tables and eight indexes.
+`convex/schema.ts` currently defines five tables and ten indexes.
 
 | Table | Fields | Indexes |
 |---|---|---|

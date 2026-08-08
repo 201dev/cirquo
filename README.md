@@ -217,8 +217,8 @@ Planned routes (auth, listing detail, checkout, pickup verification, ledger audi
 - Vite + Bun + TypeScript toolchain, oxlint
 - React Router with four role-scoped layouts
 - 17 shadcn/ui primitives plus `PageHeader`, `SummaryCard`, `RoleShell`
-- Convex schema with 5 tables and 8 indexes
-- 6 read-only Convex queries
+- Convex schema with 5 tables and 10 indexes
+- 6 internal read-only Convex queries (kept non-public until M1 auth guards land)
 - 9 placeholder pages rendering mock data
 - Capacitor Android configured (`com.cirquo.app`), PWA manifest and service worker
 - Tailwind v4 OKLCH design tokens, Geist Variable font

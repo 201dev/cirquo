@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Cirquo</string>
+    <string name="title_activity_main">Cirquo</string>
+    <string name="package_name">com.cirquo.app</string>
+    <string name="custom_url_scheme">com.cirquo.app</string>
+</resources>

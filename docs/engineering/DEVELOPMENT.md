@@ -33,7 +33,7 @@ never written.
 | Area | Status | Detail |
 | --- | --- | --- |
 | Convex schema | ✅ Partial | 5 tables: `users`, `merchants`, `surplusItems`, `orders`, `recoveryBatches` |
-| Convex queries | ✅ 6 exist | All read-only (listed below) |
+| Convex queries | ✅ 6 exist | All internal and read-only until M1 auth guards land (listed below) |
 | Convex mutations | 📋 None | **Zero mutations exist today** |
 | Authentication | 📋 Planned | No auth of any kind |
 | Material Flow Ledger | 📋 Planned | Table not yet in schema |
@@ -48,7 +48,7 @@ never written.
 | Capacitor Android | ✅ Configured | `com.cirquo.app`, `webDir: dist` |
 | PWA | ✅ Basic | `manifest.webmanifest` + `sw.js`, registered in PROD only |
 
-The six existing queries:
+The six existing internal queries:
 
 | Function | Returns |
 | --- | --- |

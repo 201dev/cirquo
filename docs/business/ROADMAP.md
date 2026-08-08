@@ -94,7 +94,6 @@ gantt
 
 The repository scaffold exists and is type-safe. This phase deliberately built **structure, not business logic**.
 
-### What exists today
 
 | Area | State |
 |---|---|
@@ -104,7 +103,7 @@ The repository scaffold exists and is type-safe. This phase deliberately built *
 | UI primitives | 17 shadcn/ui components (button, card, form, dialog, sheet, table, tabs, select, progress, etc.) |
 | Custom components | `PageHeader`, `SummaryCard`, `RoleShell` |
 | Convex schema | 5 tables: `users`, `merchants`, `surplusItems`, `orders`, `recoveryBatches` |
-| Convex functions | 6 read-only queries, **zero mutations** |
+| Convex functions | 6 internal read-only queries, **zero mutations**; public exposure waits for M1 auth guards |
 | Pages | 9 placeholder pages rendering mock data from `src/constants/mock-data.ts` |
 | Mobile | Capacitor Android configured (`com.cirquo.app`), PWA manifest + service worker |
 | Theming | OKLCH design tokens, Geist Variable font, light/dark variables defined |
