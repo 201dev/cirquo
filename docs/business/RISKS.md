@@ -2,7 +2,7 @@
 
 **Document type:** Risk management  
 **Status:** Draft v1.0  
-**Last updated:** 2026-08-06  
+**Last updated:** 2026-08-08  
 **Review cadence:** Weekly during Phase 1, monthly thereafter
 
 ---
@@ -78,6 +78,7 @@ quadrantChart
 | ID | Risk | L | I | Score | Mitigation | Contingency |
 |---|---|:-:|:-:|:-:|---|---|
 | PRD-01 | **Scope creep.** A 2–3 person team is building four role-specific applications plus a ledger, pricing engine, routing engine, payments, and maps. | 5 | 5 | 🔴 25 | Feature freeze after M2. Reject any addition not tied to a PRD requirement ID. Follow the MoSCoW order in [PRD.md](../product/PRD.md) §6 strictly — finish all M items before any S item. | Cut S and C priority items entirely. A complete M-only flow beats a half-built superset. |
+| PRD-08 | **Schedule miss — 23 days to submission is arithmetically tight.** The committed 197 story points need ~11 points/day; two developers sustain ~8. | 4 | 5 | 🔴 20 | Treat the descoping ladder in [USER_STORIES.md](../spec/USER_STORIES.md) §12 as **schedule, not contingency**: a 2-developer team cuts 1–4 upfront. The immovable floor is the ledger, Circular Routing, and ledger-derived dashboards. | If the end-to-end loop is not closed by **26 Aug**, stop all feature work and fix only the critical path — a working four-role loop beats the full feature set, every time. |
 | PRD-02 | **Cold start — empty marketplace.** No merchants means no consumers, and vice versa. | 4 | 4 | 🔴 16 | Seed 15–25 pilot merchants before opening consumer registration. See [BUSINESS.md](BUSINESS.md) §4. For the demo, ship a reproducible seed script. | Demo with seeded data, clearly labelled as pilot data. |
 | PRD-03 | **Low rescue rate — items expire unclaimed.** | 3 | 3 | 🟠 9 | Dynamic Rescue Pricing escalates discounts as the window closes. Proximity notifications. Realistic pickup windows set by merchants. | This is not a failure state — unclaimed items route to processors. That is the product's entire point. |
 | PRD-04 | **Merchant self-reported weights are inaccurate,** skewing every impact number. | 4 | 4 | 🔴 16 | Plausible-range validation per category. Clear input guidance ("estimate the total weight of the bag"). Label all impact figures as *estimates* in the UI. Processor-logged intake weight is treated as more authoritative than merchant-declared weight. | Reconcile merchant estimate against processor-measured intake and surface the variance in admin reporting. |
@@ -153,17 +154,17 @@ These are the risks most likely to be probed during Q&A, where 20% of the final 
 | Rank | ID | Risk | Score |
 |---:|---|---|:-:|
 | 1 | PRD-01 | Scope creep with a 2–3 person team | 🔴 25 |
-| 2 | TECH-06 | Timezone bugs corrupting pickup windows | 🔴 16 |
-| 3 | PRD-02 | Cold start / empty marketplace | 🔴 16 |
-| 4 | PRD-04 | Inaccurate self-reported weights | 🔴 16 |
-| 5 | BIZ-02 | Perceived as derivative (Originality score) | 🔴 16 |
-| 6 | OPS-01 | Merchant→processor transport unsolved | 🔴 16 |
-| 7 | IMP-02 | CO2e methodology challenged | 🔴 16 |
-| 8 | TECH-02 | Midtrans webhook failure | 🔴 15 |
-| 9 | TECH-04 | Ledger write failure / partial state | 🔴 15 |
-| 10 | TECH-08 | No automated tests | 🔴 15 |
+| 2 | PRD-08 | Schedule miss — 23 days, 197 points, ~8 points/day capacity | 🔴 20 |
+| 3 | TECH-06 | Timezone bugs corrupting pickup windows | 🔴 16 |
+| 4 | PRD-02 | Cold start / empty marketplace | 🔴 16 |
+| 5 | PRD-04 | Inaccurate self-reported weights | 🔴 16 |
+| 6 | BIZ-02 | Perceived as derivative (Originality score) | 🔴 16 |
+| 7 | OPS-01 | Merchant→processor transport unsolved | 🔴 16 |
+| 8 | IMP-02 | CO2e methodology challenged | 🔴 16 |
+| 9 | TECH-02 | Midtrans webhook failure | 🔴 15 |
+| 10 | TECH-04 | Ledger write failure / partial state | 🔴 15 |
 
-**Reading of this table:** The dominant risks are not technical. They are **scope discipline**, **impact credibility**, and **narrative positioning**. The engineering risks are individually manageable; the failure mode that actually loses this competition is building too much and finishing nothing.
+**Reading of this table:** The dominant risks are not technical. They are **scope discipline**, **schedule arithmetic**, **impact credibility**, and **narrative positioning**. The top two are the same risk viewed from two angles — committing to more than the calendar allows. The engineering risks are individually manageable; the failure mode that actually loses this competition is building too much and finishing nothing.
 
 ---
 

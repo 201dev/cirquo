@@ -29,6 +29,96 @@ Product name is **Cirquo** — never "CirQuo" or "CircQuo".
 
 ---
 
+## Working Method
+
+**Ponytail is the default.** Graphify is an occasional lookup tool. Neither is a substitute for reading the file you are about to change.
+
+### Ponytail — the default discipline
+
+Ponytail is a laziness discipline for *solutions*, never for *understanding*. Read the code fully, then take the shortest path that actually works.
+
+Climb this ladder and stop at the first rung that holds:
+
+1. Does this need to exist at all? Speculative need ⇒ skip it and say so in one line.
+2. Does something in this repo already do it? Check `src/lib/`, `src/components/common/`, `src/components/ui/`, `src/types/domain.ts` before writing anything new.
+3. Does the standard library or a native platform feature do it? `Intl.NumberFormat('id-ID')` over a currency helper; `<input type="datetime-local">` over a date-picker dependency; a Convex index over in-memory filtering.
+4. Does an already-installed dependency solve it? `date-fns`, `zod`, `sonner`, `lucide-react`, shadcn/ui primitives are all present. Adding a dependency for something a few lines can do is a defect.
+5. Can it be one line? Then it is one line.
+6. Only then: the minimum code that works.
+
+Applied to this codebase specifically:
+
+| Do | Don't |
+|---|---|
+| One `StatusBadge` with a discriminated `status` prop | Ten status components |
+| One `summariseLedger()` parameterised by scope | Four dashboard aggregation pipelines |
+| Extend `SummaryCard` with a variant | Fork it per role |
+| A Convex index for a new access pattern | Fetch-then-filter in the handler |
+| `Intl.NumberFormat` for IDR and kg | A formatting utility layer |
+
+**Where laziness does not apply.** Never simplify away the ledger write, a server-side guard, input validation at a trust boundary, or an accessibility basic. Those are the four things this project cannot recover from getting wrong. See Non-Negotiable Rules below.
+
+**Marking deliberate corners.** When a simplification cuts a real corner with a known ceiling, leave a comment naming the ceiling and the upgrade path:
+
+```ts
+// ponytail: in-memory Haversine filter over all active items.
+// Fine at pilot scale (~50 items/day). Add a city-prefixed index
+// before multi-city — see docs/domain/DATABASE.md §6.
+```
+
+Do not leave these on trivial code. They are for real, knowingly-deferred limits.
+
+**Every non-trivial change leaves one runnable check.** A branch, a loop, a money path, or anything touching weights gets the smallest thing that fails when the logic breaks — an `assert`-based self-check or one small test. No frameworks, no fixtures. See [`docs/engineering/TESTING.md`](docs/engineering/TESTING.md).
+
+### Graphify — occasional, and only for cross-cutting questions
+
+A knowledge graph exists at `graphify-out/` (gitignored, so it may be absent or stale on a fresh clone). It is a lookup index, not a source of truth.
+
+**Do not use Graphify for** single-file edits, renames within a known file, formatting, new isolated components, small UI changes, running lint/build, git operations, or anything answerable from a file you already have open. That covers most tasks in this repo.
+
+**Do use Graphify when** the question spans modules and you do not know which files matter: tracing a flow across page → Convex function → schema, finding every caller before changing a shared function, or impact analysis before a refactor.
+
+```bash
+graphify query "which mutations call recordLedgerEvent and which skip it?"
+graphify affected "src/lib/impact.ts"
+graphify path "CreateSurplusPage" "materialFlowLedger"
+```
+
+Keep queries narrow. `graphify query "explain Cirquo"` is a waste — that is what `docs/README.md` is for.
+
+Read `graphify-out/GRAPH_REPORT.md` only when you genuinely need broad architectural context. Do not run `graphify extract` or `graphify update` during ordinary work; rebuild only after a significant architectural change or when explicitly asked.
+
+**Graphify output is never authoritative.** Use it to locate files, then read those files. If it disagrees with source, the source wins.
+
+### Source of truth, in order
+
+1. Current source code
+2. Project configuration (`convex/schema.ts`, `package.json`, `vite.config.ts`)
+3. Documentation under `docs/`
+4. The Graphify graph
+
+If documentation contradicts the implementation, read the implementation and flag the discrepancy — do not silently follow either one. Note that most of `docs/` describes the **target** design, not what is built today; see Current State below.
+
+### Finding documentation without reading all of it
+
+`docs/` has 43 files across 11 categories. Never read them wholesale. Narrow by directory:
+
+| Question | Directory |
+|---|---|
+| Requirements, scope, acceptance criteria | `docs/product/` |
+| Features, user stories, flows, RBAC | `docs/spec/` |
+| Schema, statuses, transitions | `docs/domain/` |
+| Convex function contracts | `docs/api/` |
+| System design, frontend, backend, scheduler | `docs/architecture/` |
+| Pricing, routing, ledger, CO2e methodology | `docs/impact/` |
+| Auth, permissions, threat model | `docs/security/` |
+| Tokens, components, UI patterns | `docs/design/` |
+| Setup, style, testing, deployment | `docs/engineering/` |
+| Roadmap, risks, business model | `docs/business/` |
+| Process, changelog, agent playbook | `docs/project/` |
+
+---
+
 ## Read These First
 
 | Priority | Document | Why |
@@ -39,7 +129,7 @@ Product name is **Cirquo** — never "CirQuo" or "CircQuo".
 | 4 | [`docs/impact/MATERIAL_LEDGER.md`](docs/impact/MATERIAL_LEDGER.md) | The one subsystem that must not be got wrong |
 | 5 | [`docs/business/ROADMAP.md`](docs/business/ROADMAP.md) | What to build, in what order |
 
-The full index is [`docs/README.md`](docs/README.md). 38 documents cover product, business, spec, domain, API, architecture, impact, security, design, engineering, and project process.
+The full index is [`docs/README.md`](docs/README.md). 43 documents cover product, business, spec, domain, API, architecture, impact, security, design, engineering, and project process.
 
 ---
 
@@ -205,6 +295,9 @@ A form that validates but does not persist is not done. A dashboard reading `moc
 | Adding features not in the PRD | Scope creep is the top-scored risk for a 2–3 person team |
 | Presenting placeholder UI as working | Wastes review cycles and erodes trust |
 | Showing 100% circularity | Invites the one question that cannot be answered |
+| Building an abstraction for one call site | Complexity with no payer; delete it |
+| Adding a dependency for a few lines of logic | Bundle cost and a supply-chain surface for nothing |
+| Being "lazy" about reading the code before changing it | A small diff in the wrong place is a second bug |
 
 ---
 

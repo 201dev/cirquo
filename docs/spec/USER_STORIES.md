@@ -4,7 +4,7 @@
 |---|---|
 | **Document type** | Specification — Agile User Stories |
 | **Status** | Draft v1.0 |
-| **Last updated** | 2026-08-06 |
+| **Last updated** | 2026-08-08 |
 | **Owner** | Product & Engineering |
 | **Audience** | Developers, judges, stakeholders |
 | **Related PRD** | [../product/PRD.md](../product/PRD.md) |
@@ -1238,23 +1238,28 @@ Milestone assignment follows dependency order, not priority order. US-A-02 sits 
 |---|---|
 | Team size | 2–3 developers |
 | Deadline | 31 August 2026, fixed and non-negotiable |
-| Planning date | 6 August 2026 |
-| Calendar remaining | 25 days |
-| Effective working days | 22 (allowing 3 for illness, hardware failure, and life) |
+| Planning date | 8 August 2026 |
+| Calendar remaining | 23 days |
+| Code freeze | 29 August — 21 days of build time |
+| Effective working days | 18 (allowing 3 for illness/hardware/life) |
 | Total committed points | 197 |
-| Required velocity | ~9.0 points per day |
+| Required velocity | ~11 points per day |
 
-**Is 9 points per day realistic?**
+**Is 11 points per day realistic?**
 
-At the scale's indicative band, one point is roughly 1.5–2 hours of focused work for this team. Nine points per day is therefore 13–18 person-hours daily. With two developers at 7 focused hours each, that is 14 hours — achievable but with zero slack. With three developers it is 21 hours, giving a comfortable buffer.
+At the scale's indicative band, one point is roughly 1.5–2 hours of focused work for this team. Eleven points per day is therefore 16–22 person-hours daily.
 
 | Scenario | Daily capacity | Points/day | Days needed | Verdict |
 |---|---|---|---|---|
-| 2 developers, 7 focused h/day | 14 h | ~8 | 25 | ⚠️ Exactly at the deadline. Any external blocker causes a miss. |
-| 3 developers, 7 focused h/day | 21 h | ~12 | 17 | ✅ Five days of buffer for demo rehearsal and polish. |
-| 2 developers, 9 h/day sustained | 18 h | ~10 | 20 | ⚠️ Achievable briefly, not sustainable for 20 days. |
+| 2 developers, 7 focused h/day | 14 h | ~8 | 25 | ❌ **Misses the deadline by 2 days before any blocker.** Descoping is mandatory, not contingent |
+| 3 developers, 7 focused h/day | 21 h | ~12 | 17 | ⚠️ Fits with 1 day of slack. Any external blocker consumes it |
+| 2 developers, 9 h/day sustained | 18 h | ~10 | 20 | ⚠️ Fits only if sustained for 18 straight days. Not a plan, a hope |
 
-**Verdict:** the plan is feasible with three developers and tight with two. The mitigation is not heroics but scope discipline.
+**Verdict:** the committed 197 points do **not** fit a 2-developer team in the remaining time. With three developers it fits with roughly one day of slack.
+
+**This changes the descoping ladder from contingency to schedule.** Do not wait for velocity data to start cutting. A 2-developer team should apply cuts 1–4 (13 points, taking the commitment to 184) at the outset and treat cuts 5–7 as the actual contingency reserve. The plan that assumes everything ships is the plan that ships nothing on time.
+
+The immovable floor beneath every cut: the ledger (M1), Circular Routing (M4), and ledger-derived dashboards (M6). Those three are the Originality and Impact Projection marks — 35% of the preliminary score. Everything else is negotiable.
 
 **Descoping ladder — cut in this order if velocity falls behind**
 
