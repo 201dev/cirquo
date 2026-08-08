@@ -437,7 +437,7 @@ Running total closes at zero, so C1 passes. Note that the circularity rate is **
 
 ## 10. Performance
 
-Volume projections from [DATA_MODEL.md](DATA_MODEL.md) §6: roughly 650 entries/day at pilot scale, ~240,000/year.
+Volume projections from [DATA_MODEL.md](../domain/DATA_MODEL.md) §6: roughly 650 entries/day at pilot scale, ~240,000/year.
 
 | Query | Rows scanned | Assessment |
 |---|---|---|

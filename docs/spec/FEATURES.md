@@ -1702,7 +1702,141 @@ Overriding the filters is intentional. The algorithm optimises across constraint
 - Admin note attached to the offer explaining the exception
 - Bulk re-route for a backlog
 
-<!--CHUNK-5-->
+---
+
+## MVP Cut-Line
+
+The competition MVP is defined by one criterion: **a judge can run the complete circular flow end-to-end and every number they see comes from the Material Flow Ledger.** Anything that does not serve that is deferred.
+
+### Ships in the MVP
+
+| Module | Features | Why it is non-negotiable |
+|---|---|---|
+| Authentication | Registration with role selection, login, session persistence, business profile, verification gate | Nothing else can be attributed to an actor without it |
+| Merchant | Create Rescue Item, dynamic price suggestion, edit/cancel before reserved, processing-only flag, listing management, pickup confirmation, dashboard | Supply side of the marketplace |
+| Consumer | Map discovery, list + filters, ranking, listing detail, reservation, Midtrans Sandbox payment, pickup code, order history with live status, personal impact | Demand side of the marketplace |
+| Processor | Routed queue, accept/decline, intake log, outcome log, profile with capacity and accepted material types, dashboard | Without this the loop does not close |
+| Circular | Expiry sweep, Circular Routing engine, offer TTL and retry | **The differentiator.** Cutting this makes Cirquo a surplus marketplace |
+| Impact | Ledger write path, impact aggregation, four role-scoped dashboards | The claim the whole product rests on |
+| Admin | Verification, listing moderation, ledger inspector, platform dashboard | Judges will inspect the audit trail |
+| Payments | Midtrans Sandbox checkout, webhook, status reflection | Required for a believable transaction flow |
+| Notifications | Reservation confirmed, pickup reminder, expiry warning, new routed batch | Cheap to build, high perceived polish |
+
+### Does not ship in the MVP
+
+| Deferred | Priority | Reason |
+|---|---|---|
+| Consumer rating of a completed pickup | C | Pleasant, but contributes nothing to the circular claim |
+| Recommendation engine | C | Requires transaction history that does not exist yet |
+| Merchant payout tracking | C | No real money moves in Sandbox |
+| Password reset | S | Timeboxed; a demo account does not forget its password |
+| Dispute resolution | S | Build the data model, defer the full workflow if M-priority work is at risk |
+| Manual re-route | S | Nice safety valve, but routing should work unaided in a controlled demo |
+| Nearby-listing proximity notifications | S | Requires a background location strategy disproportionate to its value |
+| Multi-payment gateways, POS integration, logistics dispatch, loyalty, multi-currency, native apps, computer-vision quality checks | — | Explicitly out of scope; see [ROADMAP.md](../business/ROADMAP.md) §9 |
+
+### The cut rule
+
+If a milestone is at risk, cut in this order: **C-priority features → S-priority features → dashboard breadth (ship Merchant + Admin fully, reduce Consumer and Processor to core metrics) → visual polish.**
+
+Never cut: the ledger write path, Circular Routing, or pickup confirmation. Those three are the product.
+
+---
+
+## Feature Dependency Graph
+
+```mermaid
+flowchart TD
+    subgraph Foundation
+        LEDGER[F-90 Ledger write path]
+        AUTH[F-01 Registration + role]
+        LOGIN[F-02 Login + session]
+        PROFILE[F-03 Business profile]
+        VERIFY[F-04 Verification gate]
+    end
+
+    subgraph Marketplace
+        CREATE[F-10 Create Rescue Item]
+        PRICE[F-11 Dynamic price suggestion]
+        MANAGE[F-13 Listing management]
+        DISCOVER[F-20 Map discovery]
+        LIST[F-21 List + filters]
+        RANK[F-22 Ranking]
+        DETAIL[F-23 Listing detail]
+    end
+
+    subgraph Transaction
+        RESERVE[F-24 Reservation]
+        PAY[F-25 Midtrans payment]
+        CODE[F-26 Pickup code]
+        CONFIRM[F-15 Pickup confirmation]
+        HISTORY[F-27 Order history]
+    end
+
+    subgraph Circular
+        EXPIRE[F-80 Expiry sweep]
+        ROUTE[F-81 Circular Routing]
+        QUEUE[F-30 Routed queue]
+        ACCEPT[F-31 Accept / decline]
+        INTAKE[F-32 Intake log]
+        OUTCOME[F-33 Outcome log]
+    end
+
+    subgraph Impact
+        AGG[F-91 Impact aggregation]
+        DASHC[F-28 Consumer dashboard]
+        DASHM[F-16 Merchant dashboard]
+        DASHP[F-34 Processor dashboard]
+        DASHA[F-43 Platform dashboard]
+        AUDIT[F-42 Ledger inspector]
+    end
+
+    AUTH --> LOGIN --> PROFILE --> VERIFY
+    LEDGER --> CREATE
+    VERIFY --> CREATE
+    CREATE --> PRICE
+    CREATE --> MANAGE
+    CREATE --> DISCOVER
+    DISCOVER --> LIST --> RANK --> DETAIL
+    DETAIL --> RESERVE --> PAY --> CODE --> CONFIRM
+    RESERVE --> HISTORY
+    CONFIRM --> AGG
+    CREATE --> EXPIRE --> ROUTE --> QUEUE --> ACCEPT --> INTAKE --> OUTCOME
+    OUTCOME --> AGG
+    LEDGER --> AGG
+    AGG --> DASHC
+    AGG --> DASHM
+    AGG --> DASHP
+    AGG --> DASHA
+    LEDGER --> AUDIT
+
+    style LEDGER fill:#065f46,color:#fff
+    style ROUTE fill:#065f46,color:#fff
+    style AGG fill:#065f46,color:#fff
+```
+
+**Reading the graph:** the three highlighted nodes are the critical path. `F-90 Ledger write path` blocks everything downstream of it, which is why it is the first milestone in [ROADMAP.md](../business/ROADMAP.md). `F-81 Circular Routing` is what makes the product circular rather than transactional. `F-91 Impact aggregation` is where the ledger becomes a claim.
+
+Note that authentication blocks less than it appears to. Discovery and listing display can be built against seeded data while auth is in flight — but nothing can be *attributed* without it, so the ledger cannot record actors until F-01 and F-02 land.
+
+---
+
+## Related Documents
+
+- [PRD.md](../product/PRD.md) — Requirement IDs referenced throughout this catalogue
+- [USER_STORIES.md](USER_STORIES.md) — INVEST stories derived from these features
+- [USER_FLOW.md](USER_FLOW.md) — The journeys these features compose into
+- [ROLES.md](ROLES.md) — Who may exercise each capability
+- [STATE_MACHINE.md](../domain/STATE_MACHINE.md) — Transitions the features trigger
+- [MATERIAL_LEDGER.md](../impact/MATERIAL_LEDGER.md) — Event catalogue emitted by these features
+- [ALGORITHM.md](../impact/ALGORITHM.md) — Pricing, routing, ranking specifications
+- [ROADMAP.md](../business/ROADMAP.md) — Delivery sequence and milestone exit criteria
+- [API.md](../api/API.md) — Function contracts implementing these features
+
+---
+
+**Built for DSDC ANFORCOM 2026**  
+**Platform:** Cirquo — Closing the Loop, Saving Every Meal
 
 
 
