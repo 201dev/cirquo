@@ -17,7 +17,7 @@ The Cirquo backend has exactly one non-negotiable responsibility: **every kilogr
 
 This document specifies how Convex functions are organised, when to use each function type, how transactions guarantee that a quantity decrement and a **Material Flow Ledger** write can never diverge, how authorisation is enforced, how pure logic is kept out of the database layer, and how external systems (Midtrans, Mapbox) are integrated safely.
 
-**Current state, stated honestly.** The backend today contains a schema and **six read-only queries**: `users.getByEmail`, `merchants.getByOwner`, `surplusItems.listByStatus`, `orders.listByUser`, `recoveryBatches.listByStatus`, `impact.getPlaceholderSummary`. There are **no mutations, no authentication, no Midtrans integration, no cron jobs, and no HTTP actions**. Everything else in this document is a specification (📋), not a description.
+**Current state, stated honestly.** The backend today contains a schema and **six read-only queries**: `users.getByEmail`, `merchants.getByOwner`, `surplusItems.listByStatus`, `orders.listByUser`, `recoveryBatches.listByStatus`, `impact.getPlaceholderSummary`. There are **no mutations, no authentication, no Midtrans integration, no cron jobs, and no HTTP actions**. Everything else in this document is a specification (Planned), not a description.
 
 ---
 
@@ -25,51 +25,51 @@ This document specifies how Convex functions are organised, when to use each fun
 
 ```
 convex/
-├── schema.ts             ✅ tables, indexes, validators
-├── auth.ts               📋 register, login, logout, currentUser
-├── users.ts              ✅ getByEmail  |  📋 profile mutations
-├── merchants.ts          ✅ getByOwner  |  📋 create, update, verify
-├── processors.ts         📋 create, update, verify, capacity queries
-├── surplusItems.ts       ✅ listByStatus  |  📋 create, publish, update, listNearby
-├── orders.ts             📋 reserve, confirmPickup, cancel, expire, listForMerchant
-├── payments.ts           📋 createSnapToken (action), recordSettlement (internalMutation)
-├── recoveryBatches.ts    ✅ listByStatus  |  📋 route, accept, decline, logIntake, logOutcome
-├── ledger.ts             📋 read-only ledger queries (append-only; no public writes)
-├── impact.ts             ✅ getPlaceholderSummary  |  📋 real ledger-derived summaries
-├── notifications.ts      📋 listMine, markRead, internal create/fanOut
-├── disputes.ts           📋 open, resolve
-├── admin.ts              📋 verification queue, moderation, overrides, integrity report
-├── crons.ts              📋 all scheduled job registrations
-├── http.ts               📋 Midtrans webhook httpAction only
+├── schema.ts             Implemented tables, indexes, validators
+├── auth.ts               Planned register, login, logout, currentUser
+├── users.ts              Implemented getByEmail  |  Planned profile mutations
+├── merchants.ts          Implemented getByOwner  |  Planned create, update, verify
+├── processors.ts         Planned create, update, verify, capacity queries
+├── surplusItems.ts       Implemented listByStatus  |  Planned create, publish, update, listNearby
+├── orders.ts             Planned reserve, confirmPickup, cancel, expire, listForMerchant
+├── payments.ts           Planned createSnapToken (action), recordSettlement (internalMutation)
+├── recoveryBatches.ts    Implemented listByStatus  |  Planned route, accept, decline, logIntake, logOutcome
+├── ledger.ts             Planned read-only ledger queries (append-only; no public writes)
+├── impact.ts             Implemented getPlaceholderSummary  |  Planned real ledger-derived summaries
+├── notifications.ts      Planned listMine, markRead, internal create/fanOut
+├── disputes.ts           Planned open, resolve
+├── admin.ts              Planned verification queue, moderation, overrides, integrity report
+├── crons.ts              Planned all scheduled job registrations
+├── http.ts               Planned Midtrans webhook httpAction only
 └── lib/
-    ├── guards.ts         📋 requireAuth, requireRole, requireOwnership
-    ├── ledger.ts         📋 recordLedgerEvent
-    └── validators.ts     📋 shared v.* unions, id validators, business assertions
+    ├── guards.ts         Planned requireAuth, requireRole, requireOwnership
+    ├── ledger.ts         Implemented recordLedgerEvent
+    └── validators.ts     Planned shared v.* unions, id validators, business assertions
 ```
 
 ### 2.1 Responsibilities
 
 | File | Responsibility | Must not contain | Status |
 | --- | --- | --- | --- |
-| `schema.ts` | Table definitions, field validators, index declarations. The single source of structural truth. | Business logic | ✅ |
-| `auth.ts` | Session lifecycle: register, login, logout, `currentUser`. Password hashing via an action. | Role checks (those live in `lib/guards.ts`) | 📋 |
-| `users.ts` | User document reads and profile updates. | Role escalation paths | ✅ partial |
-| `merchants.ts` | Merchant profile CRUD, verification status reads. | Listing logic | ✅ partial |
-| `processors.ts` | Processor profile CRUD, capacity and acceptance-criteria reads. | Routing algorithm (lives in `src/lib/routing.ts`) | 📋 |
-| `surplusItems.ts` | Rescue Item lifecycle: create, publish, update, price adjustment, expiry, nearby discovery. | Order logic | ✅ partial |
-| `orders.ts` | Reservation, pickup confirmation, cancellation, expiry. **The most transaction-critical file.** | Payment provider calls (actions only) | 📋 |
-| `payments.ts` | Midtrans Snap token creation (action) and settlement recording (internalMutation). | Direct DB writes from the action | 📋 |
-| `recoveryBatches.ts` | Circular Routing lifecycle: create, offer, accept, decline, intake, outcome. | Ranking algorithm (lives in `src/lib/routing.ts`) | ✅ partial |
-| `ledger.ts` | Read-only ledger queries: per item, per order, per actor, per event type. | Any public write function | 📋 |
-| `impact.ts` | Aggregation queries built on `summariseLedger` and `estimateCo2e`. | Its own arithmetic (delegates to `src/lib/impact.ts`) | ✅ placeholder |
-| `notifications.ts` | User notification reads and internal creation/fan-out. | Business state transitions | 📋 |
-| `disputes.ts` | Dispute opening and resolution. | Refund execution (delegates to payments) | 📋 |
-| `admin.ts` | Verification queue, moderation, admin overrides, integrity reports. | Anything callable without `requireRole(ctx, "admin")` | 📋 |
-| `crons.ts` | Cron registrations only. Every handler is an `internalMutation` elsewhere. | Handler implementations | 📋 |
-| `http.ts` | **Exactly one route:** the Midtrans webhook. | Any other public HTTP surface | 📋 |
-| `lib/guards.ts` | `requireAuth`, `requireRole`, `requireOwnership`. | Table-specific logic | 📋 |
-| `lib/ledger.ts` | `recordLedgerEvent` — the only ledger writer. | Public exports | 📋 |
-| `lib/validators.ts` | Shared `v.*` unions and business-rule assertion helpers. | I/O | 📋 |
+| `schema.ts` | Table definitions, field validators, index declarations. The single source of structural truth. | Business logic | Implemented |
+| `auth.ts` | Session lifecycle: register, login, logout, `currentUser`. Password hashing via an action. | Role checks (those live in `lib/guards.ts`) | Planned |
+| `users.ts` | User document reads and profile updates. | Role escalation paths | Partially implemented |
+| `merchants.ts` | Merchant profile CRUD, verification status reads. | Listing logic | Partially implemented |
+| `processors.ts` | Processor profile CRUD, capacity and acceptance-criteria reads. | Routing algorithm (lives in `src/lib/routing.ts`) | Planned |
+| `surplusItems.ts` | Rescue Item lifecycle: create, publish, update, price adjustment, expiry, nearby discovery. | Order logic | Partially implemented |
+| `orders.ts` | Reservation, pickup confirmation, cancellation, expiry. **The most transaction-critical file.** | Payment provider calls (actions only) | Planned |
+| `payments.ts` | Midtrans Snap token creation (action) and settlement recording (internalMutation). | Direct DB writes from the action | Planned |
+| `recoveryBatches.ts` | Circular Routing lifecycle: create, offer, accept, decline, intake, outcome. | Ranking algorithm (lives in `src/lib/routing.ts`) | Partially implemented |
+| `ledger.ts` | Read-only ledger queries: per item, per order, per actor, per event type. | Any public write function | Planned |
+| `impact.ts` | Aggregation queries built on `summariseLedger` and `estimateCo2e`. | Its own arithmetic (delegates to `src/lib/impact.ts`) | Implemented placeholder |
+| `notifications.ts` | User notification reads and internal creation/fan-out. | Business state transitions | Planned |
+| `disputes.ts` | Dispute opening and resolution. | Refund execution (delegates to payments) | Planned |
+| `admin.ts` | Verification queue, moderation, admin overrides, integrity reports. | Anything callable without `requireRole(ctx, "admin")` | Planned |
+| `crons.ts` | Cron registrations only. Every handler is an `internalMutation` elsewhere. | Handler implementations | Planned |
+| `http.ts` | **Exactly one route:** the Midtrans webhook. | Any other public HTTP surface | Planned |
+| `lib/guards.ts` | `requireAuth`, `requireRole`, `requireOwnership`. | Table-specific logic | Planned |
+| `lib/ledger.ts` | `recordLedgerEvent` — the only ledger writer. | Public Convex functions | Implemented |
+| `lib/validators.ts` | Shared `v.*` unions and business-rule assertion helpers. | I/O | Planned |
 
 ### 2.2 The `convex/lib/` vs `src/lib/` Split
 
@@ -92,13 +92,13 @@ Convex offers five function kinds plus internal variants. Choosing wrongly is no
 
 | Type | Transactional | Read DB | Write DB | External APIs | Client-callable | Use for |
 | --- | --- | --- | --- | --- | --- | --- |
-| `query` | Yes (consistent snapshot) | ✅ | ❌ | ❌ | ✅ | Every reactive read |
-| `mutation` | **Yes (atomic)** | ✅ | ✅ | ❌ | ✅ | Every state change + its ledger event |
-| `action` | **No** | via `runQuery` | via `runMutation` | ✅ | ✅ | Midtrans Snap token, password hashing |
-| `internalQuery` | Yes | ✅ | ❌ | ❌ | ❌ | Reads for crons and actions |
-| `internalMutation` | **Yes (atomic)** | ✅ | ✅ | ❌ | ❌ | Cron handlers, webhook settlement |
-| `internalAction` | No | via `runQuery` | via `runMutation` | ✅ | ❌ | Scheduled external calls |
-| `httpAction` | No | via `runQuery` | via `runMutation` | ✅ | Public HTTP | **Only** the Midtrans webhook |
+| `query` | Yes (consistent snapshot) | Implemented | Not implemented | Not implemented | Implemented | Every reactive read |
+| `mutation` | **Yes (atomic)** | Implemented | Implemented | Not implemented | Implemented | Every state change + its ledger event |
+| `action` | **No** | via `runQuery` | via `runMutation` | Implemented | Implemented | Midtrans Snap token, password hashing |
+| `internalQuery` | Yes | Implemented | Not implemented | Not implemented | Not implemented | Reads for crons and actions |
+| `internalMutation` | **Yes (atomic)** | Implemented | Implemented | Not implemented | Not implemented | Cron handlers, webhook settlement |
+| `internalAction` | No | via `runQuery` | via `runMutation` | Implemented | Not implemented | Scheduled external calls |
+| `httpAction` | No | via `runQuery` | via `runMutation` | Implemented | Public HTTP | **Only** the Midtrans webhook |
 
 ### 3.1 Worked Examples
 
@@ -240,7 +240,7 @@ This single property is what allows Cirquo to make a strong claim: **it is struc
 This is the most important function in the system. Quantity is decremented **at reservation, not at payment** — a deliberate choice that prevents overselling — and the `RESERVED` ledger event is written in the same transaction.
 
 ```ts
-// convex/orders.ts — 📋 planned
+// convex/orders.ts — Planned
 import { v, ConvexError } from "convex/values";
 import { mutation } from "./_generated/server";
 import { requireAuth } from "./lib/guards";
@@ -326,11 +326,10 @@ export const reserve = mutation({
       surplusItemId: item._id,
       orderId,
       eventType: "RESERVED",
-      weightDeltaGrams: rescuedWeightGrams,
+      weightDeltaGrams: 0,
       actorId: user._id,
       actorRole: "consumer",
       metadata: { quantity: args.quantity, unitPrice, totalPrice, remainingAfter },
-      occurredAt: now,
     });
 
     // 4. Notify the merchant — a notification is DB state, so same transaction.
@@ -416,90 +415,72 @@ export function generatePickupCode(): string {
 ### 5.1 `recordLedgerEvent` in Full
 
 ```ts
-// convex/lib/ledger.ts — 📋 planned
-import { MutationCtx } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
-import { ConvexError } from "convex/values";
+// convex/lib/ledger.ts — implemented
+import type { Doc, Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
 
 export const METHODOLOGY_VERSION = "impact-v1";
 
-export type LedgerEventType =
-  | "LISTED" | "PRICE_ADJUSTED" | "RESERVED" | "PAID" | "RESCUED"
-  | "CANCELLED" | "EXPIRED" | "ROUTED" | "ROUTING_FAILED"
-  | "INTAKE_ACCEPTED" | "INTAKE_DECLINED" | "PROCESSED" | "MODERATED";
-
-const TERMINAL_EVENTS: ReadonlySet<LedgerEventType> = new Set([
-  "RESCUED", "PROCESSED", "ROUTING_FAILED", "MODERATED",
-]);
-
-export interface LedgerEventInput {
-  surplusItemId: Id<"surplusItems">;
-  orderId?: Id<"orders">;
-  recoveryBatchId?: Id<"recoveryBatches">;
-  eventType: LedgerEventType;
-  weightDeltaGrams: number;      // integer grams; may be 0 or negative
-  actorId?: Id<"users">;
-  actorRole?: "consumer" | "merchant" | "processor" | "admin" | "system";
-  metadata?: Record<string, unknown>;
-  occurredAt: number;            // epoch ms UTC — passed in, never Date.now() here
+export function normalizeWeightDeltaGrams(weightDeltaGrams: number): number {
+  const normalized = Math.round(weightDeltaGrams);
+  if (!Number.isSafeInteger(normalized)) {
+    throw new RangeError("weightDeltaGrams must be a finite safe number");
+  }
+  return normalized;
 }
 
+export function serializeLedgerMetadata(
+  metadata: Record<string, unknown> | undefined,
+): string | undefined {
+  return metadata === undefined ? undefined : JSON.stringify(metadata);
+}
+
+type LedgerActor =
+  | { actorId: Id<"users">; actorRole: Doc<"users">["role"] }
+  | { actorId?: never; actorRole?: never };
+
+export type LedgerEventInput = {
+  surplusItemId: Id<"surplusItems">;
+  eventType: Doc<"materialFlowLedger">["eventType"];
+  weightDeltaGrams: number;
+  orderId?: Id<"orders">;
+  recoveryBatchId?: Id<"recoveryBatches">;
+  metadata?: Record<string, unknown>;
+} & LedgerActor;
+
 /**
- * The ONLY writer to materialFlowLedger.
- * MUST be called inside the same mutation that changed the state it records.
+ * Append a Material Flow Ledger entry inside the mutation whose state change it records.
+ * Never expose or invoke this helper through a separate Convex function.
  */
 export async function recordLedgerEvent(
   ctx: MutationCtx,
-  event: LedgerEventInput,
+  input: LedgerEventInput,
 ): Promise<Id<"materialFlowLedger">> {
-  if (!Number.isInteger(event.weightDeltaGrams)) {
-    throw new ConvexError({ code: "LEDGER_INVALID_WEIGHT", value: event.weightDeltaGrams });
-  }
-  if (!Number.isInteger(event.occurredAt) || event.occurredAt <= 0) {
-    throw new ConvexError({ code: "LEDGER_INVALID_TIMESTAMP" });
-  }
-
-  // Guard: the same terminal event may not be recorded twice for one item.
-  if (TERMINAL_EVENTS.has(event.eventType)) {
-    const prior = await ctx.db
-      .query("materialFlowLedger")
-      .withIndex("by_rescue_item", (q) => q.eq("surplusItemId", event.surplusItemId))
-      .filter((q) => q.eq(q.field("eventType"), event.eventType))
-      .first();
-
-    if (prior) {
-      throw new ConvexError({
-        code: "LEDGER_TERMINAL_ALREADY_RECORDED",
-        eventType: event.eventType,
-      });
-    }
-  }
-
-  return await ctx.db.insert("materialFlowLedger", {
-    surplusItemId: event.surplusItemId,
-    orderId: event.orderId,
-    recoveryBatchId: event.recoveryBatchId,
-    eventType: event.eventType,
-    weightDeltaGrams: event.weightDeltaGrams,
-    actorId: event.actorId,
-    actorRole: event.actorRole,
-    metadata: event.metadata,
+  return ctx.db.insert("materialFlowLedger", {
+    surplusItemId: input.surplusItemId,
+    orderId: input.orderId,
+    recoveryBatchId: input.recoveryBatchId,
+    eventType: input.eventType,
+    weightDeltaGrams: normalizeWeightDeltaGrams(input.weightDeltaGrams),
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    metadata: serializeLedgerMetadata(input.metadata),
     methodologyVersion: METHODOLOGY_VERSION,
-    occurredAt: event.occurredAt,
+    occurredAt: Date.now(),
   });
 }
 ```
 
 There is **no** `updateLedgerEvent` and **no** `deleteLedgerEvent`. The table is append-only. Corrections are made by appending a compensating event carrying `metadata.correctionFor`, never by editing history.
 
-Note on the terminal guard: a partially rescued item can legitimately produce both `RESCUED` (for the collected portion) and later `PROCESSED` (for the remainder routed to a processor). The guard therefore rejects only *duplicate* terminal events of the same type, not any second terminal event.
+Duplicate-event prevention belongs to the state-transition guard in the calling mutation. The helper deliberately performs one database operation only: `ctx.db.insert`, inside that mutation's transaction.
 
 ### 5.2 The Four Anti-Patterns
 
 **Anti-pattern 1 — a separate call from the client.**
 
 ```ts
-// ❌ NEVER
+// Not implemented NEVER
 await reserveItem({ itemId, quantity });
 await recordEvent({ type: "RESERVED", weight });  // may never run
 ```
@@ -509,7 +490,7 @@ The user closes the tab between the two calls. State changed; the ledger did not
 **Anti-pattern 2 — a ledger write from an action.**
 
 ```ts
-// ❌ NEVER
+// Not implemented NEVER
 export const confirmPickup = action({
   handler: async (ctx, args) => {
     await ctx.runMutation(internal.orders.markPickedUp, args);  // txn 1 commits
@@ -523,7 +504,7 @@ Two transactions. Actions are not transactional and are not retried as a unit. I
 **Anti-pattern 3 — a public ledger mutation.**
 
 ```ts
-// ❌ NEVER
+// Not implemented NEVER
 export const appendLedgerEvent = mutation({ /* ... */ });
 ```
 
@@ -532,13 +513,13 @@ Any non-internal function is callable by any client that knows its name. Exposin
 **Anti-pattern 4 — recomputing a historical weight.**
 
 ```ts
-// ❌ NEVER
+// Not implemented NEVER
 const item = await ctx.db.get(order.surplusItemId);
 const weight = item.weightPerItemGrams * order.quantity;  // item may have changed
 ```
 
 ```ts
-// ✅ ALWAYS
+// Implemented ALWAYS
 const weight = order.rescuedWeightGrams;  // frozen at reservation
 ```
 
@@ -571,7 +552,7 @@ Full semantics: [`../impact/MATERIAL_LEDGER.md`](../impact/MATERIAL_LEDGER.md).
 ### 6.1 Implementation
 
 ```ts
-// convex/lib/guards.ts — 📋 planned
+// convex/lib/guards.ts — Planned
 import { ConvexError } from "convex/values";
 import { QueryCtx, MutationCtx } from "../_generated/server";
 import { Doc, Id } from "../_generated/dataModel";
@@ -694,18 +675,18 @@ export const publish = mutation({
 
 | Function | `requireAuth` | Role | Ownership | Verified |
 | --- | --- | --- | --- | --- |
-| `surplusItems.create` | ✅ | merchant | own merchant | ✅ |
-| `surplusItems.publish` | ✅ | merchant | own item | ✅ |
-| `surplusItems.update` | ✅ | merchant | own item | ✅ |
-| `orders.reserve` | ✅ | consumer | — | — |
-| `orders.confirmPickup` | ✅ | merchant | own order's merchant | ✅ |
-| `orders.cancel` | ✅ | consumer | own order | — |
-| `recoveryBatches.accept` | ✅ | processor | offered to self | ✅ |
-| `recoveryBatches.logIntake` | ✅ | processor | own batch | ✅ |
-| `recoveryBatches.logOutcome` | ✅ | processor | own batch | ✅ |
-| `admin.verifyMerchant` | ✅ | admin | — | — |
-| `admin.moderateItem` | ✅ | admin | — | — |
-| `admin.overridePickup` | ✅ | admin | — | — |
+| `surplusItems.create` | Implemented | merchant | own merchant | Implemented |
+| `surplusItems.publish` | Implemented | merchant | own item | Implemented |
+| `surplusItems.update` | Implemented | merchant | own item | Implemented |
+| `orders.reserve` | Implemented | consumer | — | — |
+| `orders.confirmPickup` | Implemented | merchant | own order's merchant | Implemented |
+| `orders.cancel` | Implemented | consumer | own order | — |
+| `recoveryBatches.accept` | Implemented | processor | offered to self | Implemented |
+| `recoveryBatches.logIntake` | Implemented | processor | own batch | Implemented |
+| `recoveryBatches.logOutcome` | Implemented | processor | own batch | Implemented |
+| `admin.verifyMerchant` | Implemented | admin | — | — |
+| `admin.moderateItem` | Implemented | admin | — | — |
+| `admin.overridePickup` | Implemented | admin | — | — |
 | All `internal*` | n/a | n/a | n/a | not client-callable |
 
 Full matrix: [`../security/PERMISSIONS.md`](../security/PERMISSIONS.md).
@@ -714,10 +695,10 @@ Full matrix: [`../security/PERMISSIONS.md`](../security/PERMISSIONS.md).
 
 ## 7. Pure-Logic Separation
 
-### 7.1 Before — Logic Trapped in a Mutation ❌
+### 7.1 Before — Logic Trapped in a Mutation (Not implemented)
 
 ```ts
-// ❌ Untestable without a Convex runtime; unusable by the frontend.
+// Not implemented Untestable without a Convex runtime; unusable by the frontend.
 export const applyPriceTick = internalMutation({
   handler: async (ctx) => {
     const items = await ctx.db.query("surplusItems")
@@ -749,7 +730,7 @@ export const applyPriceTick = internalMutation({
 
 Problems: the pricing rule is invisible to anyone looking for it; testing it requires a Convex runtime and seeded documents; the merchant UI cannot preview a price without a round trip; and if the backend ever migrated, the rule would have to be rewritten and re-verified.
 
-### 7.2 After — Pure Function Plus Thin Persistence ✅
+### 7.2 After — Pure Function Plus Thin Persistence (Implemented)
 
 ```ts
 // src/lib/pricing.ts — NO Convex imports, NO React imports, NO I/O
@@ -838,9 +819,7 @@ export const applyPriceTick = internalMutation({
         surplusItemId: item._id,
         eventType: "PRICE_ADJUSTED",
         weightDeltaGrams: 0,
-        actorRole: "system",
         metadata: { from: item.currentPrice, to: next },
-        occurredAt: now,
       });
       adjusted++;
     }
@@ -856,11 +835,11 @@ The mutation is now orchestration around one function call: load, compute, persi
 
 | Module | Exports | Consumed by | Status |
 | --- | --- | --- | --- |
-| `src/lib/pricing.ts` | `suggestRescuePrice` | price-tick cron, merchant preview UI | 📋 |
-| `src/lib/routing.ts` | `rankEligibleProcessors` | routing engine cron, admin explainer | 📋 |
-| `src/lib/ranking.ts` | `rankListings` | `surplusItems.listNearby`, Explore sort | 📋 |
-| `src/lib/impact.ts` | `summariseLedger`, `estimateCo2e` | impact queries, impact UI | 📋 |
-| `src/lib/geo.ts` | `haversineMeters` | nearby filtering, routing eligibility, distance display | 📋 |
+| `src/lib/pricing.ts` | `suggestRescuePrice` | price-tick cron, merchant preview UI | Planned |
+| `src/lib/routing.ts` | `rankEligibleProcessors` | routing engine cron, admin explainer | Planned |
+| `src/lib/ranking.ts` | `rankListings` | `surplusItems.listNearby`, Explore sort | Planned |
+| `src/lib/impact.ts` | `summariseLedger`, `estimateCo2e` | impact queries, impact UI | Planned |
+| `src/lib/geo.ts` | `haversineMeters` | nearby filtering, routing eligibility, distance display | Planned |
 
 **Justification, restated for judges.** Unit-testable without a Convex runtime. Portable if the backend migrates. Explainable in isolation — a reader can understand Dynamic Rescue Pricing from `suggestRescuePrice` without knowing what Convex is. And critically, **the server and the client compute identical numbers**, so a merchant's price preview can never disagree with the price the cron actually sets.
 
@@ -927,9 +906,6 @@ export function extractConvexErrorCode(error: unknown): string {
 | `INVALID_ACCEPTED_WEIGHT` | `logIntake` | 400 | Berat masuk tidak valid. |
 | `RESIDUAL_EXCEEDS_ACCEPTED` | `logOutcome` | 400 | Residual tidak boleh melebihi berat yang diterima. |
 | `CAPACITY_EXCEEDED` | `recoveryBatches.accept` | 409 | Kapasitas harian fasilitas terlampaui. |
-| `LEDGER_INVALID_WEIGHT` | `recordLedgerEvent` | 500 | (internal) |
-| `LEDGER_INVALID_TIMESTAMP` | `recordLedgerEvent` | 500 | (internal) |
-| `LEDGER_TERMINAL_ALREADY_RECORDED` | `recordLedgerEvent` | 409 | (internal) |
 
 Rules: codes are `SCREAMING_SNAKE_CASE`, stable (they are an API contract), and never contain user-facing prose — translation is the client's job. Codes marked "(internal)" indicate a bug or an attack and surface as a generic message plus a server log.
 
@@ -941,14 +917,14 @@ Rules: codes are `SCREAMING_SNAKE_CASE`, stable (they are an API contract), and 
 
 | Mutation | Idempotent? | Mechanism |
 | --- | --- | --- |
-| `orders.reserve` | ❌ No, by design | Two reservations are two distinct claims; guarded by the quantity check |
-| `orders.confirmPickup` | ✅ Yes | No-op if `status === "picked_up"` |
-| `orders.cancel` | ✅ Yes | No-op if already `cancelled` / `expired` |
-| `payments.recordSettlement` | ✅ Yes | Keyed on `providerTransactionId` |
-| `recoveryBatches.accept` | ✅ Yes | No-op if already accepted by the same processor; error if by another |
-| `recoveryBatches.logIntake` | ✅ Yes | No-op if `acceptedWeightGrams` is already set |
-| `recoveryBatches.logOutcome` | ✅ Yes | No-op if `status === "processed"` |
-| All cron sweeps | ✅ Yes | Status-guarded queries select only rows that still need work |
+| `orders.reserve` | No, by design | Two reservations are two distinct claims; guarded by the quantity check |
+| `orders.confirmPickup` | Yes | No-op if `status === "picked_up"` |
+| `orders.cancel` | Yes | No-op if already `cancelled` / `expired` |
+| `payments.recordSettlement` | Yes | Keyed on `providerTransactionId` |
+| `recoveryBatches.accept` | Yes | No-op if already accepted by the same processor; error if by another |
+| `recoveryBatches.logIntake` | Yes | No-op if `acceptedWeightGrams` is already set |
+| `recoveryBatches.logOutcome` | Yes | No-op if `status === "processed"` |
+| All cron sweeps | Yes | Status-guarded queries select only rows that still need work |
 
 Canonical shape, with the `RESCUED` terminal event:
 
@@ -996,11 +972,10 @@ export const confirmPickup = mutation({
       surplusItemId: order.surplusItemId,
       orderId: order._id,
       eventType: "RESCUED",
-      weightDeltaGrams: order.rescuedWeightGrams,  // snapshot, never recomputed
+      weightDeltaGrams: -order.rescuedWeightGrams,  // snapshot, never recomputed
       actorId: actor._id,
       actorRole: isAdmin ? "admin" : "merchant",
       metadata: { quantity: order.quantity, totalPrice: order.totalPrice, override: isAdmin },
-      occurredAt: now,
     });
 
     return { ok: true, alreadyConfirmed: false };
@@ -1015,7 +990,7 @@ export const confirmPickup = mutation({
 Midtrans retries notifications until it receives `200`. The same `order_id` will arrive multiple times, sometimes out of order.
 
 ```ts
-// convex/http.ts — 📋 planned
+// convex/http.ts — Planned
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -1105,7 +1080,7 @@ function timingSafeEqual(a: string, b: string): boolean {
 **The idempotent settlement mutation.**
 
 ```ts
-// convex/payments.ts — 📋 planned
+// convex/payments.ts — Planned
 export const recordSettlement = internalMutation({
   args: {
     midtransOrderId: v.string(),
@@ -1173,7 +1148,6 @@ export const recordSettlement = internalMutation({
         actorId: order.userId,
         actorRole: "consumer",
         metadata: { amount: args.grossAmount, method: args.method },
-        occurredAt: now,
       });
     }
 
@@ -1222,7 +1196,7 @@ flowchart TD
 ### 10.2 Shared Validators
 
 ```ts
-// convex/lib/validators.ts — 📋 planned
+// convex/lib/validators.ts — Planned
 import { v, ConvexError } from "convex/values";
 
 export const materialTypeValidator = v.union(
@@ -1414,7 +1388,7 @@ Every index exists to serve a named access pattern. An index without a pattern i
 **Convex has no geospatial index.** This is a real constraint and we state it plainly rather than implying a capability we do not have.
 
 ```ts
-// convex/surplusItems.ts — 📋 planned
+// convex/surplusItems.ts — Planned
 import { haversineMeters } from "../src/lib/geo";
 import { rankListings } from "../src/lib/ranking";
 
@@ -1528,15 +1502,15 @@ We are deliberately at step 0. Step 3 is a genuine architectural migration and w
 
 | Layer | Tool | What it covers | Status |
 | --- | --- | --- | --- |
-| Pure logic | `bun test` on `src/lib/*.ts` | Pricing curve, routing score, ranking, Haversine, ledger summarisation, CO2e | 📋 |
-| Convex functions | `convex-test` (in-memory) | Guards, transactions, idempotency, ledger emission | 📋 |
-| Integration | Local `bunx convex dev` plus scripted scenarios | Reserve, pay, pickup; expire, route, intake, outcome | 📋 |
-| Webhook | Signed fixture payloads posted at `http.ts` | Signature verification, status mapping, duplicate delivery | 📋 |
+| Pure logic | `bun test` on `src/lib/*.ts` | Pricing curve, routing score, ranking, Haversine, ledger summarisation, CO2e | Planned |
+| Convex functions | `convex-test` (in-memory) | Guards, transactions, idempotency, ledger emission | Planned |
+| Integration | Local `bunx convex dev` plus scripted scenarios | Reserve, pay, pickup; expire, route, intake, outcome | Planned |
+| Webhook | Signed fixture payloads posted at `http.ts` | Signature verification, status mapping, duplicate delivery | Planned |
 
 **Pure-logic tests need no Convex runtime** — the whole point of the separation:
 
 ```ts
-// src/lib/pricing.test.ts — 📋 planned
+// src/lib/pricing.test.ts — Planned
 import { test, expect } from "bun:test";
 import { suggestRescuePrice, MAX_DISCOUNT } from "./pricing";
 
@@ -1681,11 +1655,11 @@ bun run dev                 # Vite dev server (separate terminal)
 
 | Variable | Location | Purpose | Status |
 | --- | --- | --- | --- |
-| `VITE_CONVEX_URL` | `.env.local` | Client to deployment URL | ✅ the only env var today |
-| `VITE_MAPBOX_TOKEN` | `.env.local` | Mapbox GL, public scope | 📋 |
-| `VITE_MIDTRANS_CLIENT_KEY` | `.env.local` | Snap.js, public by design | 📋 |
-| `MIDTRANS_SERVER_KEY` | `bunx convex env set` | Snap API auth plus webhook signature | 📋 |
-| `MIDTRANS_WEBHOOK_URL` | Midtrans dashboard | Points at `<deployment>.convex.site/midtrans/webhook` | 📋 |
+| `VITE_CONVEX_URL` | `.env.local` | Client to deployment URL | Implemented the only env var today |
+| `VITE_MAPBOX_TOKEN` | `.env.local` | Mapbox GL, public scope | Planned |
+| `VITE_MIDTRANS_CLIENT_KEY` | `.env.local` | Snap.js, public by design | Planned |
+| `MIDTRANS_SERVER_KEY` | `bunx convex env set` | Snap API auth plus webhook signature | Planned |
+| `MIDTRANS_WEBHOOK_URL` | Midtrans dashboard | Points at `<deployment>.convex.site/midtrans/webhook` | Planned |
 
 Note the split: `VITE_*` variables are bundled into the client and are public. `MIDTRANS_SERVER_KEY` is set with `bunx convex env set` and lives only in the Convex runtime. Putting the server key in a `VITE_*` variable would ship the signature secret to every browser.
 
@@ -1701,7 +1675,7 @@ bunx convex run recoveryBatches:runRouting '{}'
 
 This is also how the demo is staged deterministically — instead of waiting for a natural window close, the presenter runs `sweepPickupWindow` on demand and every subscribed screen updates live. See [`SCHEDULER.md`](SCHEDULER.md).
 
-**Seed data.** A `convex/seed.ts` module (`📋`) inserts demo merchants, processors, and a handful of Rescue Items with pickup windows straddling the present so every surface has data on first `convex dev` boot. Seed writes bypass guards by design (it is dev-only tooling) but still call `recordLedgerEvent` so ledger-derived queries are exercised honestly.
+**Seed data.** A `convex/seed.ts` module (`Planned`) inserts demo merchants, processors, and a handful of Rescue Items with pickup windows straddling the present so every surface has data on first `convex dev` boot. Seed writes bypass guards by design (it is dev-only tooling) but still call `recordLedgerEvent` so ledger-derived queries are exercised honestly.
 
 ---
 

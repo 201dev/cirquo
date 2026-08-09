@@ -90,7 +90,7 @@ gantt
 
 ---
 
-## 3. Phase 0 — Foundation ✅ (Complete)
+## 3. Phase 0 — Foundation (Complete)
 
 The repository scaffold exists and is type-safe. This phase deliberately built **structure, not business logic**.
 
@@ -111,14 +111,14 @@ The repository scaffold exists and is type-safe. This phase deliberately built *
 
 ### What explicitly does NOT exist
 
-- ❌ No Material Flow Ledger table
-- ❌ No mutations — nothing can be written to the database
-- ❌ No authentication of any kind
-- ❌ No Mapbox integration
-- ❌ No Midtrans integration
-- ❌ No scheduled functions
-- ❌ No impact calculation
-- ❌ All dashboard numbers are hardcoded placeholders
+- No Material Flow Ledger table
+- No mutations — nothing can be written to the database
+- No authentication of any kind
+- No Mapbox integration
+- No Midtrans integration
+- No scheduled functions
+- No impact calculation
+- Not implemented All dashboard numbers are hardcoded placeholders
 
 > **Honest assessment:** Phase 0 is roughly 15% of the MVP. It is a well-organised shell with disproportionately thorough documentation. Preliminary scoring weights *Progress & Implementation* at 20% and expects 50–75% completion — so from here, shipped functionality is worth more than any further planning artefact. Stop writing documents; start writing mutations.
 

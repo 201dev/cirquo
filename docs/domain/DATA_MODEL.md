@@ -125,7 +125,7 @@ One row per human account. The `role` field discriminates behaviour.
 | Option | Trade-off |
 |---|---|
 | Separate tables per role | Type-safe, but a person who is both a merchant and a consumer needs two accounts and two logins |
-| **Single table + role field** ✅ | One identity, one session, one auth path. Role-specific data lives in profile tables |
+| **Single table + role field** Implemented | One identity, one session, one auth path. Role-specific data lives in profile tables |
 | Single table with all fields nullable | Wide sparse rows, unclear which fields apply |
 
 The MVP enforces one role per account. The schema does not preclude a future `roles: string[]` migration.
@@ -186,10 +186,10 @@ Rescue Item: 5 portions × 500g = 2500g listed
 └── Recovery Batch: 1 unclaimed + 1 no-show = 1000g
                     ├── 800g recovered (compost)
                     └── 200g residual
-Total: 2000g rescued + 800g recovered + 200g residual = 3000g ✗
+Total: 2000g rescued + 800g recovered + 200g residual = 3000g Invalid
 
 Corrected — the no-show portion is not rescued:
-Total: 1500g rescued + 800g recovered + 200g residual = 2500g ✓
+Total: 1500g rescued + 800g recovered + 200g residual = 2500g Valid
 ```
 
 The second calculation is correct. A `RESCUED` ledger event is written only on verified pickup, never on reservation or payment.
@@ -388,8 +388,8 @@ Divergences between the current codebase and the domain language of [DOMAIN.md](
 |---|---|---|
 | `surplusItems` | Rescue Item | Keep the table name to avoid a disruptive rename; use "Rescue Item" in all UI copy and documentation |
 | `SurplusStatus` | Rescue Item status | Acceptable internal name |
-| `RecoveryStatus` | Recovery Batch status | ✅ Aligned |
-| `weightPerItemGrams` | Weight per unit | ✅ Aligned |
+| `RecoveryStatus` | Recovery Batch status | Implemented Aligned |
+| `weightPerItemGrams` | Weight per unit | Implemented Aligned |
 | `merchantValueRecovered` | Revenue recovered | Rename in the impact type for clarity |
 
 ### Required schema additions

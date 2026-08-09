@@ -83,21 +83,21 @@ layer would consume more time than it returns.
 
 | Area | Automate? | Why |
 | --- | --- | --- |
-| `suggestRescuePrice` | ✅ **Yes** | Pure, stable, boundary-heavy, produces a number a merchant sees. Manual verification of clamps is unreliable. |
-| `rankEligibleProcessors` | ✅ **Yes** | Pure, exclusion logic is easy to get subtly wrong, failure means food routed to a processor that cannot take it. |
-| `summariseLedger` | ✅ **Yes** | Every impact number on every dashboard flows through it. The partial-outcome case is genuinely tricky. |
-| `haversineMeters` | ✅ **Yes** | Trivial to test, easy to get wrong (radians, hemisphere signs), and distance drives discovery ordering. |
-| Weight-conservation invariant | ✅ **Yes** | This *is* the product's central claim. Must be mechanically provable. |
-| Convex reservation concurrency | ⚠️ **Best effort** | Real risk of overselling; `convex-test` can express it. Worth the effort if time allows. |
-| Convex guard rejection | ⚠️ **Best effort** | Security-relevant. A few tests cover the pattern; the rest is code review. |
-| Ledger write presence per mutation | ⚠️ **Best effort** | High value, moderate cost. Cheap version: a CI grep guard (§9.4). |
-| React component rendering | ❌ **No** | Churns constantly. Visible in one second by looking. Cost far exceeds benefit. |
-| Form validation messages | ❌ **No** | Zod schemas are declarative and reviewed; failures are immediately visible. |
-| Mapbox interaction | ❌ **No** | Requires heavy mocking of a third-party canvas renderer. Untestable at reasonable cost. |
-| Midtrans Snap flow | ❌ **No** | External hosted UI. Sandbox manual testing is the only honest verification. |
-| Routing/layout | ❌ **No** | Immediately visible. |
-| Dark mode tokens | ❌ **No** | Visual. Toggle and look. |
-| Capacitor/Android shell | ❌ **No** | Requires a device farm. Manual on one physical phone. |
+| `suggestRescuePrice` | **Yes** | Pure, stable, boundary-heavy, produces a number a merchant sees. Manual verification of clamps is unreliable. |
+| `rankEligibleProcessors` | **Yes** | Pure, exclusion logic is easy to get subtly wrong, failure means food routed to a processor that cannot take it. |
+| `summariseLedger` | **Yes** | Every impact number on every dashboard flows through it. The partial-outcome case is genuinely tricky. |
+| `haversineMeters` | **Yes** | Trivial to test, easy to get wrong (radians, hemisphere signs), and distance drives discovery ordering. |
+| Weight-conservation invariant | **Yes** | This *is* the product's central claim. Must be mechanically provable. |
+| Convex reservation concurrency | **Best effort** | Real risk of overselling; `convex-test` can express it. Worth the effort if time allows. |
+| Convex guard rejection | **Best effort** | Security-relevant. A few tests cover the pattern; the rest is code review. |
+| Ledger write presence per mutation | **Best effort** | High value, moderate cost. Cheap version: a CI grep guard (§9.4). |
+| React component rendering | **No** | Churns constantly. Visible in one second by looking. Cost far exceeds benefit. |
+| Form validation messages | **No** | Zod schemas are declarative and reviewed; failures are immediately visible. |
+| Mapbox interaction | **No** | Requires heavy mocking of a third-party canvas renderer. Untestable at reasonable cost. |
+| Midtrans Snap flow | **No** | External hosted UI. Sandbox manual testing is the only honest verification. |
+| Routing/layout | **No** | Immediately visible. |
+| Dark mode tokens | **No** | Visual. Toggle and look. |
+| Capacitor/Android shell | **No** | Requires a device farm. Manual on one physical phone. |
 
 ---
 

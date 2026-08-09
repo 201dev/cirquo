@@ -3,7 +3,7 @@
 **Document type:** Technical specification  
 **Status:** Draft v1.0  
 **Last updated:** 2026-08-06  
-**Implementation status:** 📋 Not yet built — highest-priority MVP addition
+**Implementation status:** Planned Not yet built — highest-priority MVP addition
 
 > The Material Flow Ledger is Cirquo's core differentiator. Every impact number the product displays is derived from it and from nothing else. If the ledger has gaps, the platform's central claim — *we know where every kilogram went* — is false.
 
@@ -102,15 +102,15 @@ Thirteen event types. Each maps to exactly one transition in [STATE_MACHINE.md](
 | `PRICE_ADJUSTED` | Pricing engine or merchant | `0` | — | `previousPrice`, `newPrice`, `trigger` |
 | `RESERVED` | Consumer reserves | `0` | — | `quantity`, `unitPrice`, `orderId` |
 | `PAID` | Midtrans webhook | `0` | — | `amount`, `method`, `providerTransactionId` |
-| `RESCUED` | Merchant verifies pickup code | `−quantity × weightPerItemGrams` | ✅ | `quantity`, `totalPrice`, `pickupCode` |
+| `RESCUED` | Merchant verifies pickup code | `−quantity × weightPerItemGrams` | Implemented | `quantity`, `totalPrice`, `pickupCode` |
 | `CANCELLED` | Consumer or hold expiry | `0` | — | `quantity` returned, `reason` |
 | `EXPIRED` | Scheduler | `0` | — | `remainingQuantity`, `pickupEndAt` |
 | `ROUTED` | Circular Routing | `0` | — | `processorId`, `rank`, `distanceMeters`, `attempt` |
-| `ROUTING_FAILED` | Circular Routing | `−unrouted weight` | ✅ | `attempts`, `declinedBy[]`, `reason` |
+| `ROUTING_FAILED` | Circular Routing | `−unrouted weight` | Implemented | `attempts`, `declinedBy[]`, `reason` |
 | `INTAKE_ACCEPTED` | Processor accepts | `0` | — | `processorId`, `acceptedWeightGrams` (measured) |
 | `INTAKE_DECLINED` | Processor declines or TTL | `0` | — | `processorId`, `reason` |
-| `PROCESSED` | Processor logs outcome | `−(outputWeight + residualWeight)` | ✅ | `outputType`, `outputWeightGrams`, `residualWeightGrams` |
-| `MODERATED` | Admin removes listing | `−remaining weight` | ✅ | `adminId`, `reason` |
+| `PROCESSED` | Processor logs outcome | `−(outputWeight + residualWeight)` | Implemented | `outputType`, `outputWeightGrams`, `residualWeightGrams` |
+| `MODERATED` | Admin removes listing | `−remaining weight` | Implemented | `adminId`, `reason` |
 
 ### Terminal events and their impact attribution
 
@@ -228,20 +228,20 @@ Both writes are inside one mutation. Convex commits them together or not at all.
 ### Anti-patterns
 
 ```typescript
-// ❌ Separate call — state can change without an event
+// Not implemented Separate call — state can change without an event
 await ctx.db.patch(orderId, { status: 'picked_up' })
 await ctx.scheduler.runAfter(0, internal.ledger.record, { ... })
 
-// ❌ From an action — actions are not transactional
+// Not implemented From an action — actions are not transactional
 export const confirmPickup = action({ handler: async (ctx) => {
   await ctx.runMutation(internal.orders.setPickedUp, { ... })
   await ctx.runMutation(internal.ledger.record, { ... })   // may not run
 }})
 
-// ❌ From the client — trivially forgeable
+// Not implemented From the client — trivially forgeable
 await convex.mutation(api.ledger.record, { eventType: 'RESCUED', ... })
 
-// ❌ Recomputing historical weight
+// Not implemented Recomputing historical weight
 weightDeltaGrams: -(order.quantity * item.weightPerItemGrams)
 // item.weightPerItemGrams may have been edited since the order was placed.
 // Use order.rescuedWeightGrams — the snapshot.

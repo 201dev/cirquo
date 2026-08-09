@@ -319,13 +319,13 @@ Both terminal paths — **RESCUED** (a Consumer ate it) and **DIVERTED/PROCESSED
 
 | Capability | Consumer | Merchant | Organic Processor | Admin |
 |---|:---:|:---:|:---:|:---:|
-| Browse/reserve Rescue Items | ✅ | ❌ | ❌ | ✅ (view only) |
-| Create/manage listings | ❌ | ✅ | ❌ | ✅ (moderate) |
-| Accept intake / log processing output | ❌ | ❌ | ✅ | ✅ (view only) |
-| View own impact dashboard | ✅ | ✅ | ✅ | ✅ (platform-wide) |
-| View full Material Flow Ledger | ❌ (own orders only) | ❌ (own listings only) | ❌ (own intakes only) | ✅ |
-| Verify/suspend accounts | ❌ | ❌ | ❌ | ✅ |
-| Resolve disputes | ❌ | ❌ | ❌ | ✅ |
+| Browse/reserve Rescue Items | Implemented | Not implemented | Not implemented | Implemented (view only) |
+| Create/manage listings | Not implemented | Implemented | Not implemented | Implemented (moderate) |
+| Accept intake / log processing output | Not implemented | Not implemented | Implemented | Implemented (view only) |
+| View own impact dashboard | Implemented | Implemented | Implemented | Implemented (platform-wide) |
+| View full Material Flow Ledger | Not implemented (own orders only) | Not implemented (own listings only) | Not implemented (own intakes only) | Implemented |
+| Verify/suspend accounts | Not implemented | Not implemented | Not implemented | Implemented |
+| Resolve disputes | Not implemented | Not implemented | Not implemented | Implemented |
 
 A full RBAC specification (exact server-side permission checks per Convex function) belongs in `ROLES.md`.
 

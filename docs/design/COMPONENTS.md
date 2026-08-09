@@ -85,20 +85,20 @@ src/components/
 ### 2.1 Correct Usage
 
 ```tsx
-// ✅ Button rendering as a React Router Link
+// Implemented Button rendering as a React Router Link
 <Button render={<Link to="/explore" />}>Jelajahi</Button>
 
-// ✅ SheetTrigger rendering as a Button
+// Implemented SheetTrigger rendering as a Button
 <SheetTrigger render={<Button variant="outline" size="icon" aria-label="Buka menu" />}>
   <Menu className="size-5" />
 </SheetTrigger>
 
-// ✅ Button as an external anchor
+// Implemented Button as an external anchor
 <Button variant="link" render={<a href="https://midtrans.com" target="_blank" rel="noreferrer" />}>
   Bantuan pembayaran
 </Button>
 
-// ✅ DropdownMenuTrigger as a ghost icon Button
+// Implemented DropdownMenuTrigger as a ghost icon Button
 <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="Aksi lainnya" />}>
   <MoreVertical className="size-4" />
 </DropdownMenuTrigger>
@@ -107,17 +107,17 @@ src/components/
 ### 2.2 Incorrect Usage
 
 ```tsx
-// ❌ asChild — not supported by these components
+// Not implemented asChild — not supported by these components
 <Button asChild><Link to="/explore">Jelajahi</Link></Button>
 
-// ❌ Nested interactive elements: a <button> wrapping an <a>. Invalid HTML,
+// Not implemented Nested interactive elements: a <button> wrapping an <a>. Invalid HTML,
 //    breaks keyboard navigation and screen-reader announcement.
 <Button><Link to="/explore">Jelajahi</Link></Button>
 
-// ❌ Children inside the render element. Children belong on the outer component.
+// Not implemented Children inside the render element. Children belong on the outer component.
 <Button render={<Link to="/explore">Jelajahi</Link>} />
 
-// ❌ Manually re-applying button classes to a Link
+// Not implemented Manually re-applying button classes to a Link
 <Link to="/explore" className="bg-primary text-primary-foreground h-9 px-4 rounded-md">
   Jelajahi
 </Link>
@@ -150,7 +150,7 @@ The `render` prop receives a React element. The component merges its own props �
 
 ---
 
-## 3. Existing Primitives (`src/components/ui/`) ✅
+## 3. Existing Primitives (`src/components/ui/`)
 
 All 17 exist today.
 
@@ -178,7 +178,7 @@ All 17 exist today.
 
 ---
 
-## 4. Existing Custom Components (`src/components/common/`) ✅
+## 4. Existing Custom Components (`src/components/common/`)
 
 ### 4.1 `PageHeader`
 
@@ -223,11 +223,11 @@ export function PageHeader({ title, description, action }: PageHeaderProps) {
 
 | Prop | Type | Required | Description |
 | --- | --- | --- | --- |
-| `title` | `string` | ✅ | Page title, renders as `<h1>` |
+| `title` | `string` | Implemented | Page title, renders as `<h1>` |
 | `description` | `string` | — | One sentence of context |
 | `action` | `React.ReactNode` | — | Primary action, right-aligned, `shrink-0` |
 
-**Proposed improvements** 📋
+**Proposed improvements** Planned
 
 | Change | Rationale |
 | --- | --- |
@@ -253,7 +253,7 @@ export function SummaryCard({ label, value, icon: Icon, detail }: SummaryCardPro
   return (
     <Card className="shadow-none">
       <CardContent className="flex items-start gap-4 p-4">
-        {/* ❌ hardcoded brand colour */}
+        {/* Not implemented hardcoded brand colour */}
         <span className="rounded-lg bg-emerald-50 p-2 text-emerald-700">
           <Icon className="size-5" />
         </span>
@@ -268,7 +268,7 @@ export function SummaryCard({ label, value, icon: Icon, detail }: SummaryCardPro
 }
 ```
 
-**Proposed signature** 📋
+**Proposed signature** Planned
 
 ```tsx
 export type SummaryCardVariant =
@@ -384,7 +384,7 @@ export function MerchantLayout() {
 }
 ```
 
-**Proposed improvements** 📋
+**Proposed improvements** Planned
 
 | Change | Rationale |
 | --- | --- |
@@ -399,7 +399,7 @@ export function MerchantLayout() {
 
 ---
 
-## 5. Planned Components — Rescue Item & Discovery 📋
+## 5. Planned Components — Rescue Item & Discovery
 
 ### 5.1 `RescueItemCard`
 
@@ -433,7 +433,7 @@ export interface RescueItemCardProps {
 
 | Prop | Type | Required | Description |
 | --- | --- | --- | --- |
-| `item` | object | ✅ | Denormalised view model — the card never fetches |
+| `item` | object | Implemented | Denormalised view model — the card never fetches |
 | `onSelect` | `(id: string) => void` | — | Used when the card opens a `Sheet` rather than navigating |
 | `href` | `string` | — | When present the whole card renders as a `Link` |
 | `compact` | `boolean` | — | Horizontal layout with a 96px thumbnail, for the explore list panel |
@@ -446,7 +446,7 @@ export interface RescueItemCardProps {
 │ [−45%]              [3 tersisa]│  ← overlay badges on 4:3 image
 │         (photo 4:3)            │
 ├────────────────────────────────┤
-│ Roti Sourdough            🕐   │  text-base font-semibold, truncate
+│ Roti Sourdough               │  text-base font-semibold, truncate
 │ Toko Roti Semarang · 450 m     │  text-sm text-muted-foreground
 │ Rp12.000  Rp22.000 (struck)    │  PriceDisplay
 │ [Vegetarian] [Tanpa Babi]      │  DietaryTagList, max 2 + overflow
@@ -660,7 +660,7 @@ Never label this feature "filter alergi". Never imply verification.
 
 ---
 
-## 6. Planned Components — Map & Location 📋
+## 6. Planned Components — Map & Location
 
 ### 6.1 `MapView`
 
@@ -765,7 +765,7 @@ When `approximate`, prefixes `±` and sets `title="Jarak perkiraan dari pusat Se
 
 ---
 
-## 7. Planned Components — Reservation, Payment & Pickup 📋
+## 7. Planned Components — Reservation, Payment & Pickup
 
 ### 7.1 `QuantityStepper`
 
@@ -957,7 +957,7 @@ Rendered as an ordered list (`<ol>`) so screen readers announce sequence and pos
 
 ---
 
-## 8. Planned Components — Impact & Ledger 📋
+## 8. Planned Components — Impact & Ledger
 
 ### 8.1 `ImpactStatCard`
 
@@ -1165,7 +1165,7 @@ export interface LedgerEventRowProps {
 
 ```
 │  ┌──┐
-├──│⚖ │  Berat masuk dicatat              +2.400 g
+├──│ │  Berat masuk dicatat              +2.400 g
 │  └──┘  Pengolah Maggot Semarang         Total: 2.400 g
 │        6 Agu 2026, 14.32 WIB
 │        Berat terdaftar 2.500 g · selisih −100 g
@@ -1175,7 +1175,7 @@ The discrepancy line renders in `text-residual-muted-foreground` — noteworthy,
 
 ---
 
-## 9. Planned Components — Processor Operations 📋
+## 9. Planned Components — Processor Operations
 
 ### 9.1 `RecoveryBatchCard`
 
@@ -1332,7 +1332,7 @@ export interface VerificationBadgeProps {
 
 ---
 
-## 10. Planned Components — Shared Infrastructure 📋
+## 10. Planned Components — Shared Infrastructure
 
 ### 10.1 `EmptyState`
 

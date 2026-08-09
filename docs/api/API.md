@@ -14,7 +14,7 @@
 | **Maps** | Mapbox GL JS (client-side rendering only; no server geo index) |
 | **Units** | Weight = integer **grams** · Money = integer **IDR** · Time = integer **epoch milliseconds UTC** |
 | **Methodology version** | `v1` (stamped on every ledger event) |
-| **Status legend** | ✅ implemented in `convex/` today · 📋 planned |
+| **Status legend** | implemented in `convex/` today · Planned |
 | **Audience** | Backend engineers, frontend engineers, judges auditing the material chain |
 
 ---
@@ -91,7 +91,7 @@ That is what makes the Material Flow Ledger trustworthy. `orders.reserve` decrem
 This is also why the ledger write must **never** happen in an `action`. Actions are not transactional; a crash between the external call and the mutation would leave the ledger permanently short an event. The rule is absolute:
 
 ```ts
-// ✅ correct — ledger written inside the same transaction as the state change
+// Implemented correct — ledger written inside the same transaction as the state change
 export const reserve = mutation({
   args: { /* ... */ },
   handler: async (ctx, args) => {
@@ -101,10 +101,10 @@ export const reserve = mutation({
   },
 })
 
-// ❌ forbidden — non-transactional, ledger can silently diverge
+// Not implemented forbidden — non-transactional, ledger can silently diverge
 export const reserveViaAction = action({ /* ... */ })
 
-// ❌ forbidden — client can lie about, skip, or replay the event
+// Not implemented forbidden — client can lie about, skip, or replay the event
 await convex.mutation(api.ledger.append, { eventType: 'RESCUED' })
 ```
 
@@ -158,7 +158,7 @@ For readers whose mental model is HTTP. **These routes do not exist.** The table
 | `GET /api/impact` | `impact.getPlatformImpact` | query | Derived from ledger, never a counter |
 | `GET /api/admin/users` | `admin.listUsers` | query | Paginated |
 | `POST /api/admin/merchants/:id/verify` | `admin.verifyMerchant` | mutation | Audited |
-| `POST /api/webhooks/midtrans` | **`POST /midtrans/webhook`** | `httpAction` | ✅ **This one is a real HTTP endpoint** — see §11 |
+| `POST /api/webhooks/midtrans` | **`POST /midtrans/webhook`** | `httpAction` | Implemented **This one is a real HTTP endpoint** — see §11 |
 | `GET /api/health` | `admin.getSystemHealth` | query | Not a load-balancer probe |
 
 Only the Midtrans webhook row describes an address you can actually `curl`.
@@ -167,7 +167,7 @@ Only the Midtrans webhook row describes an address you can actually `curl`.
 
 ## 5. Complete function index
 
-Status: ✅ = exists in `convex/` today · 📋 = specified, not yet implemented.
+Status: Implemented = exists in `convex/` today · Planned = specified, not yet implemented.
 
 Exactly **six read-only queries** exist right now. Everything else is planned. We state this plainly rather than implying a finished backend.
 
@@ -175,115 +175,115 @@ Exactly **six read-only queries** exist right now. Everything else is planned. W
 
 | Function | Kind | Auth | Status |
 |---|---|---|---|
-| `auth.register` | mutation | Public | 📋 |
-| `auth.login` | mutation | Public | 📋 |
-| `auth.logout` | mutation | Any session | 📋 |
-| `auth.getCurrentUser` | query | Any session | 📋 |
-| `auth.refreshSession` | mutation | Any session | 📋 |
-| `auth.requestPasswordReset` | action | Public | 📋 |
-| `auth.resetPassword` | mutation | Reset token | 📋 |
-| `auth.changePassword` | mutation | Any session | 📋 |
-| `auth.getVerificationStatus` | query | Merchant/Processor | 📋 |
-| `users.getByEmail` | query | Internal-facing | ✅ |
-| `merchants.createProfile` | mutation | Merchant | 📋 |
-| `merchants.getByOwner` | query | Merchant | ✅ |
-| `processors.createProfile` | mutation | Processor | 📋 |
-| `profiles.update` | mutation | Owner | 📋 |
+| `auth.register` | mutation | Public | Planned |
+| `auth.login` | mutation | Public | Planned |
+| `auth.logout` | mutation | Any session | Planned |
+| `auth.getCurrentUser` | query | Any session | Planned |
+| `auth.refreshSession` | mutation | Any session | Planned |
+| `auth.requestPasswordReset` | action | Public | Planned |
+| `auth.resetPassword` | mutation | Reset token | Planned |
+| `auth.changePassword` | mutation | Any session | Planned |
+| `auth.getVerificationStatus` | query | Merchant/Processor | Planned |
+| `users.getByEmail` | query | Internal-facing | Implemented |
+| `merchants.createProfile` | mutation | Merchant | Planned |
+| `merchants.getByOwner` | query | Merchant | Implemented |
+| `processors.createProfile` | mutation | Processor | Planned |
+| `profiles.update` | mutation | Owner | Planned |
 
 ### 5.2 Consumer → [`API_CONSUMER.md`](./API_CONSUMER.md)
 
 | Function | Kind | Auth | Status |
 |---|---|---|---|
-| `discovery.listNearby` | query | Public / Consumer | 📋 |
-| `discovery.getListing` | query | Public | 📋 |
-| `discovery.getFilters` | query | Public | 📋 |
-| `orders.reserve` | mutation | Consumer | 📋 |
-| `payments.createTransaction` | **action** | Consumer (owner) | 📋 |
-| `orders.listMine` | query | Consumer | 📋 |
-| `orders.listByUser` | query | Consumer | ✅ |
-| `orders.get` | query | Consumer (owner) | 📋 |
-| `orders.cancel` | mutation | Consumer (owner) | 📋 |
-| `orders.getPickupCode` | query | Consumer (owner) | 📋 |
-| `impact.getConsumerSummary` | query | Consumer | 📋 |
-| `notifications.listMine` | query | Any session | 📋 |
-| `notifications.markRead` | mutation | Owner | 📋 |
-| `disputes.raise` | mutation | Consumer/Merchant | 📋 |
-| `ratings.submit` | mutation | Consumer (owner) | 📋 (priority C) |
+| `discovery.listNearby` | query | Public / Consumer | Planned |
+| `discovery.getListing` | query | Public | Planned |
+| `discovery.getFilters` | query | Public | Planned |
+| `orders.reserve` | mutation | Consumer | Planned |
+| `payments.createTransaction` | **action** | Consumer (owner) | Planned |
+| `orders.listMine` | query | Consumer | Planned |
+| `orders.listByUser` | query | Consumer | Implemented |
+| `orders.get` | query | Consumer (owner) | Planned |
+| `orders.cancel` | mutation | Consumer (owner) | Planned |
+| `orders.getPickupCode` | query | Consumer (owner) | Planned |
+| `impact.getConsumerSummary` | query | Consumer | Planned |
+| `notifications.listMine` | query | Any session | Planned |
+| `notifications.markRead` | mutation | Owner | Planned |
+| `disputes.raise` | mutation | Consumer/Merchant | Planned |
+| `ratings.submit` | mutation | Consumer (owner) | Planned (priority C) |
 
 ### 5.3 Merchant → [`API_MERCHANT.md`](./API_MERCHANT.md)
 
 | Function | Kind | Auth | Status |
 |---|---|---|---|
-| `surplusItems.create` | mutation | Merchant (verified) | 📋 |
-| `surplusItems.suggestPrice` | query | Merchant (verified) | 📋 |
-| `surplusItems.update` | mutation | Merchant (owner) | 📋 |
-| `surplusItems.publish` | mutation | Merchant (owner) | 📋 |
-| `surplusItems.cancel` | mutation | Merchant (owner) | 📋 |
-| `surplusItems.markProcessingOnly` | mutation | Merchant (owner) | 📋 |
-| `surplusItems.listMine` | query | Merchant | 📋 |
-| `surplusItems.listByStatus` | query | Internal/Admin | ✅ |
-| `surplusItems.get` | query | Merchant (owner) | 📋 |
-| `orders.listForMerchant` | query | Merchant | 📋 |
-| `orders.confirmPickup` | mutation | Merchant (owner) | 📋 |
-| `orders.reportNoShow` | mutation | Merchant (owner) | 📋 |
-| `impact.getMerchantSummary` | query | Merchant | 📋 |
-| `merchants.getMine` | query | Merchant | 📋 |
-| `merchants.updateProfile` | mutation | Merchant (owner) | 📋 |
-| `recoveryBatches.listForMerchant` | query | Merchant | 📋 |
+| `surplusItems.create` | mutation | Merchant (verified) | Planned |
+| `surplusItems.suggestPrice` | query | Merchant (verified) | Planned |
+| `surplusItems.update` | mutation | Merchant (owner) | Planned |
+| `surplusItems.publish` | mutation | Merchant (owner) | Planned |
+| `surplusItems.cancel` | mutation | Merchant (owner) | Planned |
+| `surplusItems.markProcessingOnly` | mutation | Merchant (owner) | Planned |
+| `surplusItems.listMine` | query | Merchant | Planned |
+| `surplusItems.listByStatus` | query | Internal/Admin | Implemented |
+| `surplusItems.get` | query | Merchant (owner) | Planned |
+| `orders.listForMerchant` | query | Merchant | Planned |
+| `orders.confirmPickup` | mutation | Merchant (owner) | Planned |
+| `orders.reportNoShow` | mutation | Merchant (owner) | Planned |
+| `impact.getMerchantSummary` | query | Merchant | Planned |
+| `merchants.getMine` | query | Merchant | Planned |
+| `merchants.updateProfile` | mutation | Merchant (owner) | Planned |
+| `recoveryBatches.listForMerchant` | query | Merchant | Planned |
 
 ### 5.4 Organic Processor → [`API_PROCESSOR.md`](./API_PROCESSOR.md)
 
 | Function | Kind | Auth | Status |
 |---|---|---|---|
-| `recoveryBatches.listQueue` | query | Processor (verified) | 📋 |
-| `recoveryBatches.listByStatus` | query | Internal/Admin | ✅ |
-| `recoveryBatches.get` | query | Processor (offered/assigned) | 📋 |
-| `recoveryBatches.accept` | mutation | Processor (verified) | 📋 |
-| `recoveryBatches.decline` | mutation | Processor (verified) | 📋 |
-| `recoveryBatches.logIntake` | mutation | Processor (assigned) | 📋 |
-| `recoveryBatches.logOutcome` | mutation | Processor (assigned) | 📋 |
-| `processors.getMine` | query | Processor | 📋 |
-| `processors.updateProfile` | mutation | Processor (owner) | 📋 |
-| `processors.updateCapacity` | mutation | Processor (owner) | 📋 |
-| `impact.getProcessorSummary` | query | Processor | 📋 |
+| `recoveryBatches.listQueue` | query | Processor (verified) | Planned |
+| `recoveryBatches.listByStatus` | query | Internal/Admin | Implemented |
+| `recoveryBatches.get` | query | Processor (offered/assigned) | Planned |
+| `recoveryBatches.accept` | mutation | Processor (verified) | Planned |
+| `recoveryBatches.decline` | mutation | Processor (verified) | Planned |
+| `recoveryBatches.logIntake` | mutation | Processor (assigned) | Planned |
+| `recoveryBatches.logOutcome` | mutation | Processor (assigned) | Planned |
+| `processors.getMine` | query | Processor | Planned |
+| `processors.updateProfile` | mutation | Processor (owner) | Planned |
+| `processors.updateCapacity` | mutation | Processor (owner) | Planned |
+| `impact.getProcessorSummary` | query | Processor | Planned |
 
 ### 5.5 Admin → [`API_ADMIN.md`](./API_ADMIN.md)
 
 | Function | Kind | Auth | Status |
 |---|---|---|---|
-| `admin.listUsers` | query | Admin | 📋 |
-| `admin.listPendingVerifications` | query | Admin | 📋 |
-| `admin.verifyMerchant` | mutation | Admin | 📋 |
-| `admin.verifyProcessor` | mutation | Admin | 📋 |
-| `admin.rejectAccount` | mutation | Admin | 📋 |
-| `admin.suspendUser` | mutation | Admin | 📋 |
-| `admin.moderateListing` | mutation | Admin | 📋 |
-| `admin.listReportedListings` | query | Admin | 📋 |
-| `admin.getItemLedger` | query | Admin | 📋 |
-| `admin.searchLedger` | query | Admin | 📋 |
-| `admin.getPlatformImpact` | query | Admin | 📋 |
-| `admin.listDisputes` | query | Admin | 📋 |
-| `admin.resolveDispute` | mutation | Admin | 📋 |
-| `admin.rerouteBatch` | mutation | Admin | 📋 |
-| `admin.checkWeightConservation` | query | Admin | 📋 |
-| `admin.checkLedgerCompleteness` | query | Admin | 📋 |
-| `admin.getSystemHealth` | query | Admin | 📋 |
-| `admin.listCrons` | query | Admin | 📋 |
-| `impact.getPlaceholderSummary` | query | Public (demo) | ✅ |
+| `admin.listUsers` | query | Admin | Planned |
+| `admin.listPendingVerifications` | query | Admin | Planned |
+| `admin.verifyMerchant` | mutation | Admin | Planned |
+| `admin.verifyProcessor` | mutation | Admin | Planned |
+| `admin.rejectAccount` | mutation | Admin | Planned |
+| `admin.suspendUser` | mutation | Admin | Planned |
+| `admin.moderateListing` | mutation | Admin | Planned |
+| `admin.listReportedListings` | query | Admin | Planned |
+| `admin.getItemLedger` | query | Admin | Planned |
+| `admin.searchLedger` | query | Admin | Planned |
+| `admin.getPlatformImpact` | query | Admin | Planned |
+| `admin.listDisputes` | query | Admin | Planned |
+| `admin.resolveDispute` | mutation | Admin | Planned |
+| `admin.rerouteBatch` | mutation | Admin | Planned |
+| `admin.checkWeightConservation` | query | Admin | Planned |
+| `admin.checkLedgerCompleteness` | query | Admin | Planned |
+| `admin.getSystemHealth` | query | Admin | Planned |
+| `admin.listCrons` | query | Admin | Planned |
+| `impact.getPlaceholderSummary` | query | Public (demo) | Implemented |
 
 ### 5.6 Internal & scheduled (never client-callable)
 
 | Function | Kind | Trigger | Status |
 |---|---|---|---|
-| `internal.routing.findEligibleProcessors` | internalQuery | Called by routing engine | 📋 |
-| `internal.routing.offerBatch` | internalMutation | Cron / cascade | 📋 |
-| `internal.routing.expireOffers` | internalMutation | Cron, every 15 min | 📋 |
-| `internal.orders.expireUnpaidHolds` | internalMutation | Cron, every minute | 📋 |
-| `internal.surplusItems.expireListings` | internalMutation | Cron, every 5 min | 📋 |
-| `internal.payments.recordSnapToken` | internalMutation | From `payments.createTransaction` | 📋 |
-| `internal.payments.applyWebhook` | internalMutation | From the Midtrans `httpAction` | 📋 |
-| `internal.impact.snapshotDaily` | internalMutation | Cron, daily 00:05 WIB | 📋 |
-| `internal.notifications.push` | internalMutation | Called by many mutations | 📋 |
+| `internal.routing.findEligibleProcessors` | internalQuery | Called by routing engine | Planned |
+| `internal.routing.offerBatch` | internalMutation | Cron / cascade | Planned |
+| `internal.routing.expireOffers` | internalMutation | Cron, every 15 min | Planned |
+| `internal.orders.expireUnpaidHolds` | internalMutation | Cron, every minute | Planned |
+| `internal.surplusItems.expireListings` | internalMutation | Cron, every 5 min | Planned |
+| `internal.payments.recordSnapToken` | internalMutation | From `payments.createTransaction` | Planned |
+| `internal.payments.applyWebhook` | internalMutation | From the Midtrans `httpAction` | Planned |
+| `internal.impact.snapshotDaily` | internalMutation | Cron, daily 00:05 WIB | Planned |
+| `internal.notifications.push` | internalMutation | Called by many mutations | Planned |
 
 ---
 
@@ -575,12 +575,12 @@ Use them only where the outcome is near-certain and rollback is cheap:
 
 | Function | Optimistic? | Why |
 |---|---|---|
-| `notifications.markRead` | ✅ Yes | Trivially reversible, zero business risk |
-| `orders.cancel` | ✅ Yes | Terminal for the user; a failure just restores the card |
-| `orders.reserve` | ❌ **No** | Can genuinely lose a race for the last unit. Showing "Reserved!" then reverting is worse than 200 ms of a spinner. |
-| `orders.confirmPickup` | ❌ **No** | Emits a `RESCUED` ledger event; the Merchant must see the real, committed result before handing over food |
-| `recoveryBatches.accept` | ❌ **No** | Competitive — another processor may have taken it |
-| `recoveryBatches.logIntake` / `logOutcome` | ❌ **No** | Authoritative measured data; must never appear recorded when it is not |
+| `notifications.markRead` | Yes | Trivially reversible, zero business risk |
+| `orders.cancel` | Yes | Terminal for the user; a failure just restores the card |
+| `orders.reserve` | **No** | Can genuinely lose a race for the last unit. Showing "Reserved!" then reverting is worse than 200 ms of a spinner. |
+| `orders.confirmPickup` | **No** | Emits a `RESCUED` ledger event; the Merchant must see the real, committed result before handing over food |
+| `recoveryBatches.accept` | **No** | Competitive — another processor may have taken it |
+| `recoveryBatches.logIntake` / `logOutcome` | **No** | Authoritative measured data; must never appear recorded when it is not |
 
 ```ts
 const markRead = useMutation(api.notifications.markRead).withOptimisticUpdate(
@@ -1092,7 +1092,7 @@ Cirquo ships a web client and a Capacitor-wrapped mobile client from a single co
 | **No URL versioning** | There are no URLs. Versioning is per function. |
 | **Additive changes are free** | Adding an `v.optional()` argument or a new return field is non-breaking; ship it. |
 | **Breaking changes create a new function** | `orders.reserveV2` alongside `orders.reserve`. Never silently change the meaning of an existing argument. |
-| **Deprecation marker** | JSDoc `@deprecated` plus a `⚠️ Deprecated` row in the index table of the relevant role doc, with the replacement named. |
+| **Deprecation marker** | JSDoc `@deprecated` plus a `Warning Deprecated` row in the index table of the relevant role doc, with the replacement named. |
 | **Deprecation window** | Minimum one release cycle, or until client telemetry shows zero calls — whichever is longer. |
 | **Removal** | Only after the window; the removal is a `CHANGELOG.md` entry under Removed. |
 | **Ledger `methodologyVersion`** | **Never rewritten.** If the impact methodology changes, new events carry `v2` and the metric layer computes per-version. Historical claims must remain reproducible; retroactively restating impact numbers would destroy the ledger's audit value. |

@@ -8,7 +8,7 @@
 | **Owner** | Platform engineering |
 | **Audience** | All engineers, judges, reviewers |
 
-This document is the security backbone of the platform. It states what we protect, in what order, against whom, and how. Every control listed here is either **already implemented** (✅) or **planned and must land before the milestone it gates** (📋). Honesty about that distinction is a feature of this document, not a gap in it.
+This document is the security backbone of the platform. It states what we protect, in what order, against whom, and how. Every control listed here is either **already implemented** (Implemented) or **planned and must land before the milestone it gates** (Planned). Honesty about that distinction is a feature of this document, not a gap in it.
 
 > **Current posture in one line:** the repository today contains only six read-only Convex queries. There is no authentication, no authorization, no payment code, and no ledger. Everything below is the *design* that milestone M1 must implement. See [Section 21](#21-current-security-posture-honest) for the exact scope.
 
@@ -111,56 +111,56 @@ Analyzed per component. `C` = confidentiality, `I` = integrity, `A` = availabili
 
 | STRIDE | Threat | Vector | Impact | Mitigation | Status |
 |---|---|---|---|---|---|
-| Spoofing | Impersonating a user by replaying a stolen token | XSS reading localStorage; shoulder-surfing token; leaked backup | Account takeover | Session token hashes server-side; short-lived sessions; HttpOnly not available in localStorage, mitigated by CSP + no HTML injection sinks + Capacitor WebView hardening | 📋 M1 |
-| Tampering | Modifying client to send forged prices/weights/statuses | Decompile APK / proxy requests | Fake orders, inflated metrics | All business values re-validated server-side; price floor/ceiling enforced in mutation | 📋 M1 |
-| Repudiation | Merchant denies accepting an offer; processor denies measuring intake | Disputes | Trust collapse | Every state change writes a ledger event; both parties' actions are auditable | 📋 M1 |
-| Information disclosure | Scraping all merchant locations / item listings | Public map API + JSON responses | Stalking risk, competitive data | Rate limiting on list queries; only needed fields returned; per-role scoping | 📋 M1 |
-| Denial of service | Hammering queries / mutations | Cheap scripted calls to Convex | App unusable during judging | Convex autoscaling; rate limits (Section 10); judged-risk accepted for MVP | 📋 M1 |
-| Elevation of privilege | Client sets `role: admin` in registration args | Mass assignment | Full platform compromise | Whitelisted arg extraction; server-set role; AUTH-02 | 📋 M1 |
+| Spoofing | Impersonating a user by replaying a stolen token | XSS reading localStorage; shoulder-surfing token; leaked backup | Account takeover | Session token hashes server-side; short-lived sessions; HttpOnly not available in localStorage, mitigated by CSP + no HTML injection sinks + Capacitor WebView hardening | Planned M1 |
+| Tampering | Modifying client to send forged prices/weights/statuses | Decompile APK / proxy requests | Fake orders, inflated metrics | All business values re-validated server-side; price floor/ceiling enforced in mutation | Planned M1 |
+| Repudiation | Merchant denies accepting an offer; processor denies measuring intake | Disputes | Trust collapse | Every state change writes a ledger event; both parties' actions are auditable | Planned M1 |
+| Information disclosure | Scraping all merchant locations / item listings | Public map API + JSON responses | Stalking risk, competitive data | Rate limiting on list queries; only needed fields returned; per-role scoping | Planned M1 |
+| Denial of service | Hammering queries / mutations | Cheap scripted calls to Convex | App unusable during judging | Convex autoscaling; rate limits (Section 10); judged-risk accepted for MVP | Planned M1 |
+| Elevation of privilege | Client sets `role: admin` in registration args | Mass assignment | Full platform compromise | Whitelisted arg extraction; server-set role; AUTH-02 | Planned M1 |
 
 ### 5.2 Convex functions (query/mutation/action layer)
 
 | STRIDE | Threat | Vector | Impact | Mitigation | Status |
 |---|---|---|---|---|---|
-| Spoofing | Calling a function as another user | Forged session token, replay | Impersonation | `requireAuth` at top of every handler; token verified against `sessions` table | 📋 M1 |
-| Tampering | Passing non-validated args | Direct function call from script | Type confusion, logic bypass | Convex `v.*` validators on every function; business-rule assertions in handler | 📋 M1 |
-| Repudiation | No audit trail for admin actions | Admin mutates without trace | Cannot attribute damage | `adminAudit` entries + ledger events on every admin mutation | 📋 M1 |
-| Information disclosure | Querying rows the caller may not see | IDOR via leaked document ID | Cross-account data leak | Ownership predicates inside every query; per-role scoping (PERMISSIONS §6) | 📋 M1 |
-| Denial of service | Long-running/reactive queries | Crafted heavy queries | Cost spike / latency | Indexed queries only; pagination; list-query rate limits | 📋 M1 |
-| Elevation of privilege | Calling `internal*` functions from client | They are not exposed, but a name guess must still fail | — | Convex enforces server-only invocation; defense in depth: internal functions still assert state | ✅ Convex platform |
+| Spoofing | Calling a function as another user | Forged session token, replay | Impersonation | `requireAuth` at top of every handler; token verified against `sessions` table | Planned M1 |
+| Tampering | Passing non-validated args | Direct function call from script | Type confusion, logic bypass | Convex `v.*` validators on every function; business-rule assertions in handler | Planned M1 |
+| Repudiation | No audit trail for admin actions | Admin mutates without trace | Cannot attribute damage | `adminAudit` entries + ledger events on every admin mutation | Planned M1 |
+| Information disclosure | Querying rows the caller may not see | IDOR via leaked document ID | Cross-account data leak | Ownership predicates inside every query; per-role scoping (PERMISSIONS §6) | Planned M1 |
+| Denial of service | Long-running/reactive queries | Crafted heavy queries | Cost spike / latency | Indexed queries only; pagination; list-query rate limits | Planned M1 |
+| Elevation of privilege | Calling `internal*` functions from client | They are not exposed, but a name guess must still fail | — | Convex enforces server-only invocation; defense in depth: internal functions still assert state | Implemented Convex platform |
 
 ### 5.3 Material Flow Ledger
 
 | STRIDE | Threat | Vector | Impact | Mitigation | Status |
 |---|---|---|---|---|---|
-| Spoofing | Fabricated ledger events (fake rescue/recovery) | Colluding merchant-processor pair; self-dealing merchant | Distorted impact metrics (IMP-03) | Event requires real order/recoveryBatch refs; business-rule assertions on transition legality | 📋 M1 |
-| Tampering | Patching/deleting a ledger event | Buggy dev code, malicious admin | Ledger integrity destroyed | **No patch/delete code path exists**; CI grep guard; compensating-entry discipline | 📋 M1 + ✅ CI guard planned |
-| Repudiation | Disputing a documented outcome | Disagreement over measured weight | Disputes | Processor-measured weight only settable by processor; ledger records actor + role per event | 📋 M1 |
-| Information disclosure | Reading events outside your scope | IDOR on ledger query | Business intelligence leak | Ledger read query scopes by role and ownership server-side | 📋 M1 |
-| Denial of service | Flooding ledger writes | Cheap mutations | Cost / spam | Rate limiting; no client-initiated ledger writes exist at all | 📋 M1 |
-| Elevation of privilege | A non-processor writes `acceptedWeightGrams` | Client calls processor mutation | Fabricated recovery | `requireVerifiedProcessor` + role-typed mutations | 📋 M1 |
+| Spoofing | Fabricated ledger events (fake rescue/recovery) | Colluding merchant-processor pair; self-dealing merchant | Distorted impact metrics (IMP-03) | Event requires real order/recoveryBatch refs; business-rule assertions on transition legality | Planned M1 |
+| Tampering | Patching/deleting a ledger event | Buggy dev code, malicious admin | Ledger integrity destroyed | **No patch/delete code path exists**; CI grep guard; compensating-entry discipline | Planned M1 + Implemented CI guard planned |
+| Repudiation | Disputing a documented outcome | Disagreement over measured weight | Disputes | Processor-measured weight only settable by processor; ledger records actor + role per event | Planned M1 |
+| Information disclosure | Reading events outside your scope | IDOR on ledger query | Business intelligence leak | Ledger read query scopes by role and ownership server-side | Planned M1 |
+| Denial of service | Flooding ledger writes | Cheap mutations | Cost / spam | Rate limiting; no client-initiated ledger writes exist at all | Planned M1 |
+| Elevation of privilege | A non-processor writes `acceptedWeightGrams` | Client calls processor mutation | Fabricated recovery | `requireVerifiedProcessor` + role-typed mutations | Planned M1 |
 
 ### 5.4 Payment webhook (httpAction)
 
 | STRIDE | Threat | Vector | Impact | Mitigation | Status |
 |---|---|---|---|---|---|
-| Spoofing | Forged "payment succeeded" notification | Unauthenticated POST to webhook URL | Free food, fake paid orders | SHA512 signature over `order_id+status_code+gross_amount+ServerKey`; amount verified against the order | 📋 M1 |
-| Tampering | Replay of a captured webhook body | Network replay | Double-processing | Idempotency: webhook handler is a no-op for already-finalized `payments` rows | 📋 M1 |
-| Repudiation | Midtrans says sent, we say never received | Loss, not attack | Order stuck | Manual reconciliation: admin can query Midtrans verify endpoint using server-side key | 📋 M1 |
-| Information disclosure | Webhook body logged raw | Over-logging | Customer payment details leak | No raw webhook payload persisted; `rawPayload` field only for disputes, sanitized | 📋 M1 |
-| Denial of service | Webhook flood | Anyone can POST | Unneeded compute | Handler short-circuits on malformed signature before any DB work | 📋 M1 |
-| Elevation of privilege | Webhook sets arbitrary statuses | Trusting notification without signature | Order/payment confusion | Webhook only transitions via `status_code` mapping, inside a single mutation with ledger event | 📋 M1 |
+| Spoofing | Forged "payment succeeded" notification | Unauthenticated POST to webhook URL | Free food, fake paid orders | SHA512 signature over `order_id+status_code+gross_amount+ServerKey`; amount verified against the order | Planned M1 |
+| Tampering | Replay of a captured webhook body | Network replay | Double-processing | Idempotency: webhook handler is a no-op for already-finalized `payments` rows | Planned M1 |
+| Repudiation | Midtrans says sent, we say never received | Loss, not attack | Order stuck | Manual reconciliation: admin can query Midtrans verify endpoint using server-side key | Planned M1 |
+| Information disclosure | Webhook body logged raw | Over-logging | Customer payment details leak | No raw webhook payload persisted; `rawPayload` field only for disputes, sanitized | Planned M1 |
+| Denial of service | Webhook flood | Anyone can POST | Unneeded compute | Handler short-circuits on malformed signature before any DB work | Planned M1 |
+| Elevation of privilege | Webhook sets arbitrary statuses | Trusting notification without signature | Order/payment confusion | Webhook only transitions via `status_code` mapping, inside a single mutation with ledger event | Planned M1 |
 
 ### 5.5 Admin surface
 
 | STRIDE | Threat | Vector | Impact | Mitigation | Status |
 |---|---|---|---|---|---|
-| Spoofing | Non-admin calls admin functions | Client crafts admin call | Full compromise | `requireAdmin` — role is server-set, never client-set (AUTH-02) | 📋 M1 |
-| Tampering | Admin overrides without audit | Direct mutation | Unattributed damage | Every admin mutation writes an admin audit record + ledger event | 📋 M1 |
-| Repudiation | Admin denies an override (e.g. pickup window extension) | No record | Disputes | Ledger `metadata.adminNote` + actor recorded | 📋 M1 |
-| Information disclosure | Admin queries all user data casually | Broad queries | Privacy erosion | Admin functions are scoped and logged; retention applies | 📋 M1 |
-| Denial of service | Admin runbook not known; no off-hours coverage | Ops gap | Prolonged outage | Runbook in Section 18; single-operator alert channel | 📋 Phase 2 |
-| Elevation of privilege | Compromised admin account | Phishing/credential stuffing | Everything | Long random passwords, MFA deferred to Phase 2, session revocation | 📋 Phase 2 (MFA) |
+| Spoofing | Non-admin calls admin functions | Client crafts admin call | Full compromise | `requireAdmin` — role is server-set, never client-set (AUTH-02) | Planned M1 |
+| Tampering | Admin overrides without audit | Direct mutation | Unattributed damage | Every admin mutation writes an admin audit record + ledger event | Planned M1 |
+| Repudiation | Admin denies an override (e.g. pickup window extension) | No record | Disputes | Ledger `metadata.adminNote` + actor recorded | Planned M1 |
+| Information disclosure | Admin queries all user data casually | Broad queries | Privacy erosion | Admin functions are scoped and logged; retention applies | Planned M1 |
+| Denial of service | Admin runbook not known; no off-hours coverage | Ops gap | Prolonged outage | Runbook in Section 18; single-operator alert channel | Planned Phase 2 |
+| Elevation of privilege | Compromised admin account | Phishing/credential stuffing | Everything | Long random passwords, MFA deferred to Phase 2, session revocation | Planned Phase 2 (MFA) |
 
 ---
 
@@ -170,16 +170,16 @@ How each OWASP item applies to a Convex/React application specifically, and what
 
 | # | OWASP item | How it applies to Convex/React | Cirquo mitigation | Status |
 |---|---|---|---|---|
-| A01 | Broken Access Control | The #1 risk here: every non-internal function is publicly callable by name | Per-function authorization guards; ownership checks; per-role visibility scoping; `internal*` boundary | 📋 M1 |
-| A02 | Cryptographic Failures | Transport is HTTPS (Convex handles TLS); secrets in client bundle; weak token/PRNG | No secrets under `VITE_`; token hashes server-side; `crypto.getRandomValues` / Convex env-random token generation; bcrypt/argon2 | 📋 M1 |
-| A03 | Injection | **SQL is impossible** (no SQL in Convex) — but NoSQL-style *logic injection* via unvalidated args (e.g. passing an object where a field is expected, exploiting `$set`-like semantics, or leaking filters into queries) is still real | Convex `v.*` validators on every arg; handler-level assertions; no dynamic query building from client strings; strict types | 📋 M1 |
-| A04 | Insecure Design | Trusting the client for prices/weights/roles; trusting webhook sender IP | Server-side re-validation of every business value; SHA512 webhook signature; role and `verificationStatus` never client-settable | 📋 M1 |
-| A05 | Security Misconfiguration | Default settings, debug flags, over-broad CORS, verbose errors | Convex defaults; `ConvexError` messages designed to be user-safe (no stack traces to client); no CORS surface (Convex handles); production env separate from dev | 📋 M1 |
-| A06 | Vulnerable and Outdated Components | Vite 8 / React 19 / Bun / Convex 1.43 ecosystem moves fast | Lockfile committed; `bun audit` in CI; explicit version bumps reviewed; supply-chain policy in Section 12 | 📋 Phase 2 (CI audit) |
-| A07 | Identification and Authentication Failures | No auth exists at all today | Full session-token auth per AUTH.md, milestone M1 | 📋 M1 |
-| A08 | Software and Data Integrity Failures | Unverified webhook payloads; client trusting itself | SHA512 webhook verification + idempotency; ledger integrity checks; CI grep guard | 📋 M1 |
-| A09 | Security Logging and Monitoring Failures | No logs today | Auth event audit table; admin action audit; ledger as the impact audit trail; alert on webhook signature failures | 📋 M1 (minimal) / Phase 2 (alerting) |
-| A10 | Server-Side Request Forgery (SSRF) | Minimal surface — Convex functions make outbound calls only to fixed Midtrans endpoints | URL allowlist (Midtrans sandbox base URL only); no user-controlled URLs ever fetched server-side | 📋 M1 |
+| A01 | Broken Access Control | The #1 risk here: every non-internal function is publicly callable by name | Per-function authorization guards; ownership checks; per-role visibility scoping; `internal*` boundary | Planned M1 |
+| A02 | Cryptographic Failures | Transport is HTTPS (Convex handles TLS); secrets in client bundle; weak token/PRNG | No secrets under `VITE_`; token hashes server-side; `crypto.getRandomValues` / Convex env-random token generation; bcrypt/argon2 | Planned M1 |
+| A03 | Injection | **SQL is impossible** (no SQL in Convex) — but NoSQL-style *logic injection* via unvalidated args (e.g. passing an object where a field is expected, exploiting `$set`-like semantics, or leaking filters into queries) is still real | Convex `v.*` validators on every arg; handler-level assertions; no dynamic query building from client strings; strict types | Planned M1 |
+| A04 | Insecure Design | Trusting the client for prices/weights/roles; trusting webhook sender IP | Server-side re-validation of every business value; SHA512 webhook signature; role and `verificationStatus` never client-settable | Planned M1 |
+| A05 | Security Misconfiguration | Default settings, debug flags, over-broad CORS, verbose errors | Convex defaults; `ConvexError` messages designed to be user-safe (no stack traces to client); no CORS surface (Convex handles); production env separate from dev | Planned M1 |
+| A06 | Vulnerable and Outdated Components | Vite 8 / React 19 / Bun / Convex 1.43 ecosystem moves fast | Lockfile committed; `bun audit` in CI; explicit version bumps reviewed; supply-chain policy in Section 12 | Planned Phase 2 (CI audit) |
+| A07 | Identification and Authentication Failures | No auth exists at all today | Full session-token auth per AUTH.md, milestone M1 | Planned M1 |
+| A08 | Software and Data Integrity Failures | Unverified webhook payloads; client trusting itself | SHA512 webhook verification + idempotency; ledger integrity checks; CI grep guard | Planned M1 |
+| A09 | Security Logging and Monitoring Failures | No logs today | Auth event audit table; admin action audit; ledger as the impact audit trail; alert on webhook signature failures | Planned M1 (minimal) / Phase 2 (alerting) |
+| A10 | Server-Side Request Forgery (SSRF) | Minimal surface — Convex functions make outbound calls only to fixed Midtrans endpoints | URL allowlist (Midtrans sandbox base URL only); no user-controlled URLs ever fetched server-side | Planned M1 |
 
 ---
 
@@ -189,16 +189,16 @@ These are the attacks that actually threaten *this* product. A generic checklist
 
 | # | Abuse case | Attack sketch | Impact if successful | Detection & mitigation | Status |
 |---|---|---|---|---|---|
-| 1 | **Fake merchant listing** | Attacker registers a merchant, passes verification (fake identity), lists "Rescue Items" that don't exist; consumers pay and travel to collect nothing | Consumer fraud, food waste of trust, platform liability | Verification requires business-type matching + manual/photo check; consumer disputes route to refund; repeat-pattern flagging (many items, zero confirmations) | 📋 M1 (basic) / Phase 2 (scoring) |
-| 2 | **Pickup-code brute force** | Attacker at the shop tries codes until one matches to grab the item | Stolen food, "rescued" event falsely closed, consumer loses order | Codes drawn from a 6-character set with adequate entropy (36⁶ ≈ 2.1 billion — infeasible to brute force per-window); short window; server rate-limit on `verifyPickupCode`; order closed after a single successful match | 📋 M1 |
-| 3 | **Merchant inflating declared weight** | Merchant lists `weightPerItemGrams` 2× reality; system derives `rescuedWeightGrams` and recovery offers from it | Inflated circularity metrics (PRD-04, IMP-03) | `offeredWeightGrams` is merchant-declared and *explicitly* less trusted; processor-measured `acceptedWeightGrams` is the authoritative number for recovery; weight-conservation reconciliation query flags discrepancies | 📋 M1 |
-| 4 | **Processor over-reporting recovered output** | Processor logs `outputWeightGrams` > plausible conversion from `acceptedWeightGrams` | Fabricated recovery impact | `outputWeightGrams` asserted ≤ a conversion envelope per facility type; ledger records both sides of the batch; completeness checks compare sum of outcomes to intake | 📋 M1 |
-| 5 | **Consumer claims non-delivery for refund** | Consumer received the food but disputes to get money back | Refund fraud, merchant distrust | Midtrans refund flow goes through merchant/Midtrans, not Cirquo; dispute requires evidence; pickup code verified-close is the strong anti-fraud record (code matched + in-window) | 📋 M1 |
-| 6 | **Merchant marks pickup complete without handing over food** | Merchant closes the order to keep the food (or to record impact) before the consumer collects | Theft, fraud, invalid "Rescued" events | Pickup requires code match (consumer-controlled secret) — merchant alone cannot close; admin override is audited | 📋 M1 |
-| 7 | **Scraping merchant locations** | Scripted collection of all `latitude`/`longitude` for stalking or competitive data | UU PDP violation, physical risk to small merchants | Coarse-grained grid serving for map (rounded coordinates) unless a rescue item is active; rate limits on list queries; only item-adjacent fields exposed | 📋 M1 |
-| 8 | **Reservation hoarding** | Bot reserves all stock of the cheapest items, holds 15 minutes, never pays | Denies stock to real consumers (CON-01..09 fail) | Quantity decremented at reservation → hoarder *does* block stock; mitigation: per-user reservation caps, rate limit on `reserveItem`, hold expiry releases automatically via cron, repeat-offender flags | 📋 M1 |
-| 9 | **Self-dealing merchant** | Merchant (or a second account) reserves their own listing to fabricate rescue volume | Fabricated rescue metrics (IMP-03) | Server-side check: `orders.userId ≠ surplusItems.merchantId`; second-account pattern detection (same device/IP) deferred but documented | 📋 M1 (direct check) / Phase 2 (pattern) |
-| 10 | **Colluding merchant–processor pair** | Merchant lists phantom items with zero real consumers; processor "accepts" and logs intake/output; events look perfectly legal | Fabricated recovery impact, the hardest to catch | Ledger cross-checks: a recovered batch without any consumer orders is suspicious; processor's measured intake should trace to real `surplusItems`; admin reconciliation query compares per-merchant/per-processor flow vs. order reality | 📋 M1 (queries) / Phase 2 (scoring) |
+| 1 | **Fake merchant listing** | Attacker registers a merchant, passes verification (fake identity), lists "Rescue Items" that don't exist; consumers pay and travel to collect nothing | Consumer fraud, food waste of trust, platform liability | Verification requires business-type matching + manual/photo check; consumer disputes route to refund; repeat-pattern flagging (many items, zero confirmations) | Planned M1 (basic) / Phase 2 (scoring) |
+| 2 | **Pickup-code brute force** | Attacker at the shop tries codes until one matches to grab the item | Stolen food, "rescued" event falsely closed, consumer loses order | Codes drawn from a 6-character set with adequate entropy (36⁶ ≈ 2.1 billion — infeasible to brute force per-window); short window; server rate-limit on `verifyPickupCode`; order closed after a single successful match | Planned M1 |
+| 3 | **Merchant inflating declared weight** | Merchant lists `weightPerItemGrams` 2× reality; system derives `rescuedWeightGrams` and recovery offers from it | Inflated circularity metrics (PRD-04, IMP-03) | `offeredWeightGrams` is merchant-declared and *explicitly* less trusted; processor-measured `acceptedWeightGrams` is the authoritative number for recovery; weight-conservation reconciliation query flags discrepancies | Planned M1 |
+| 4 | **Processor over-reporting recovered output** | Processor logs `outputWeightGrams` > plausible conversion from `acceptedWeightGrams` | Fabricated recovery impact | `outputWeightGrams` asserted ≤ a conversion envelope per facility type; ledger records both sides of the batch; completeness checks compare sum of outcomes to intake | Planned M1 |
+| 5 | **Consumer claims non-delivery for refund** | Consumer received the food but disputes to get money back | Refund fraud, merchant distrust | Midtrans refund flow goes through merchant/Midtrans, not Cirquo; dispute requires evidence; pickup code verified-close is the strong anti-fraud record (code matched + in-window) | Planned M1 |
+| 6 | **Merchant marks pickup complete without handing over food** | Merchant closes the order to keep the food (or to record impact) before the consumer collects | Theft, fraud, invalid "Rescued" events | Pickup requires code match (consumer-controlled secret) — merchant alone cannot close; admin override is audited | Planned M1 |
+| 7 | **Scraping merchant locations** | Scripted collection of all `latitude`/`longitude` for stalking or competitive data | UU PDP violation, physical risk to small merchants | Coarse-grained grid serving for map (rounded coordinates) unless a rescue item is active; rate limits on list queries; only item-adjacent fields exposed | Planned M1 |
+| 8 | **Reservation hoarding** | Bot reserves all stock of the cheapest items, holds 15 minutes, never pays | Denies stock to real consumers (CON-01..09 fail) | Quantity decremented at reservation → hoarder *does* block stock; mitigation: per-user reservation caps, rate limit on `reserveItem`, hold expiry releases automatically via cron, repeat-offender flags | Planned M1 |
+| 9 | **Self-dealing merchant** | Merchant (or a second account) reserves their own listing to fabricate rescue volume | Fabricated rescue metrics (IMP-03) | Server-side check: `orders.userId ≠ surplusItems.merchantId`; second-account pattern detection (same device/IP) deferred but documented | Planned M1 (direct check) / Phase 2 (pattern) |
+| 10 | **Colluding merchant–processor pair** | Merchant lists phantom items with zero real consumers; processor "accepts" and logs intake/output; events look perfectly legal | Fabricated recovery impact, the hardest to catch | Ledger cross-checks: a recovered batch without any consumer orders is suspicious; processor's measured intake should trace to real `surplusItems`; admin reconciliation query compares per-merchant/per-processor flow vs. order reality | Planned M1 (queries) / Phase 2 (scoring) |
 
 ---
 
@@ -208,13 +208,13 @@ The ledger is append-only and immutable in practice. Threats target the *paths i
 
 | # | Threat | Mechanism | Mitigation | Status |
 |---|---|---|---|---|
-| L-1 | Direct client write | A mutation accepting arbitrary `eventType` + `weightDeltaGrams` from the client | **No client-facing ledger mutation exists.** Ledger writes happen only inside domain mutations (`reserve`, `pickup`, `recover`, …) via `recordLedgerEvent(ctx, …)` | 📋 M1 |
-| L-2 | Patch/delete of an event | A developer "fixing" a bad ledger row | No patch/delete code path; **CI grep guard**: any occurrence of `db.patch('materialFlowLedger'` or `db.delete('materialFlowLedger'` fails the build; corrections are compensating entries (new event with inverse delta + `metadata.correctionOf`) | 📋 CI guard |
-| L-3 | Partial state (event written, domain state not, or vice versa) | Crash between two writes — risk TECH-04 | Convex mutations are transactional: domain change + ledger event land or fail together; `recordLedgerEvent` is called inside the same mutation, never after | 📋 M1 |
-| L-4 | Weight non-conservation | Deltas don't sum to initial quantity | Admin reconciliation query: `sum(ledger deltas per item) == initialQuantity`, and `Rescued + Recovered + Residual == initialQuantity` per item; alert on mismatch | 📋 M1 |
-| L-5 | Double-counting an outcome | Item closed as both Rescued and Recovered | State machine: terminal states are terminal; transitions validated per table in PERMISSIONS §9 | 📋 M1 |
-| L-6 | Event without actor attribution | Rows with null actor | `actorId` + `actorRole` mandatory for all but system events (crons use `actorRole: 'system'`) | 📋 M1 |
-| L-7 | Compensating entry abused to launder a mistake | Correction entries hide a real error | `metadata.correctionOf` references the original event; admin audit includes correction rationale | 📋 M1 |
+| L-1 | Direct client write | A mutation accepting arbitrary `eventType` + `weightDeltaGrams` from the client | **No client-facing ledger mutation exists.** Ledger writes happen only inside domain mutations (`reserve`, `pickup`, `recover`, …) via `recordLedgerEvent(ctx, …)` | Planned M1 |
+| L-2 | Patch/delete of an event | A developer "fixing" a bad ledger row | No patch/delete code path; **CI grep guard**: any occurrence of `db.patch('materialFlowLedger'` or `db.delete('materialFlowLedger'` fails the build; corrections are compensating entries (new event with inverse delta + `metadata.correctionOf`) | Planned CI guard |
+| L-3 | Partial state (event written, domain state not, or vice versa) | Crash between two writes — risk TECH-04 | Convex mutations are transactional: domain change + ledger event land or fail together; `recordLedgerEvent` is called inside the same mutation, never after | Planned M1 |
+| L-4 | Weight non-conservation | Deltas don't sum to initial quantity | Admin reconciliation query: `sum(ledger deltas per item) == initialQuantity`, and `Rescued + Recovered + Residual == initialQuantity` per item; alert on mismatch | Planned M1 |
+| L-5 | Double-counting an outcome | Item closed as both Rescued and Recovered | State machine: terminal states are terminal; transitions validated per table in PERMISSIONS §9 | Planned M1 |
+| L-6 | Event without actor attribution | Rows with null actor | `actorId` + `actorRole` mandatory for all but system events (crons use `actorRole: 'system'`) | Planned M1 |
+| L-7 | Compensating entry abused to launder a mistake | Correction entries hide a real error | `metadata.correctionOf` references the original event; admin audit includes correction rationale | Planned M1 |
 
 **Weight-conservation check (admin query sketch):**
 
@@ -247,9 +247,9 @@ Why three layers, not one:
 
 | Layer | Where | Purpose | What it catches | Status |
 |---|---|---|---|---|
-| **1. Zod (client)** | React Hook Form schemas | UX: instant feedback, correct types before the network | Typos, wrong types, empty required fields | ✅ exists for form UX — no auth forms yet |
-| **2. Convex `v.*` validators** | Every function's `args` | The trust boundary: rejects malformed input before the handler runs | Wrong types, missing fields, unexpected fields, oversized strings | 📋 M1 |
-| **3. Business-rule assertions (handler)** | Inside each mutation/query, after `requireAuth` | Semantics that validators can't express | Price within `[floorPrice, originalPrice)`, quantity > 0, pickup code format + match, state-transition legality, ownership, verification state | 📋 M1 |
+| **1. Zod (client)** | React Hook Form schemas | UX: instant feedback, correct types before the network | Typos, wrong types, empty required fields | Implemented exists for form UX — no auth forms yet |
+| **2. Convex `v.*` validators** | Every function's `args` | The trust boundary: rejects malformed input before the handler runs | Wrong types, missing fields, unexpected fields, oversized strings | Planned M1 |
+| **3. Business-rule assertions (handler)** | Inside each mutation/query, after `requireAuth` | Semantics that validators can't express | Price within `[floorPrice, originalPrice)`, quantity > 0, pickup code format + match, state-transition legality, ownership, verification state | Planned M1 |
 
 All three are needed because none is sufficient alone:
 
@@ -281,14 +281,14 @@ Convex has no built-in per-user rate limiter; we implement one as a small helper
 
 | Operation | Window | Limit per window | Reason / notes | Status |
 |---|---|---|---|---|
-| `auth.login` | 15 min | 5 failures / account | Brute-force protection; beyond that, lockout (AUTH.md §16) | 📋 M1 |
-| `auth.register` | 1 hour | 5 / IP or device | Mass account creation (abuse case 9, hoarding) | 📋 M1 |
-| `auth.requestPasswordReset` | 1 hour | 3 / account | Reset-token flooding; also enumeration-safe (same response regardless) | 📋 M1 |
-| `orders.reserveItem` | 1 min | 5 / user | Reservation hoarding (abuse case 8); reduces bot-driven stock denial | 📋 M1 |
-| `orders.verifyPickupCode` | 1 min | 10 / order | Pickup-code brute force (abuse case 2); codes are high-entropy so this is defense-in-depth | 📋 M1 |
-| `payments.webhook` (`httpAction`) | — | Signature-check first, no DB work on failure | Webhook flood: reject before touching state; idempotent success path | 📋 M1 |
-| Map/list queries (`surplusItems.searchByLocation`) | 1 min | 60 / user | Scraping merchant locations (abuse case 7) | 📋 M1 |
-| All other mutations | 1 min | 60 / user | General sanity envelope | 📋 M1 |
+| `auth.login` | 15 min | 5 failures / account | Brute-force protection; beyond that, lockout (AUTH.md §16) | Planned M1 |
+| `auth.register` | 1 hour | 5 / IP or device | Mass account creation (abuse case 9, hoarding) | Planned M1 |
+| `auth.requestPasswordReset` | 1 hour | 3 / account | Reset-token flooding; also enumeration-safe (same response regardless) | Planned M1 |
+| `orders.reserveItem` | 1 min | 5 / user | Reservation hoarding (abuse case 8); reduces bot-driven stock denial | Planned M1 |
+| `orders.verifyPickupCode` | 1 min | 10 / order | Pickup-code brute force (abuse case 2); codes are high-entropy so this is defense-in-depth | Planned M1 |
+| `payments.webhook` (`httpAction`) | — | Signature-check first, no DB work on failure | Webhook flood: reject before touching state; idempotent success path | Planned M1 |
+| Map/list queries (`surplusItems.searchByLocation`) | 1 min | 60 / user | Scraping merchant locations (abuse case 7) | Planned M1 |
+| All other mutations | 1 min | 60 / user | General sanity envelope | Planned M1 |
 
 ---
 
@@ -315,13 +315,13 @@ Only one env var exists today: `VITE_CONVEX_URL`. That is deliberate and correct
 
 | Measure | Detail | Status |
 |---|---|---|
-| Lockfile committed | `bun.lock` in repo; installs are reproducible | ✅ |
-| `bun audit` | Run in CI before merge; fail on known-vulnerable direct deps | 📋 Phase 2 CI |
-| Version policy | Pinned exact versions for runtime deps; review major bumps (Vite 8, React 19, Convex 1.43 already on recent majors) | ✅ (pinned) |
-| Minimal dependency surface | Tailwind v4, shadcn/ui, React Router v7, RHF + Zod, Sonner, Mapbox, Midtrans SDK, Capacitor 8 — no random utility packages | ✅ |
-| Registry trust | Only the official npm registry / Bun registry; no git-installed packages | ✅ |
-| Supply-chain notes | Convex functions execute in Convex's sandbox — the backend dependency surface is small and versioned by the framework itself | ✅ |
-| Secret scanning | Pre-commit scan for `sk-` / `server-key` patterns | 📋 Phase 2 |
+| Lockfile committed | `bun.lock` in repo; installs are reproducible | Implemented |
+| `bun audit` | Run in CI before merge; fail on known-vulnerable direct deps | Planned Phase 2 CI |
+| Version policy | Pinned exact versions for runtime deps; review major bumps (Vite 8, React 19, Convex 1.43 already on recent majors) | Implemented (pinned) |
+| Minimal dependency surface | Tailwind v4, shadcn/ui, React Router v7, RHF + Zod, Sonner, Mapbox, Midtrans SDK, Capacitor 8 — no random utility packages | Implemented |
+| Registry trust | Only the official npm registry / Bun registry; no git-installed packages | Implemented |
+| Supply-chain notes | Convex functions execute in Convex's sandbox — the backend dependency surface is small and versioned by the framework itself | Implemented |
+| Secret scanning | Pre-commit scan for `sk-` / `server-key` patterns | Planned Phase 2 |
 
 ---
 
@@ -449,11 +449,11 @@ GDPR is not directly applicable (Indonesian platform, Indonesian users), but its
 
 | Practice | Status |
 |---|---|
-| Privacy notice at registration (layered: summary + detail) | 📋 M1 |
-| Data Processing Agreement template for merchant/processor partners | 📋 Phase 2 |
-| Data Protection Impact Assessment for the location feature | 📋 Phase 2 |
-| Cross-border transfer analysis if ever hosting/using non-Indonesia processors | 📋 Phase 2 |
-| Right-to-be-forgotten parity with 16.6 (design already satisfies GDPR's Article 17 reasoning) | ✅ by design |
+| Privacy notice at registration (layered: summary + detail) | Planned M1 |
+| Data Processing Agreement template for merchant/processor partners | Planned Phase 2 |
+| Data Protection Impact Assessment for the location feature | Planned Phase 2 |
+| Cross-border transfer analysis if ever hosting/using non-Indonesia processors | Planned Phase 2 |
+| Right-to-be-forgotten parity with 16.6 (design already satisfies GDPR's Article 17 reasoning) | Implemented by design |
 
 ---
 
@@ -502,37 +502,37 @@ flowchart TD
 
 Every item must be **done and demonstrable**, not merely claimed.
 
-- [ ] 📋 Custom session auth implemented (`AUTH.md`) — register, login, logout, password reset, change password
-- [ ] 📋 `requireAuth` + role guards + ownership guards on **every** non-internal function (`PERMISSIONS.md`)
-- [ ] 📋 Convex `v.*` validators on every function argument
-- [ ] 📋 Ledger write path: `recordLedgerEvent` in every state-changing mutation; **no** patch/delete path for `materialFlowLedger`
-- [ ] 📋 CI grep guard blocking `db.patch`/`db.delete` on `materialFlowLedger`
-- [ ] 📋 Webhook: SHA512 signature verification + amount check + idempotency
-- [ ] 📋 No secrets in client bundle (audit: `grep -r "ServerKey\|sk-" src/` is empty)
-- [ ] 📋 Rate limiting on the operations in Section 10
-- [ ] 📋 Role is server-set (no client-supplied `role`, no client-supplied `verificationStatus`)
-- [ ] 📋 Pickup code: high entropy, rate-limited verification, single-use close
-- [ ] 📋 Price enforcement: `currentPrice` clamped to `[floorPrice, originalPrice)` server-side
-- [ ] 📋 Self-dealing check: order `userId ≠ item.merchantId`
-- [ ] 📋 Admin account provisioning is manual (AUTH-02)
-- [ ] 📋 Audit records for admin mutations
-- [ ] 📋 Privacy notice at registration; consent checkboxes; UU PDP retention schedule wired to cron purge
-- [ ] 📋 Account deletion path with ledger pseudonymisation (16.6)
-- [ ] 📋 Error messages user-safe (no stack traces, no internal identifiers)
+- [ ] Planned Custom session auth implemented (`AUTH.md`) — register, login, logout, password reset, change password
+- [ ] Planned `requireAuth` + role guards + ownership guards on **every** non-internal function (`PERMISSIONS.md`)
+- [ ] Planned Convex `v.*` validators on every function argument
+- [ ] Planned Ledger write path: `recordLedgerEvent` in every state-changing mutation; **no** patch/delete path for `materialFlowLedger`
+- [ ] Planned CI grep guard blocking `db.patch`/`db.delete` on `materialFlowLedger`
+- [ ] Planned Webhook: SHA512 signature verification + amount check + idempotency
+- [ ] Planned No secrets in client bundle (audit: `grep -r "ServerKey\|sk-" src/` is empty)
+- [ ] Planned Rate limiting on the operations in Section 10
+- [ ] Planned Role is server-set (no client-supplied `role`, no client-supplied `verificationStatus`)
+- [ ] Planned Pickup code: high entropy, rate-limited verification, single-use close
+- [ ] Planned Price enforcement: `currentPrice` clamped to `[floorPrice, originalPrice)` server-side
+- [ ] Planned Self-dealing check: order `userId ≠ item.merchantId`
+- [ ] Planned Admin account provisioning is manual (AUTH-02)
+- [ ] Planned Audit records for admin mutations
+- [ ] Planned Privacy notice at registration; consent checkboxes; UU PDP retention schedule wired to cron purge
+- [ ] Planned Account deletion path with ledger pseudonymisation (16.6)
+- [ ] Planned Error messages user-safe (no stack traces, no internal identifiers)
 
 ## 20. Security checklist gating commercial launch
 
 Adds what MVP can consciously defer.
 
-- [ ] 📋 MFA for admin accounts
-- [ ] 📋 Hardened token transport (Capacitor secure storage / encrypted keychain; see AUTH.md §7)
-- [ ] 📋 `bun audit` + secret scanning in CI
-- [ ] 📋 Monitoring and alerting (webhook failure, ledger-conservation anomaly, login-failure spikes)
-- [ ] 📋 Formal penetration test (or at minimum a paid bug bounty-style review) of auth + webhook paths
-- [ ] 📋 Verified real Midtrans keys with the same webhook discipline rehearsed on sandbox
-- [ ] 📋 Processor verification with physical/photo checks (abuse case 1 hardening)
-- [ ] 📋 DPO contact and updated privacy policy review by counsel
-- [ ] 📋 Backup/restore drill for the Convex database and a documented restore runbook
+- [ ] Planned MFA for admin accounts
+- [ ] Planned Hardened token transport (Capacitor secure storage / encrypted keychain; see AUTH.md §7)
+- [ ] Planned `bun audit` + secret scanning in CI
+- [ ] Planned Monitoring and alerting (webhook failure, ledger-conservation anomaly, login-failure spikes)
+- [ ] Planned Formal penetration test (or at minimum a paid bug bounty-style review) of auth + webhook paths
+- [ ] Planned Verified real Midtrans keys with the same webhook discipline rehearsed on sandbox
+- [ ] Planned Processor verification with physical/photo checks (abuse case 1 hardening)
+- [ ] Planned DPO contact and updated privacy policy review by counsel
+- [ ] Planned Backup/restore drill for the Convex database and a documented restore runbook
 
 ---
 
@@ -540,9 +540,9 @@ Adds what MVP can consciously defer.
 
 **What exists today:**
 
-- ✅ Six read-only Convex queries only.
-- ✅ `VITE_CONVEX_URL` is the sole env var, and nothing secret has ever been committed.
-- ✅ No secrets in the repo (verified by the total absence of integration code).
+- Implemented Six read-only Convex queries only.
+- Implemented `VITE_CONVEX_URL` is the sole env var, and nothing secret has ever been committed.
+- Implemented No secrets in the repo (verified by the total absence of integration code).
 
 **What does not exist (must land in milestone M1):**
 
@@ -556,7 +556,7 @@ Adds what MVP can consciously defer.
 | UU PDP surface (consent, retention purge, deletion/pseudonymisation) | M1 |
 | Admin surface and audit trail | M1 |
 
-Every "📋 M1" in this document is therefore the *definition of milestone M1's security work*, in dependency order: auth first (`AUTH.md`), then authorization (`PERMISSIONS.md`), then ledger + webhook, then the compliance surface.
+Every "Planned M1" in this document is therefore the *definition of milestone M1's security work*, in dependency order: auth first (`AUTH.md`), then authorization (`PERMISSIONS.md`), then ledger + webhook, then the compliance surface.
 
 Known accepted risk for the competition: no MFA, no formal pentest, per-function rate limiting rather than distributed WAF-grade protection, and a single-operator alert channel. These are consciously deferred and tracked in `RISKS.md` (TECH-02, TECH-04, TECH-06, TECH-07, TECH-08).
 

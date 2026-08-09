@@ -29,9 +29,9 @@
 
 | Symbol | Meaning |
 |---|---|
-| ✅ | Implemented and working end-to-end |
-| 🚧 | Partially implemented — UI shell exists, logic missing |
-| 📋 | Planned — nothing in the codebase yet |
+| Implemented | Implemented and working end-to-end |
+| In progress | Partially implemented — UI shell exists, logic missing |
+| Planned | Planned — nothing in the codebase yet |
 
 **Ledger events** name entries written to the [Material Flow Ledger](../impact/MATERIAL_LEDGER.md). A feature that changes material state and emits no event is a bug, not a design choice — every kilogram must be accounted for.
 
@@ -43,109 +43,109 @@
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-01 | Registration with role selection | AUTH-01 | M | 📋 |
-| F-02 | Login & session management | AUTH-03 | M | 📋 |
-| F-03 | Merchant business profile onboarding | AUTH-05 | M | 📋 |
-| F-04 | Processor facility profile onboarding | AUTH-05, PRC-06 | M | 📋 |
-| F-05 | Admin verification gate | AUTH-04 | M | 📋 |
-| F-06 | Admin account provisioning (manual) | AUTH-02 | M | 📋 |
-| F-07 | Password reset | AUTH-06 | S | 📋 |
+| F-01 | Registration with role selection | AUTH-01 | M | Planned |
+| F-02 | Login & session management | AUTH-03 | M | Planned |
+| F-03 | Merchant business profile onboarding | AUTH-05 | M | Planned |
+| F-04 | Processor facility profile onboarding | AUTH-05, PRC-06 | M | Planned |
+| F-05 | Admin verification gate | AUTH-04 | M | Planned |
+| F-06 | Admin account provisioning (manual) | AUTH-02 | M | Planned |
+| F-07 | Password reset | AUTH-06 | S | Planned |
 
 ### Module B — Merchant
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-10 | Create Rescue Item | MER-01 | M | 🚧 |
-| F-11 | Dynamic Rescue Pricing suggestion + override | MER-02, PRI-01..03 | M | 📋 |
-| F-12 | Edit / cancel listing before reservation | MER-03 | M | 📋 |
-| F-13 | Processing-only listing | MER-07 | S | 📋 |
-| F-14 | Merchant listing management view | MER-06 | M | 🚧 |
-| F-15 | Pickup confirmation via code / QR | MER-04 | M | 📋 |
-| F-16 | Merchant dashboard & impact | MER-06, IMP-03 | M | 🚧 |
-| F-17 | Merchant recovery visibility | MER-05, PRC-04 | S | 📋 |
+| F-10 | Create Rescue Item | MER-01 | M | In progress |
+| F-11 | Dynamic Rescue Pricing suggestion + override | MER-02, PRI-01..03 | M | Planned |
+| F-12 | Edit / cancel listing before reservation | MER-03 | M | Planned |
+| F-13 | Processing-only listing | MER-07 | S | Planned |
+| F-14 | Merchant listing management view | MER-06 | M | In progress |
+| F-15 | Pickup confirmation via code / QR | MER-04 | M | Planned |
+| F-16 | Merchant dashboard & impact | MER-06, IMP-03 | M | In progress |
+| F-17 | Merchant recovery visibility | MER-05, PRC-04 | S | Planned |
 
 ### Module C — Consumer
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-20 | Map discovery | CON-01, MKT-01 | M | 🚧 |
-| F-21 | List view with filters | CON-02, MKT-02 | M | 🚧 |
-| F-22 | Listing detail screen | CON-01, CON-02 | M | 📋 |
-| F-23 | Reservation (locks price + quantity) | CON-03 | M | 📋 |
-| F-24 | Pickup code / QR display | CON-05 | M | 📋 |
-| F-25 | Order history + realtime status | CON-06, PAY-02 | M | 🚧 |
-| F-26 | Cancellation within grace period | CON-08 | S | 📋 |
-| F-27 | Consumer impact dashboard | CON-07, IMP-03 | M | 🚧 |
-| F-28 | Rate a pickup | CON-09 | C | 📋 |
+| F-20 | Map discovery | CON-01, MKT-01 | M | In progress |
+| F-21 | List view with filters | CON-02, MKT-02 | M | In progress |
+| F-22 | Listing detail screen | CON-01, CON-02 | M | Planned |
+| F-23 | Reservation (locks price + quantity) | CON-03 | M | Planned |
+| F-24 | Pickup code / QR display | CON-05 | M | Planned |
+| F-25 | Order history + realtime status | CON-06, PAY-02 | M | In progress |
+| F-26 | Cancellation within grace period | CON-08 | S | Planned |
+| F-27 | Consumer impact dashboard | CON-07, IMP-03 | M | In progress |
+| F-28 | Rate a pickup | CON-09 | C | Planned |
 
 ### Module D — Organic Processor
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-30 | Routed batch queue | PRC-01 | M | 🚧 |
-| F-31 | Accept / decline offer | PRC-02 | M | 📋 |
-| F-32 | Intake log (measured weight) | PRC-03 | M | 📋 |
-| F-33 | Outcome log (output + residual) | PRC-04 | M | 📋 |
-| F-34 | Processor dashboard | PRC-05, IMP-03 | M | 🚧 |
-| F-35 | Capacity & accepted-material profile | PRC-06 | M | 📋 |
+| F-30 | Routed batch queue | PRC-01 | M | In progress |
+| F-31 | Accept / decline offer | PRC-02 | M | Planned |
+| F-32 | Intake log (measured weight) | PRC-03 | M | Planned |
+| F-33 | Outcome log (output + residual) | PRC-04 | M | Planned |
+| F-34 | Processor dashboard | PRC-05, IMP-03 | M | In progress |
+| F-35 | Capacity & accepted-material profile | PRC-06 | M | Planned |
 
 ### Module E — Admin
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-40 | Account verification & suspension | ADM-01 | M | 🚧 |
-| F-41 | Listing moderation | ADM-02 | S | 📋 |
-| F-42 | Material Flow Ledger inspector | ADM-03 | M | 📋 |
-| F-43 | Platform impact dashboard | ADM-04, IMP-03 | M | 🚧 |
-| F-44 | Dispute resolution | ADM-05 | S | 📋 |
-| F-45 | Manual re-route of unroutable batch | ADM-06 | S | 📋 |
+| F-40 | Account verification & suspension | ADM-01 | M | In progress |
+| F-41 | Listing moderation | ADM-02 | S | Planned |
+| F-42 | Material Flow Ledger inspector | ADM-03 | M | Planned |
+| F-43 | Platform impact dashboard | ADM-04, IMP-03 | M | In progress |
+| F-44 | Dispute resolution | ADM-05 | S | Planned |
+| F-45 | Manual re-route of unroutable batch | ADM-06 | S | Planned |
 
 ### Module F — Marketplace & Discovery
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-50 | Listing ranking algorithm | MKT-03 | M | 📋 |
-| F-51 | Dietary preference filtering | MKT-02, CON-02 | S | 📋 |
-| F-52 | Personalised recommendation | MKT-04 | C | 📋 |
+| F-50 | Listing ranking algorithm | MKT-03 | M | Planned |
+| F-51 | Dietary preference filtering | MKT-02, CON-02 | S | Planned |
+| F-52 | Personalised recommendation | MKT-04 | C | Planned |
 
 ### Module G — Payments
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-60 | Midtrans Sandbox checkout | CON-04, PAY-01 | M | 📋 |
-| F-61 | Realtime payment status | PAY-02 | M | 📋 |
-| F-62 | Automatic refund on cancel / expiry | PAY-03 | S | 📋 |
-| F-63 | Merchant payout tracking | PAY-04 | C | 📋 |
+| F-60 | Midtrans Sandbox checkout | CON-04, PAY-01 | M | Planned |
+| F-61 | Realtime payment status | PAY-02 | M | Planned |
+| F-62 | Automatic refund on cancel / expiry | PAY-03 | S | Planned |
+| F-63 | Merchant payout tracking | PAY-04 | C | Planned |
 
 ### Module H — Notifications
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-70 | In-app notification centre | NOT-01..05 | M | 📋 |
-| F-71 | Consumer reservation & pickup reminders | NOT-02 | M | 📋 |
-| F-72 | Merchant reservation & expiry warnings | NOT-03 | M | 📋 |
-| F-73 | Processor routed-item alert | NOT-04 | M | 📋 |
-| F-74 | Admin dispute alert | NOT-05 | S | 📋 |
-| F-75 | Nearby-listing alert | NOT-01 | C | 📋 |
+| F-70 | In-app notification centre | NOT-01..05 | M | Planned |
+| F-71 | Consumer reservation & pickup reminders | NOT-02 | M | Planned |
+| F-72 | Merchant reservation & expiry warnings | NOT-03 | M | Planned |
+| F-73 | Processor routed-item alert | NOT-04 | M | Planned |
+| F-74 | Admin dispute alert | NOT-05 | S | Planned |
+| F-75 | Nearby-listing alert | NOT-01 | C | Planned |
 
 ### Module I — Impact & Ledger
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-80 | Material Flow Ledger write path | IMP-01 | M | 📋 |
-| F-81 | Impact aggregation engine | IMP-02 | M | 📋 |
-| F-82 | Versioned CO2e methodology | IMP-04 | S | 📋 |
-| F-83 | Weight conservation integrity check | IMP-01 | S | 📋 |
+| F-80 | Material Flow Ledger write path | IMP-01 | M | Planned |
+| F-81 | Impact aggregation engine | IMP-02 | M | Planned |
+| F-82 | Versioned CO2e methodology | IMP-04 | S | Planned |
+| F-83 | Weight conservation integrity check | IMP-01 | S | Planned |
 
 ### Module J — Scheduler & Circular Routing
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-90 | Payment hold expiry sweep | CON-03, CON-04 | M | 📋 |
-| F-91 | Pickup window expiry sweep | MER-05 | M | 📋 |
-| F-92 | Circular Routing engine | MER-05, PRC-01 | M | 📋 |
-| F-93 | Offer TTL & retry loop | PRC-02 | M | 📋 |
-| F-94 | Dynamic price re-evaluation cron | PRI-01 | S | 📋 |
+| F-90 | Payment hold expiry sweep | CON-03, CON-04 | M | Planned |
+| F-91 | Pickup window expiry sweep | MER-05 | M | Planned |
+| F-92 | Circular Routing engine | MER-05, PRC-01 | M | Planned |
+| F-93 | Offer TTL & retry loop | PRC-02 | M | Planned |
+| F-94 | Dynamic price re-evaluation cron | PRI-01 | S | Planned |
 
 **Totals:** 44 features — 27 Must, 12 Should, 5 Could.
 
@@ -155,7 +155,7 @@
 
 ### F-01 — Registration with role selection
 
-**PRD refs:** AUTH-01 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** AUTH-01 · **Priority:** M · **Status:** Planned
 
 **Objective** — Let a new user create an account and declare which side of the circular economy they participate in, because every downstream permission derives from that choice.
 
@@ -198,7 +198,7 @@ Consumers land directly in the marketplace after registration. Merchants and Pro
 
 ### F-02 — Login & session management
 
-**PRD refs:** AUTH-03 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** AUTH-03 · **Priority:** M · **Status:** Planned
 
 **Objective** — Authenticate returning users and maintain a session that survives app restarts, including inside the Capacitor Android shell.
 
@@ -241,7 +241,7 @@ Route protection is a two-layer arrangement: React Router guards redirect unauth
 
 ### F-03 — Merchant business profile onboarding
 
-**PRD refs:** AUTH-05 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** AUTH-05 · **Priority:** M · **Status:** Planned
 
 **Objective** — Capture the business identity and, critically, the pickup coordinates without which a merchant cannot appear on the map or be distance-ranked for Circular Routing.
 
@@ -284,7 +284,7 @@ Coordinates are typed optional in the current Convex schema only because they ar
 
 ### F-04 — Processor facility profile onboarding
 
-**PRD refs:** AUTH-05, PRC-06 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** AUTH-05, PRC-06 · **Priority:** M · **Status:** Planned
 
 **Objective** — Capture the facility constraints that make Circular Routing correct rather than random.
 
@@ -327,7 +327,7 @@ The `processors` table does not exist in the current schema — `recoveryBatches
 
 ### F-05 — Admin verification gate
 
-**PRD refs:** AUTH-04 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** AUTH-04 · **Priority:** M · **Status:** Planned
 
 **Objective** — Prevent unverified businesses from listing food or receiving organic material, because food safety and facility legitimacy cannot be self-attested.
 
@@ -370,7 +370,7 @@ Consumers are never subject to this gate. Requiring approval to *buy* discounted
 
 ### F-06 — Admin account provisioning (manual)
 
-**PRD refs:** AUTH-02 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** AUTH-02 · **Priority:** M · **Status:** Planned
 
 **Objective** — Ensure administrative privilege can only originate outside the public application surface.
 
@@ -411,7 +411,7 @@ For the competition this means exactly one admin account, created during seeding
 
 ### F-07 — Password reset
 
-**PRD refs:** AUTH-06 · **Priority:** S · **Status:** 📋 Planned
+**PRD refs:** AUTH-06 · **Priority:** S · **Status:** Planned
 
 **Objective** — Let users regain access without operator intervention.
 
@@ -453,7 +453,7 @@ Priority is S because the demo does not require it, but omitting it from Phase 1
 
 ### F-10 — Create Rescue Item
 
-**PRD refs:** MER-01 · **Priority:** M · **Status:** 🚧 Partial (route `/merchant/surplus/new` exists, no mutation)
+**PRD refs:** MER-01 · **Priority:** M · **Status:** In progress Partial (route `/merchant/surplus/new` exists, no mutation)
 
 **Objective** — Turn surplus food into a tracked unit of material with a price, a quantity, a weight, and a pickup window.
 
@@ -500,7 +500,7 @@ The listing form captures title, description, category, `materialType`, `quantit
 
 ### F-11 — Dynamic Rescue Pricing suggestion + override
 
-**PRD refs:** MER-02, PRI-01, PRI-02, PRI-03 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** MER-02, PRI-01, PRI-02, PRI-03 · **Priority:** M · **Status:** Planned
 
 **Objective** — Suggest a price that maximises the chance the item is claimed before its window closes, while never dropping below the merchant's floor.
 
@@ -546,7 +546,7 @@ The merchant may always override the suggestion within `[floorPrice, originalPri
 
 ### F-12 — Edit / cancel listing before reservation
 
-**PRD refs:** MER-03 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** MER-03 · **Priority:** M · **Status:** Planned
 
 **Objective** — Let merchants correct mistakes, while making it impossible to change terms a consumer has already committed to.
 
@@ -588,7 +588,7 @@ The asymmetry is intentional. A consumer who reserved two portions of bread at 0
 
 ### F-13 — Processing-only listing
 
-**PRD refs:** MER-07 · **Priority:** S · **Status:** 📋 Planned
+**PRD refs:** MER-07 · **Priority:** S · **Status:** Planned
 
 **Objective** — Let merchants route material that is unfit for human consumption directly to processors, skipping the marketplace entirely.
 
@@ -631,7 +631,7 @@ This feature is what makes Cirquo a circular platform rather than a discount mar
 
 ### F-14 — Merchant listing management view
 
-**PRD refs:** MER-06 · **Priority:** M · **Status:** 🚧 Partial (route `/merchant/surplus` renders mock data)
+**PRD refs:** MER-06 · **Priority:** M · **Status:** In progress Partial (route `/merchant/surplus` renders mock data)
 
 **Objective** — Give merchants one screen showing every listing's live state and what action it needs.
 
@@ -673,7 +673,7 @@ The page currently renders `src/constants/mock-data.ts`. Replacing that import w
 
 ### F-15 — Pickup confirmation via code / QR
 
-**PRD refs:** MER-04 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** MER-04 · **Priority:** M · **Status:** Planned
 
 **Objective** — Convert a paid order into a verified physical hand-off, which is the only event that produces `RESCUED` weight.
 
@@ -718,7 +718,7 @@ The merchant enters the consumer's 6-character alphanumeric pickup code, or scan
 
 ### F-16 — Merchant dashboard & impact
 
-**PRD refs:** MER-06, IMP-03 · **Priority:** M · **Status:** 🚧 Partial (route `/merchant` renders `SummaryCard` with mock values)
+**PRD refs:** MER-06, IMP-03 · **Priority:** M · **Status:** In progress Partial (route `/merchant` renders `SummaryCard` with mock values)
 
 **Objective** — Show a merchant what their surplus actually became, in kilograms and rupiah.
 
@@ -760,7 +760,7 @@ Revenue recovered is the honest commercial argument: this merchant turned materi
 
 ### F-17 — Merchant recovery visibility
 
-**PRD refs:** MER-05, PRC-04 · **Priority:** S · **Status:** 📋 Planned
+**PRD refs:** MER-05, PRC-04 · **Priority:** S · **Status:** Planned
 
 **Objective** — Close the narrative loop for merchants by showing what happened to the food nobody rescued.
 
@@ -803,7 +803,7 @@ This is a retention feature disguised as a reporting feature. A merchant who rea
 
 ### F-20 — Map discovery
 
-**PRD refs:** CON-01, MKT-01 · **Priority:** M · **Status:** 🚧 Partial (route `/explore` exists, no Mapbox integration)
+**PRD refs:** CON-01, MKT-01 · **Priority:** M · **Status:** In progress Partial (route `/explore` exists, no Mapbox integration)
 
 **Objective** — Make nearby surplus food immediately visible, because pickup distance is the dominant factor in whether a rescue actually happens.
 
@@ -847,7 +847,7 @@ Map-first is a deliberate rejection of the delivery-app pattern. In delivery, lo
 
 ### F-21 — List view with filters
 
-**PRD refs:** CON-02, MKT-02 · **Priority:** M · **Status:** 🚧 Partial (route exists, renders mock data)
+**PRD refs:** CON-02, MKT-02 · **Priority:** M · **Status:** In progress Partial (route exists, renders mock data)
 
 **Objective** — Provide a scannable, filterable alternative to the map for consumers who already know what they want.
 
@@ -890,7 +890,7 @@ Dietary filtering is **dietary preference filtering** — halal, vegetarian, veg
 
 ### F-22 — Listing detail screen
 
-**PRD refs:** CON-01, CON-02 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** CON-01, CON-02 · **Priority:** M · **Status:** Planned
 
 **Objective** — Give the consumer everything needed to commit: what it is, what it costs, where it is, when to collect, and how much impact it represents.
 
@@ -933,7 +933,7 @@ Showing weight and estimated CO2e here, rather than only in a dashboard, makes i
 
 ### F-23 — Reservation (locks price + quantity)
 
-**PRD refs:** CON-03 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** CON-03 · **Priority:** M · **Status:** Planned
 
 **Objective** — Give the consumer an exclusive claim on specific quantity at a specific price, and prevent overselling.
 
@@ -980,7 +980,7 @@ Reservation creates an `orders` row in `reserved`, decrements `rescueItems.remai
 
 ### F-24 — Pickup code / QR display
 
-**PRD refs:** CON-05 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** CON-05 · **Priority:** M · **Status:** Planned
 
 **Objective** — Give the consumer a credential that proves their claim at the counter.
 
@@ -1023,7 +1023,7 @@ The code is valid only once the order is `paid`. Displaying it while `reserved` 
 
 ### F-25 — Order history + realtime status
 
-**PRD refs:** CON-06, PAY-02 · **Priority:** M · **Status:** 🚧 Partial (route `/orders` renders mock data)
+**PRD refs:** CON-06, PAY-02 · **Priority:** M · **Status:** In progress Partial (route `/orders` renders mock data)
 
 **Objective** — One place where consumers track active and past rescues, updating without refresh.
 
@@ -1064,7 +1064,7 @@ Orders split into Active (`reserved`, `paid`) and History (`picked_up`, `cancell
 
 ### F-26 — Cancellation within grace period
 
-**PRD refs:** CON-08 · **Priority:** S · **Status:** 📋 Planned
+**PRD refs:** CON-08 · **Priority:** S · **Status:** Planned
 
 **Objective** — Let consumers back out early enough for the food to still be rescued by someone else.
 
@@ -1107,7 +1107,7 @@ The dual condition matters: a consumer who pays at 18:30 for a window closing at
 
 ### F-27 — Consumer impact dashboard
 
-**PRD refs:** CON-07, IMP-03 · **Priority:** M · **Status:** 🚧 Partial (home route renders mock impact numbers)
+**PRD refs:** CON-07, IMP-03 · **Priority:** M · **Status:** In progress Partial (home route renders mock impact numbers)
 
 **Objective** — Convert individual rescues into a running personal contribution, the primary non-monetary retention mechanism.
 
@@ -1149,7 +1149,7 @@ Consumer scope counts **rescued** weight only, never recovered weight. A consume
 
 ### F-28 — Rate a pickup
 
-**PRD refs:** CON-09 · **Priority:** C · **Status:** 📋 Planned
+**PRD refs:** CON-09 · **Priority:** C · **Status:** Planned
 
 **Objective** — Collect a lightweight quality signal that improves merchant trust over time.
 
@@ -1192,7 +1192,7 @@ Priority C. Ratings need volume to be meaningful and a competition demo has none
 
 ### F-30 — Routed batch queue
 
-**PRD refs:** PRC-01 · **Priority:** M · **Status:** 🚧 Partial (route `/processor/recovery` renders mock data)
+**PRD refs:** PRC-01 · **Priority:** M · **Status:** In progress Partial (route `/processor/recovery` renders mock data)
 
 **Objective** — Present offered batches with everything needed to decide accept or decline in seconds.
 
@@ -1234,7 +1234,7 @@ The TTL countdown is the most important element on the screen. A processor who d
 
 ### F-31 — Accept / decline offer
 
-**PRD refs:** PRC-02 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** PRC-02 · **Priority:** M · **Status:** Planned
 
 **Objective** — Let a processor commit to collecting a batch, or release it quickly so it can find another home.
 
@@ -1278,7 +1278,7 @@ After **3 failed attempts** the batch becomes `unroutable`, `ROUTING_FAILED` is 
 
 ### F-32 — Intake log (measured weight)
 
-**PRD refs:** PRC-03 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** PRC-03 · **Priority:** M · **Status:** Planned
 
 **Objective** — Replace the merchant's estimate with a measured weight, the moment the ledger becomes trustworthy.
 
@@ -1322,7 +1322,7 @@ Four weight fields exist deliberately with different trust levels: `offeredWeigh
 
 ### F-33 — Outcome log (output + residual)
 
-**PRD refs:** PRC-04 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** PRC-04 · **Priority:** M · **Status:** Planned
 
 **Objective** — Record what the material actually became, producing the recovered figure and, equally importantly, the honest residual.
 
@@ -1366,7 +1366,7 @@ The processor logs output type (`compost`, `bsf_larvae`, `biogas`, `animal_feed`
 
 ### F-34 — Processor dashboard
 
-**PRD refs:** PRC-05, IMP-03 · **Priority:** M · **Status:** 🚧 Partial (route `/processor` renders mock data)
+**PRD refs:** PRC-05, IMP-03 · **Priority:** M · **Status:** In progress Partial (route `/processor` renders mock data)
 
 **Objective** — Show a processor their throughput, capacity utilisation, and recovery performance.
 
@@ -1408,7 +1408,7 @@ Surfacing reliability is a design choice with teeth: it converts an invisible ra
 
 ### F-35 — Capacity & accepted-material profile
 
-**PRD refs:** PRC-06 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** PRC-06 · **Priority:** M · **Status:** Planned
 
 **Objective** — Keep routing constraints editable so they reflect the facility's real, current situation.
 
@@ -1452,7 +1452,7 @@ Capacity is a daily figure rather than a rolling window because processors think
 
 ### F-40 — Account verification & suspension
 
-**PRD refs:** ADM-01 · **Priority:** M · **Status:** 🚧 Partial (route `/admin` renders a mock queue)
+**PRD refs:** ADM-01 · **Priority:** M · **Status:** In progress Partial (route `/admin` renders a mock queue)
 
 **Objective** — Give admins the controls to admit legitimate businesses and remove bad actors.
 
@@ -1493,7 +1493,7 @@ A queue of `pending` merchants and processors with full profile detail and map l
 
 ### F-41 — Listing moderation
 
-**PRD refs:** ADM-02 · **Priority:** S · **Status:** 📋 Planned
+**PRD refs:** ADM-02 · **Priority:** S · **Status:** Planned
 
 **Objective** — Remove listings that are unsafe, misdescribed, or abusive, without corrupting impact history.
 
@@ -1535,7 +1535,7 @@ Paid orders on a moderated listing are refunded automatically and their consumer
 
 ### F-42 — Material Flow Ledger inspector
 
-**PRD refs:** ADM-03 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** ADM-03 · **Priority:** M · **Status:** Planned
 
 **Objective** — Show the complete, immutable event history for any Rescue Item, which is the platform's core credibility artefact.
 
@@ -1578,7 +1578,7 @@ Search by item id, merchant, or date range, then view a chronological event list
 
 ### F-43 — Platform impact dashboard
 
-**PRD refs:** ADM-04, IMP-03 · **Priority:** M · **Status:** 🚧 Partial (route `/admin` renders mock summary cards)
+**PRD refs:** ADM-04, IMP-03 · **Priority:** M · **Status:** In progress Partial (route `/admin` renders mock summary cards)
 
 **Objective** — Present platform-wide circular performance for operators, judges, and stakeholders.
 
@@ -1621,7 +1621,7 @@ Totals for listed, rescued, recovered, residual, and in-flight weight; circulari
 
 ### F-44 — Dispute resolution
 
-**PRD refs:** ADM-05 · **Priority:** S · **Status:** 📋 Planned
+**PRD refs:** ADM-05 · **Priority:** S · **Status:** Planned
 
 **Objective** — Resolve pickup conflicts fairly without ever editing the ledger.
 
@@ -1664,7 +1664,7 @@ Resolution never edits history. If a `RESCUED` event was written in error, a com
 
 ### F-45 — Manual re-route of unroutable batch
 
-**PRD refs:** ADM-06 · **Priority:** S · **Status:** 📋 Planned
+**PRD refs:** ADM-06 · **Priority:** S · **Status:** Planned
 
 **Objective** — Give a human the final chance to save material the algorithm gave up on.
 

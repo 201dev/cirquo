@@ -214,15 +214,15 @@ Every event below writes exactly one Material Flow Ledger entry.
 | `PRICE_ADJUSTED` | Dynamic Rescue Pricing changes the price | 0 | No |
 | `RESERVED` | Consumer reserves a quantity | 0 (claimed, not yet moved) | No |
 | `PAID` | Midtrans confirms payment | 0 | No |
-| `RESCUED` | Merchant verifies the pickup code | `−rescued weight` | ✅ Terminal |
+| `RESCUED` | Merchant verifies the pickup code | `−rescued weight` | Implemented Terminal |
 | `CANCELLED` | Consumer cancels within grace period | 0 (returns to available) | No |
 | `EXPIRED` | Pickup window closes with stock remaining | 0 | No |
 | `ROUTED` | Circular Routing matches a processor | 0 (in transit) | No |
-| `ROUTING_FAILED` | No eligible processor found | `−residual weight` | ✅ Terminal |
+| `ROUTING_FAILED` | No eligible processor found | `−residual weight` | Implemented Terminal |
 | `INTAKE_ACCEPTED` | Processor confirms receipt and measured weight | 0 | No |
 | `INTAKE_DECLINED` | Processor rejects the batch | 0 (returns to routing) | No |
-| `PROCESSED` | Processor logs the outcome | `−recovered weight` | ✅ Terminal |
-| `MODERATED` | Admin removes a listing | `−weight` | ✅ Terminal |
+| `PROCESSED` | Processor logs the outcome | `−recovered weight` | Implemented Terminal |
+| `MODERATED` | Admin removes a listing | `−weight` | Implemented Terminal |
 
 **Terminal events close the loop for a quantity of material.** An item is fully accounted for when the sum of its terminal event weights equals its listed weight.
 
@@ -337,7 +337,7 @@ flowchart LR
 
 Terms to use. Terms to avoid. This table is enforceable — deviations in code or UI copy are defects.
 
-| ✅ Use | ❌ Avoid | Note |
+| Implemented Use | Not implemented Avoid | Note |
 |---|---|---|
 | Cirquo | CirQuo, CircQuo, Cirquo App | Exact casing |
 | Rescue Item | Listing, Product, Offer, Deal, Surprise Bag | |
@@ -388,13 +388,13 @@ The current codebase predates this document. Known divergences between code and 
 | Code (current) | Domain term | Action |
 |---|---|---|
 | `surplusItems` table | Rescue Item | Keep the table name; use "Rescue Item" in all UI and documentation |
-| `recoveryBatches` table | Recovery Batch | ✅ Aligned |
+| `recoveryBatches` table | Recovery Batch | Implemented Aligned |
 | `SurplusStatus` type | Rescue Item status | Acceptable — internal type name |
-| `weightPerItemGrams` | Weight per unit | ✅ Aligned in intent |
-| No `floorPrice` field | Floor price | 📋 **Must be added** — RI-2 cannot be enforced without it |
-| No `materialType` field | Material type | 📋 **Must be added** — RB-2 cannot be enforced without it |
-| No `materialFlowLedger` table | Material Flow Ledger | 📋 **Must be added** — the entire impact system depends on it |
-| No processor profile table | Processor Profile | 📋 **Must be added** — RB-2, RB-3 cannot be enforced without it |
+| `weightPerItemGrams` | Weight per unit | Implemented Aligned in intent |
+| No `floorPrice` field | Floor price | Planned **Must be added** — RI-2 cannot be enforced without it |
+| No `materialType` field | Material type | Planned **Must be added** — RB-2 cannot be enforced without it |
+| No `materialFlowLedger` table | Material Flow Ledger | Planned **Must be added** — the entire impact system depends on it |
+| No processor profile table | Processor Profile | Planned **Must be added** — RB-2, RB-3 cannot be enforced without it |
 
 See [DATABASE.md](DATABASE.md) for the full target schema and the migration path from the current five tables.
 

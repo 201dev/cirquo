@@ -76,7 +76,7 @@ A percentage fee on the value of each **completed Rescue** (an order that reache
 | **Merchant payout** | **Rp19.360** |
 | **Cirquo gross margin** | **Rp640** |
 
-> ⚠️ **Unit economics warning:** At Rp22.000 basket size and a flat Midtrans fee, gross margin per transaction is thin (~3%). Profitability depends on **basket size** and **payment method mix** (QRIS is cheaper than VA). This is the single most important number to monitor post-launch. See §7 KPIs.
+> Warning **Unit economics warning:** At Rp22.000 basket size and a flat Midtrans fee, gross margin per transaction is thin (~3%). Profitability depends on **basket size** and **payment method mix** (QRIS is cheaper than VA). This is the single most important number to monitor post-launch. See §7 KPIs.
 
 **MVP implementation hook:** `orders` must carry a `platformFeeAmount` field computed at pickup confirmation, even though the value is `0` in Sandbox. See [DATABASE.md](../domain/DATABASE.md).
 
@@ -126,7 +126,7 @@ Not before the platform has ≥3 processors competing for the same routed materi
 
 Long-horizon. If verified diverted tonnage can be converted into tradeable credits under an Indonesian or voluntary carbon standard, Cirquo takes an intermediation cut.
 
-> ⚠️ **Do not build on this assumption.** Methodology acceptance is uncertain and our CO2e figures are explicitly labelled estimates. See [IMPACT.md](../impact/IMPACT.md) §Limitations. This is optionality, not a plan.
+> Warning **Do not build on this assumption.** Methodology acceptance is uncertain and our CO2e figures are explicitly labelled estimates. See [IMPACT.md](../impact/IMPACT.md) §Limitations. This is optionality, not a plan.
 
 ---
 
@@ -337,10 +337,10 @@ The model's viability hinges on basket size and payment mix.
 
 | Scenario | Basket | Commission (12%) | Payment fee | Contribution |
 |---|---:|---:|---:|---:|
-| Small basket, VA | Rp15.000 | Rp1.800 | Rp2.000 | **−Rp200** ❌ |
-| Small basket, QRIS (0.7%) | Rp15.000 | Rp1.800 | Rp105 | +Rp1.695 ✅ |
-| Median basket, QRIS | Rp25.000 | Rp3.000 | Rp175 | +Rp2.825 ✅ |
-| Large basket, VA | Rp60.000 | Rp7.200 | Rp2.000 | +Rp5.200 ✅ |
+| Small basket, VA | Rp15.000 | Rp1.800 | Rp2.000 | **−Rp200** Not implemented |
+| Small basket, QRIS (0.7%) | Rp15.000 | Rp1.800 | Rp105 | +Rp1.695 Implemented |
+| Median basket, QRIS | Rp25.000 | Rp3.000 | Rp175 | +Rp2.825 Implemented |
+| Large basket, VA | Rp60.000 | Rp7.200 | Rp2.000 | +Rp5.200 Implemented |
 
 **Actionable conclusions:**
 1. **Default to QRIS** in the Midtrans configuration. Flat-fee methods destroy margin on small baskets.

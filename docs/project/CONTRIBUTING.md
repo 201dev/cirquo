@@ -199,14 +199,14 @@ Rules:
 - One branch, one concern.
 
 ```
-✓ feat/circular-routing
-✓ fix/reservation-hold-expiry
-✓ refactor/extract-pricing-logic
+Valid feat/circular-routing
+Valid fix/reservation-hold-expiry
+Valid refactor/extract-pricing-logic
 
-✗ feature/new-stuff          (wrong prefix, vague)
-✗ ari-branch                 (name, not content)
-✗ fix                        (no description)
-✗ feat/Consumer_Marketplace  (case and separator)
+Invalid feature/new-stuff          (wrong prefix, vague)
+Invalid ari-branch                 (name, not content)
+Invalid fix                        (no description)
+Invalid feat/Consumer_Marketplace  (case and separator)
 ```
 
 ### 4.4 Lifecycle
@@ -342,7 +342,7 @@ Refs: REQ-DATA-001
 
 ### 5.7 Good versus bad
 
-| ✗ Bad | ✓ Good | Why |
+| Bad | Good | Why |
 | --- | --- | --- |
 | `update stuff` | `feat(orders): add 15-minute reservation hold` | Specific, typed, scoped |
 | `fix bug` | `fix(ledger): correct sign of EXPIRED weight delta` | Says which bug |
@@ -753,7 +753,7 @@ plus these. See [AGENTS.md](AGENTS.md) for the full operating instructions.
 
 **Never state that something works without having run it.**
 
-| ✗ Do not say | ✓ Say instead |
+| Do not say | Say instead |
 | --- | --- |
 | "I've implemented the reservation flow." | "I've written the reservation mutation. I have not run it — please verify with `bunx convex run` and the §7.4 smoke steps." |
 | "The tests pass." | "I've written the tests. Run `bun test` to confirm." |

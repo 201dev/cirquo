@@ -22,28 +22,28 @@ Cirquo runs on Convex. There are no REST endpoints for admins. Every function be
 
 | Function | Type | Auth | PRD ref | Status |
 | --- | --- | --- | --- | --- |
-| [`admin.listUsers`](#2-adminlistusers-) | `query` | Admin | ADM-01 | 📋 Planned |
-| [`admin.listPendingVerifications`](#3-adminlistpendingverifications-) | `query` | Admin | ADM-01 | 📋 Planned |
-| [`admin.verifyMerchant`](#4-adminverifymerchant-) | `mutation` | Admin | ADM-01 | 📋 Planned |
-| [`admin.verifyProcessor`](#5-adminverifyprocessor-) | `mutation` | Admin | ADM-01 | 📋 Planned |
-| [`admin.rejectAccount`](#6-adminrejectaccount-) | `mutation` | Admin | ADM-01 | 📋 Planned |
-| [`admin.suspendUser`](#7-adminsuspenduser-) | `mutation` | Admin | ADM-01 | 📋 Planned |
-| [`admin.moderateListing`](#8-adminmoderatelisting-) | `mutation` | Admin | ADM-02 | 📋 Planned |
-| [`admin.listReportedListings`](#9-adminlistreportedlistings-) | `query` | Admin | ADM-02 | 📋 Planned |
-| [`admin.getItemLedger`](#10-admingetitemledger-) | `query` | Admin | ADM-03 | 📋 Planned |
-| [`admin.searchLedger`](#11-adminsearchledger-) | `query` | Admin | ADM-03 | 📋 Planned |
-| [`admin.getPlatformImpact`](#12-admingetplatformimpact-) | `query` | Admin | ADM-04 / IMP-04 | 📋 Planned |
-| [`admin.listDisputes`](#131-adminlistdisputes-) | `query` | Admin | ADM-05 | 📋 Planned |
-| [`admin.resolveDispute`](#132-adminresolvedispute-) | `mutation` | Admin | ADM-05 | 📋 Planned |
-| [`admin.rerouteBatch`](#14-adminreroutebatch-) | `mutation` | Admin | ADM-06 | 📋 Planned |
-| [`admin.checkWeightConservation`](#15-admincheckweightconservation-) | `query` | Admin | ADM-03 / IMP-04 | 📋 Planned |
-| [`admin.checkLedgerCompleteness`](#16-admincheckledgercompleteness-) | `query` | Admin | ADM-03 / IMP-04 | 📋 Planned |
-| [`admin.getSystemHealth`](#19-admingetsystemhealth-) | `query` | Admin | ADM-04 | 📋 Planned |
-| [`admin.listCronStatus`](#20-adminlistcronstatus-) | `query` | Admin | ADM-04 | 📋 Planned |
+| [`admin.listUsers`](#2-adminlistusers-) | `query` | Admin | ADM-01 | Planned |
+| [`admin.listPendingVerifications`](#3-adminlistpendingverifications-) | `query` | Admin | ADM-01 | Planned |
+| [`admin.verifyMerchant`](#4-adminverifymerchant-) | `mutation` | Admin | ADM-01 | Planned |
+| [`admin.verifyProcessor`](#5-adminverifyprocessor-) | `mutation` | Admin | ADM-01 | Planned |
+| [`admin.rejectAccount`](#6-adminrejectaccount-) | `mutation` | Admin | ADM-01 | Planned |
+| [`admin.suspendUser`](#7-adminsuspenduser-) | `mutation` | Admin | ADM-01 | Planned |
+| [`admin.moderateListing`](#8-adminmoderatelisting-) | `mutation` | Admin | ADM-02 | Planned |
+| [`admin.listReportedListings`](#9-adminlistreportedlistings-) | `query` | Admin | ADM-02 | Planned |
+| [`admin.getItemLedger`](#10-admingetitemledger-) | `query` | Admin | ADM-03 | Planned |
+| [`admin.searchLedger`](#11-adminsearchledger-) | `query` | Admin | ADM-03 | Planned |
+| [`admin.getPlatformImpact`](#12-admingetplatformimpact-) | `query` | Admin | ADM-04 / IMP-04 | Planned |
+| [`admin.listDisputes`](#131-adminlistdisputes-) | `query` | Admin | ADM-05 | Planned |
+| [`admin.resolveDispute`](#132-adminresolvedispute-) | `mutation` | Admin | ADM-05 | Planned |
+| [`admin.rerouteBatch`](#14-adminreroutebatch-) | `mutation` | Admin | ADM-06 | Planned |
+| [`admin.checkWeightConservation`](#15-admincheckweightconservation-) | `query` | Admin | ADM-03 / IMP-04 | Planned |
+| [`admin.checkLedgerCompleteness`](#16-admincheckledgercompleteness-) | `query` | Admin | ADM-03 / IMP-04 | Planned |
+| [`admin.getSystemHealth`](#19-admingetsystemhealth-) | `query` | Admin | ADM-04 | Planned |
+| [`admin.listCronStatus`](#20-adminlistcronstatus-) | `query` | Admin | ADM-04 | Planned |
 
-**Status legend:** ✅ Implemented · 🚧 In progress · 📋 Planned.
+**Status legend:** Implemented · In progress In progress · Planned.
 
-Only six read-only queries exist in the codebase today (`users.getByEmail`, `merchants.getByOwner`, `surplusItems.listByStatus`, `orders.listByUser`, `recoveryBatches.listByStatus`, `impact.getPlaceholderSummary`). Every function on this page is **📋 Planned**.
+Only six read-only queries exist in the codebase today (`users.getByEmail`, `merchants.getByOwner`, `surplusItems.listByStatus`, `orders.listByUser`, `recoveryBatches.listByStatus`, `impact.getPlaceholderSummary`). Every function on this page is **Planned**.
 
 ---
 
@@ -62,7 +62,7 @@ Everything else follows from `requireRole(ctx, 'admin')`, which is the first lin
 
 ---
 
-## 2. `admin.listUsers` 📋
+## 2. `admin.listUsers` Planned
 
 **Type:** query · **Auth:** Admin · **PRD ref:** ADM-01
 
@@ -131,7 +131,7 @@ const { rows } = useQuery(api.admin.listUsers, { role: 'merchant', status: 'acti
 
 ---
 
-## 3. `admin.listPendingVerifications` 📋
+## 3. `admin.listPendingVerifications` Planned
 
 **Type:** query · **Auth:** Admin · **PRD ref:** ADM-01
 
@@ -234,7 +234,7 @@ const pending = useQuery(api.admin.listPendingVerifications, { city: 'Semarang' 
 
 ---
 
-## 4. `admin.verifyMerchant` 📋
+## 4. `admin.verifyMerchant` Planned
 
 **Type:** mutation · **Auth:** Admin · **PRD ref:** ADM-01
 
@@ -293,7 +293,7 @@ await convex.mutation(api.admin.verifyMerchant, {
 
 ---
 
-## 5. `admin.verifyProcessor` 📋
+## 5. `admin.verifyProcessor` Planned
 
 **Type:** mutation · **Auth:** Admin · **PRD ref:** ADM-01
 
@@ -360,7 +360,7 @@ await convex.mutation(api.admin.verifyProcessor, {
 
 ---
 
-## 6. `admin.rejectAccount` 📋
+## 6. `admin.rejectAccount` Planned
 
 **Type:** mutation · **Auth:** Admin · **PRD ref:** ADM-01
 
@@ -421,7 +421,7 @@ await convex.mutation(api.admin.rejectAccount, {
 
 ---
 
-## 7. `admin.suspendUser` 📋
+## 7. `admin.suspendUser` Planned
 
 **Type:** mutation · **Auth:** Admin · **PRD ref:** ADM-01
 
@@ -501,7 +501,7 @@ const result = await convex.mutation(api.admin.suspendUser, {
 
 ---
 
-## 8. `admin.moderateListing` 📋
+## 8. `admin.moderateListing` Planned
 
 **Type:** mutation · **Auth:** Admin · **PRD ref:** ADM-02
 
@@ -630,7 +630,7 @@ await convex.mutation(api.admin.moderateListing, {
 
 ---
 
-## 9. `admin.listReportedListings` 📋
+## 9. `admin.listReportedListings` Planned
 
 **Type:** query · **Auth:** Admin · **PRD ref:** ADM-02
 
@@ -708,7 +708,7 @@ const flagged = useQuery(api.admin.listReportedListings, { minSeverity: 'high' }
 
 ---
 
-## 10. `admin.getItemLedger` 📋
+## 10. `admin.getItemLedger` Planned
 
 **Type:** query · **Auth:** Admin · **PRD ref:** ADM-03
 
@@ -867,7 +867,7 @@ Pointing at this output is how Cirquo answers "how do you know?". Every kilogram
 
 ---
 
-## 11. `admin.searchLedger` 📋
+## 11. `admin.searchLedger` Planned
 
 **Type:** query · **Auth:** Admin · **PRD ref:** ADM-03
 
@@ -943,7 +943,7 @@ const failures = useQuery(api.admin.searchLedger, {
 
 ---
 
-## 12. `admin.getPlatformImpact` 📋
+## 12. `admin.getPlatformImpact` Planned
 
 **Type:** query · **Auth:** Admin · **PRD ref:** ADM-04 / IMP-04
 
@@ -1079,7 +1079,7 @@ sequenceDiagram
 
 The asymmetry in the second branch is deliberate and is one of Cirquo's core modelling decisions: **a failed collection does not create Residual.** The material still exists and is still edible or still compostable, so it re-enters Circular Routing as a fresh batch and gets another chance at a real outcome. Booking it as waste at the moment of a refund would inflate the residual figure with material that was later recovered, and would double-count it if it were then processed.
 
-### 13.1 `admin.listDisputes` 📋
+### 13.1 `admin.listDisputes` Planned
 
 **Type:** query · **Auth:** Admin · **PRD ref:** ADM-05
 
@@ -1156,7 +1156,7 @@ type Result = { rows: DisputeRow[]; openCount: number }
 const { rows, openCount } = useQuery(api.admin.listDisputes, { status: 'open' }) ?? { rows: [], openCount: 0 }
 ```
 
-### 13.2 `admin.resolveDispute` 📋
+### 13.2 `admin.resolveDispute` Planned
 
 **Type:** mutation · **Auth:** Admin · **PRD ref:** ADM-05
 
@@ -1328,7 +1328,7 @@ await convex.mutation(api.admin.resolveDispute, {
 
 ---
 
-## 14. `admin.rerouteBatch` 📋
+## 14. `admin.rerouteBatch` Planned
 
 **Type:** mutation · **Auth:** Admin · **PRD ref:** ADM-06
 
@@ -1416,7 +1416,7 @@ const result = await convex.mutation(api.admin.rerouteBatch, {
 
 ---
 
-## 15. `admin.checkWeightConservation` 📋
+## 15. `admin.checkWeightConservation` Planned
 
 **Type:** query · **Auth:** Admin · **PRD ref:** ADM-03 / IMP-04
 
@@ -1602,7 +1602,7 @@ if (check && !check.passed) {
 
 ---
 
-## 16. `admin.checkLedgerCompleteness` 📋
+## 16. `admin.checkLedgerCompleteness` Planned
 
 **Type:** query · **Auth:** Admin · **PRD ref:** ADM-03 / IMP-04
 
@@ -1894,7 +1894,7 @@ Where an admin action also moves material — `moderateListing`, `resolveDispute
 
 ---
 
-## 19. `admin.getSystemHealth` 📋
+## 19. `admin.getSystemHealth` Planned
 
 **Type:** query · **Auth:** Admin · **PRD ref:** ADM-04
 
@@ -1961,7 +1961,7 @@ if (health && !health.integrity.trustworthy) {
 
 ---
 
-## 20. `admin.listCronStatus` 📋
+## 20. `admin.listCronStatus` Planned
 
 **Type:** query · **Auth:** Admin · **PRD ref:** ADM-04
 

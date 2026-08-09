@@ -19,7 +19,7 @@ Realtime is not decoration in this product. It is the mechanism by which two peo
 
 This document specifies how Convex reactivity works, every realtime surface in the product, how subscriptions are scoped, when optimistic updates are safe and when they are actively dangerous, offline and reconnection behaviour, the demo-critical moment, failure modes, and load projections.
 
-**Current state.** Six read-only Convex queries exist and are reactive by default. **No page is wired to them yet** — all nine pages read `src/constants/mock-data.ts`. Everything below marked 📋 is specification.
+**Current state.** Six read-only Convex queries exist and are reactive by default. **No page is wired to them yet** — all nine pages read `src/constants/mock-data.ts`. Everything below marked Planned is specification.
 
 ---
 
@@ -80,11 +80,11 @@ This is why Cirquo has no Redux, no Zustand, and no TanStack Query. See [`FRONTE
 A query's reactivity is exactly as precise as its read set.
 
 ```ts
-// ❌ Read set = the entire surplusItems table.
+// Not implemented Read set = the entire surplusItems table.
 // Any merchant anywhere publishes an item → every consumer's client re-renders.
 const all = await ctx.db.query("surplusItems").collect();
 
-// ✅ Read set = one merchant's rows in one index range.
+// Implemented Read set = one merchant's rows in one index range.
 // Only that merchant's clients are invalidated.
 const mine = await ctx.db
   .query("surplusItems")
@@ -103,21 +103,21 @@ Every reactive surface in the product, with its query, subscribers, invalidation
 
 | # | Surface | Query | Subscribers | Invalidated by | Latency | UX treatment | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | **Order status flips to `picked_up`** | `orders.getMine(orderId)` | The one consumer | `orders.confirmPickup` (merchant) | < 500 ms | Card morphs to a green "Rescued" state, `RescueItemCard` shows rescued weight, confetti-free success toast | 📋 |
-| 2 | **Order status flips to `paid`** | `orders.getMine(orderId)` | The one consumer | `payments.recordSettlement` (webhook) | < 1 s after Midtrans callback | Pickup code and QR revealed; hold countdown replaced by pickup window countdown | 📋 |
-| 3 | **Merchant incoming reservations** | `orders.listForMerchant({status:"reserved"\|"paid"})` | Staff devices for one merchant | `orders.reserve`, `recordSettlement`, `sweepExpiredHolds` | < 500 ms | Row slides into the table, subtle highlight for 3 s, unread count on the nav item | 📋 |
-| 4 | **Live remaining quantity on a listing** | `surplusItems.get(itemId)` | Everyone viewing that item | `orders.reserve` by anyone, `sweepExpiredHolds` restoring stock | < 500 ms | "3 tersisa" → "2 tersisa"; at 0 the Reserve button becomes a disabled "Habis diamankan" | 📋 |
-| 5 | **Live price after a PRICE_ADJUSTED tick** | `surplusItems.get(itemId)` / `listNearby` | Everyone viewing that item or the Explore list | `surplusItems.applyPriceTick` cron (every 15 min) | < 1 s of the tick | New price cross-fades in, old price struck through, discount badge updates; `aria-live="polite"` announces it | 📋 |
-| 6 | **Processor routed-batch queue** | `recoveryBatches.listForProcessor({status:"offered"})` | One processor's devices | `recoveryBatches.runRouting` cron (every 10 min), `sweepOfferTtl` | < 1 s of the routing tick | New offer card appears with a 6-hour TTL countdown bar; badge on the nav item | 📋 |
-| 7 | **Batch accepted by another processor** | `recoveryBatches.get(batchId)` | Any processor with the detail open | `recoveryBatches.accept` | < 500 ms | Accept button disables, card shows "Sudah diambil fasilitas lain" | 📋 |
-| 8 | **Merchant recovery status** | `recoveryBatches.listForMerchant` | One merchant | `runRouting`, `logIntake`, `logOutcome` | < 1 s | Status chip moves `pending → offered → accepted → collected → processed` | 📋 |
-| 9 | **Merchant impact totals** | `impact.merchantSummary(merchantId)` | One merchant | Any `RESCUED` / `PROCESSED` ledger event for that merchant | < 1 s | Rescued / Recovered / Residual figures tick upward; circularity rate recomputes | 📋 |
-| 10 | **Admin verification queue** | `admin.pendingVerifications` | Admin devices | Merchant/processor onboarding submission | < 1 s | Pending count badge; new row at the top | 📋 |
-| 11 | **Admin platform dashboard** | `admin.platformSummary` | Admin devices | Any terminal ledger event | < 2 s | Counters animate; deliberately the *loosest* scoped query in the system | 📋 |
-| 12 | **Admin ledger explorer** | `ledger.listRecent({limit:100})` | Admin devices | Every `recordLedgerEvent` call | < 500 ms | New event row prepends with a highlight — the most literal proof the ledger is live | 📋 |
-| 13 | **Notification badge** | `notifications.unreadCount` | Every signed-in user | `notifications` inserts from any mutation | < 500 ms | Numeric badge on the bell; no sound, no toast for background events | 📋 |
-| 14 | **Explore nearby list** | `surplusItems.listNearby(...)` | Every consumer on `/explore` | Any publish, reserve, expiry, or price tick for a nearby item | < 1 s | Cards insert/remove with a layout transition; never a full-list flash | 📋 |
-| 15 | **Unroutable alert** | `recoveryBatches.listForMerchant({status:"unroutable"})` | One merchant, admin | `sweepOfferTtl` after 3 attempts | < 1 s | Amber banner: material became **Residual**; honest, not hidden | 📋 |
+| 1 | **Order status flips to `picked_up`** | `orders.getMine(orderId)` | The one consumer | `orders.confirmPickup` (merchant) | < 500 ms | Card morphs to a green "Rescued" state, `RescueItemCard` shows rescued weight, confetti-free success toast | Planned |
+| 2 | **Order status flips to `paid`** | `orders.getMine(orderId)` | The one consumer | `payments.recordSettlement` (webhook) | < 1 s after Midtrans callback | Pickup code and QR revealed; hold countdown replaced by pickup window countdown | Planned |
+| 3 | **Merchant incoming reservations** | `orders.listForMerchant({status:"reserved"\|"paid"})` | Staff devices for one merchant | `orders.reserve`, `recordSettlement`, `sweepExpiredHolds` | < 500 ms | Row slides into the table, subtle highlight for 3 s, unread count on the nav item | Planned |
+| 4 | **Live remaining quantity on a listing** | `surplusItems.get(itemId)` | Everyone viewing that item | `orders.reserve` by anyone, `sweepExpiredHolds` restoring stock | < 500 ms | "3 tersisa" → "2 tersisa"; at 0 the Reserve button becomes a disabled "Habis diamankan" | Planned |
+| 5 | **Live price after a PRICE_ADJUSTED tick** | `surplusItems.get(itemId)` / `listNearby` | Everyone viewing that item or the Explore list | `surplusItems.applyPriceTick` cron (every 15 min) | < 1 s of the tick | New price cross-fades in, old price struck through, discount badge updates; `aria-live="polite"` announces it | Planned |
+| 6 | **Processor routed-batch queue** | `recoveryBatches.listForProcessor({status:"offered"})` | One processor's devices | `recoveryBatches.runRouting` cron (every 10 min), `sweepOfferTtl` | < 1 s of the routing tick | New offer card appears with a 6-hour TTL countdown bar; badge on the nav item | Planned |
+| 7 | **Batch accepted by another processor** | `recoveryBatches.get(batchId)` | Any processor with the detail open | `recoveryBatches.accept` | < 500 ms | Accept button disables, card shows "Sudah diambil fasilitas lain" | Planned |
+| 8 | **Merchant recovery status** | `recoveryBatches.listForMerchant` | One merchant | `runRouting`, `logIntake`, `logOutcome` | < 1 s | Status chip moves `pending → offered → accepted → collected → processed` | Planned |
+| 9 | **Merchant impact totals** | `impact.merchantSummary(merchantId)` | One merchant | Any `RESCUED` / `PROCESSED` ledger event for that merchant | < 1 s | Rescued / Recovered / Residual figures tick upward; circularity rate recomputes | Planned |
+| 10 | **Admin verification queue** | `admin.pendingVerifications` | Admin devices | Merchant/processor onboarding submission | < 1 s | Pending count badge; new row at the top | Planned |
+| 11 | **Admin platform dashboard** | `admin.platformSummary` | Admin devices | Any terminal ledger event | < 2 s | Counters animate; deliberately the *loosest* scoped query in the system | Planned |
+| 12 | **Admin ledger explorer** | `ledger.listRecent({limit:100})` | Admin devices | Every `recordLedgerEvent` call | < 500 ms | New event row prepends with a highlight — the most literal proof the ledger is live | Planned |
+| 13 | **Notification badge** | `notifications.unreadCount` | Every signed-in user | `notifications` inserts from any mutation | < 500 ms | Numeric badge on the bell; no sound, no toast for background events | Planned |
+| 14 | **Explore nearby list** | `surplusItems.listNearby(...)` | Every consumer on `/explore` | Any publish, reserve, expiry, or price tick for a nearby item | < 1 s | Cards insert/remove with a layout transition; never a full-list flash | Planned |
+| 15 | **Unroutable alert** | `recoveryBatches.listForMerchant({status:"unroutable"})` | One merchant, admin | `sweepOfferTtl` after 3 attempts | < 1 s | Amber banner: material became **Residual**; honest, not hidden | Planned |
 
 ### 3.1 Surfaces That Are Deliberately Not Realtime
 
@@ -159,8 +159,8 @@ Convex bills on function calls and database bandwidth. An unscoped subscription 
 
 | Approach | Query | Invalidations per day | Function executions per day |
 | --- | --- | --- | --- |
-| ❌ Unscoped | `orders.collect()` | 150 writes × 25 subscribed merchants | **3,750** |
-| ✅ Scoped | `by_merchant_status` | 6 writes × 1 merchant, ×25 merchants | **150** |
+| Not implemented Unscoped | `orders.collect()` | 150 writes × 25 subscribed merchants | **3,750** |
+| Implemented Scoped | `by_merchant_status` | 6 writes × 1 merchant, ×25 merchants | **150** |
 
 A 25× reduction, and the ratio grows linearly with merchant count. At 10 cities (250 merchants) the unscoped version costs 375,000 executions per day for the same 1,500 real writes — a 250× multiplier for zero user benefit.
 
@@ -179,13 +179,13 @@ A 25× reduction, and the ratio grows linearly with merchant count. At 10 cities
 ### 4.4 Argument Stability
 
 ```tsx
-// ❌ New object every render — avoid for complex args
+// Not implemented New object every render — avoid for complex args
 const items = useQuery(api.surplusItems.listNearby, {
   latitude: coords.latitude, longitude: coords.longitude,
   radiusMeters: filters.within,
 });
 
-// ✅ Memoised, and rounded so a 1-metre GPS jitter does not resubscribe
+// Implemented Memoised, and rounded so a 1-metre GPS jitter does not resubscribe
 const args = useMemo(() => ({
   latitude: round5(coords.latitude),
   longitude: round5(coords.longitude),
@@ -211,17 +211,17 @@ const order = useQuery(api.orders.getMine, orderId ? { orderId } : "skip");
 
 | Action | Optimistic? | Reasoning |
 | --- | --- | --- |
-| Mark a notification read | ✅ Yes | Idempotent, user-scoped, zero business consequence on failure |
-| Toggle a saved item | ✅ Yes | Local preference, no contention |
-| Merchant edits a draft listing's text | ✅ Yes | Owner-scoped, cannot be contended (drafts are unpublished) |
-| Dismiss a banner | ✅ Yes | Pure UI state |
-| **Reserve a Rescue Item** | ❌ **Never** | Contended resource — see 5.2 |
-| Confirm pickup (`RESCUED`) | ❌ Never | Terminal ledger event; must be server-confirmed |
-| Pay / settle | ❌ Never | Money, and the source of truth is Midtrans |
-| Accept a routed batch | ❌ Never | Another processor may have accepted first |
-| Log `acceptedWeightGrams` | ❌ Never | Authoritative physical measurement |
-| Log outcome / residual | ❌ Never | Terminal ledger event feeding impact figures |
-| Admin verification or moderation | ❌ Never | Privileged; `MODERATED` is terminal |
+| Mark a notification read | Yes | Idempotent, user-scoped, zero business consequence on failure |
+| Toggle a saved item | Yes | Local preference, no contention |
+| Merchant edits a draft listing's text | Yes | Owner-scoped, cannot be contended (drafts are unpublished) |
+| Dismiss a banner | Yes | Pure UI state |
+| **Reserve a Rescue Item** | Not implemented **Never** | Contended resource — see 5.2 |
+| Confirm pickup (`RESCUED`) | Never | Terminal ledger event; must be server-confirmed |
+| Pay / settle | Never | Money, and the source of truth is Midtrans |
+| Accept a routed batch | Never | Another processor may have accepted first |
+| Log `acceptedWeightGrams` | Never | Authoritative physical measurement |
+| Log outcome / residual | Never | Terminal ledger event feeding impact figures |
+| Admin verification or moderation | Never | Privileged; `MODERATED` is terminal |
 
 ### 5.2 Why Reservation Must Never Be Optimistic
 
@@ -247,7 +247,7 @@ The backend correctly prevented overselling. The frontend would have *displayed*
 **The correct treatment.**
 
 ```tsx
-// src/features/orders/ReserveButton.tsx — 📋 planned
+// src/features/orders/ReserveButton.tsx — Planned
 export function ReserveButton({ item, quantity }: Props) {
   const reserve = useMutation(api.orders.reserve);
   const [pending, setPending] = useState(false);
@@ -282,7 +282,7 @@ A pending spinner for 200–400 ms is honest. A success state that may be revoke
 ### 5.3 An Acceptable Optimistic Update
 
 ```tsx
-// src/features/notifications/useMarkRead.ts — 📋 planned
+// src/features/notifications/useMarkRead.ts — Planned
 const markRead = useMutation(api.notifications.markRead).withOptimisticUpdate(
   (store, { notificationId }) => {
     const list = store.getQuery(api.notifications.listMine, {});
@@ -326,7 +326,7 @@ Before adding an optimistic update, answer:
 | Extended offline | Subscriptions stay registered locally; last values retained | Persistent banner plus a "terakhir diperbarui HH:mm" stamp on time-sensitive cards |
 
 ```tsx
-// src/hooks/useConvexConnection.ts — 📋 planned
+// src/hooks/useConvexConnection.ts — Planned
 export function useConvexConnection() {
   const [online, setOnline] = useState(navigator.onLine);
 
@@ -372,7 +372,7 @@ Android may suspend the WebView when the app is backgrounded, killing the socket
 | Doze mode | No background sync attempted; the pilot has no push notifications |
 
 ```ts
-// src/hooks/useAppResume.ts — 📋 planned
+// src/hooks/useAppResume.ts — Planned
 useEffect(() => {
   if (!Capacitor.isNativePlatform()) return;
   const listener = App.addListener("appStateChange", ({ isActive }) => {
@@ -486,7 +486,7 @@ One mutation. Three devices update. No client code ran to make it happen.
 ### 9.1 The Timeout Pattern
 
 ```tsx
-// src/hooks/useQueryWithTimeout.ts — 📋 planned
+// src/hooks/useQueryWithTimeout.ts — Planned
 export function useQueryWithTimeout<T>(result: T | undefined, ms = 8000) {
   const [timedOut, setTimedOut] = useState(false);
 
@@ -507,7 +507,7 @@ A skeleton that never resolves is the worst possible state — it implies progre
 All timestamps are **integer epoch milliseconds UTC**; WIB is applied only at render. But a *client* clock can be wrong, which affects countdowns.
 
 ```ts
-// src/lib/serverTime.ts — 📋 planned
+// src/lib/serverTime.ts — Planned
 let offsetMs = 0;
 
 export function calibrate(serverNow: number) {
@@ -586,13 +586,13 @@ That last row is a realtime decision as much as a data one: every emitted event 
 
 | Test | Method | Status |
 | --- | --- | --- |
-| Consumer sees `picked_up` without refresh | Two browser contexts; merchant confirms in one, assert the DOM in the other | 📋 |
-| Quantity decrements live for a third-party viewer | Context A views the item, Context B reserves, assert A's badge changes | 📋 |
-| Sold-out state disables the button | Reserve the final unit in another context, assert the disabled state | 📋 |
-| Price tick propagates | `bunx convex run surplusItems:applyPriceTick`, assert the rendered price | 📋 |
-| Reconnect restores subscriptions | Toggle offline/online in devtools, assert values converge | 📋 |
-| No optimistic reservation | Assert no success state renders before the server responds | 📋 |
-| Read-set scoping | Assert a merchant's query is *not* invalidated by another merchant's write | 📋 |
+| Consumer sees `picked_up` without refresh | Two browser contexts; merchant confirms in one, assert the DOM in the other | Planned |
+| Quantity decrements live for a third-party viewer | Context A views the item, Context B reserves, assert A's badge changes | Planned |
+| Sold-out state disables the button | Reserve the final unit in another context, assert the disabled state | Planned |
+| Price tick propagates | `bunx convex run surplusItems:applyPriceTick`, assert the rendered price | Planned |
+| Reconnect restores subscriptions | Toggle offline/online in devtools, assert values converge | Planned |
+| No optimistic reservation | Assert no success state renders before the server responds | Planned |
+| Read-set scoping | Assert a merchant's query is *not* invalidated by another merchant's write | Planned |
 
 The scoping test is the one most likely to be forgotten and the most valuable to keep: it is the regression guard against someone quietly replacing a `withIndex` with a `.collect()`.
 

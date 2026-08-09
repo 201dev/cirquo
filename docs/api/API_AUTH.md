@@ -7,8 +7,8 @@
 | **Backend** | Convex (`convex/auth.ts`, `convex/merchants.ts`, `convex/processors.ts`, `convex/profiles.ts`) |
 | **Roles covered** | Consumer · Merchant · Organic Processor · Admin (read-only note) |
 | **Auth model** | Opaque session token in a `sessions` table, verified per call |
-| **Status legend** | ✅ implemented · 📋 planned |
-| **Implemented today** | `users.getByEmail` ✅, `merchants.getByOwner` ✅ — everything else 📋 |
+| **Status legend** | implemented · Planned |
+| **Implemented today** | Email/password authentication, hashed sessions, shared authorization guards, and protected initial read queries |
 | **Conventions** | See [`API.md`](./API.md) §7 (units, ids) and §9 (error model) |
 
 ---
@@ -27,12 +27,12 @@ Cirquo does not use Convex Auth, Clerk, or Auth0. We implement session tokens di
 |---|---|---|
 | Format | 32 random bytes, base64url — opaque, ~43 chars | No structure to parse, nothing to forge |
 | Generation | `crypto.getRandomValues(new Uint8Array(32))` | CSPRNG; never `Math.random()` |
-| Storage (server) | `sessions.token`, indexed `by_token` | O(1) lookup and O(1) revocation |
+| Storage (server) | SHA-256 `sessions.tokenHash`, indexed `by_token_hash` | A database read never yields a usable session token |
 | Storage (web) | `localStorage` key `cirquo.session` | Survives reload; XSS risk mitigated by CSP + React escaping |
 | Storage (mobile) | Capacitor `Preferences` (native, app-sandboxed) | Survives app restart; not in the WebView storage |
 | Lifetime | 30 days (`expiresAt = createdAt + 2_592_000_000`) | Long enough for a market vendor who opens the app twice a week |
-| Sliding renewal | `auth.refreshSession` extends when < 7 days remain | Avoids surprise logouts mid-pickup |
-| Revocation | Delete the `sessions` row | Immediate; the next call fails `SESSION_EXPIRED` |
+| Renewal | None; expiry is absolute | Bounds stolen-token lifetime and keeps queries read-only |
+| Revocation | Delete the `sessions` row | Immediate; the token can no longer resolve a user |
 | Transport | Explicit `sessionToken` argument on every guarded function | Convex RPC has no cookie/header layer for app args |
 | Rotation on password change | All other sessions deleted | Standard credential-compromise response |
 
@@ -82,7 +82,7 @@ const me = useQuery(api.auth.getCurrentUser, token ? { sessionToken: token } : '
 | Algorithm | **scrypt** (`N = 16384, r = 8, p = 1`, 32-byte output) |
 | Salt | 16 random bytes per user, CSPRNG |
 | Stored format | `scrypt$16384$8$1$<saltB64>$<hashB64>` in `users.passwordHash` |
-| Why not bcrypt | No maintained pure-WASM bcrypt that runs cleanly in the Convex V8 isolate; scrypt is available and memory-hard |
+| Implementation | Maintained `node:crypto` scrypt in a Convex Node `internalAction`; no hand-rolled cryptography or added package |
 | Why not Argon2id | Preferred in principle, but the WASM bundle exceeds our function-size comfort zone; scrypt at these parameters is a defensible second choice and documented as such |
 | Why not plain SHA-256 | Not memory-hard, not salted by default, GPU-trivial. Never acceptable for passwords. |
 | Comparison | Constant-time byte comparison, never `===` on the derived key |
@@ -90,39 +90,38 @@ const me = useQuery(api.auth.getCurrentUser, token ? { sessionToken: token } : '
 
 ```ts
 // convex/lib/password.ts
-import { scrypt } from '@noble/hashes/scrypt'
-import { randomBytes } from '@noble/hashes/utils'
+import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
 
 const N = 16384, r = 8, p = 1, DK_LEN = 32
 
-function b64(bytes: Uint8Array): string {
-  return btoa(String.fromCharCode(...bytes))
-}
-function unb64(s: string): Uint8Array {
-  return Uint8Array.from(atob(s), (c) => c.charCodeAt(0))
+function derivePassword(plain: string, salt: Buffer): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scrypt(plain, salt, DK_LEN, { N, r, p, maxmem: 64 * 1024 * 1024 },
+      (error, key) => error ? reject(error) : resolve(key))
+  })
 }
 
-export function hashPassword(plain: string): string {
+export async function hashPassword(plain: string): Promise<string> {
   const salt = randomBytes(16)
-  const dk = scrypt(new TextEncoder().encode(plain), salt, { N, r, p, dkLen: DK_LEN })
-  return `scrypt$${N}$${r}$${p}$${b64(salt)}$${b64(dk)}`
+  const dk = await derivePassword(plain, salt)
+  return `scrypt$${N}$${r}$${p}$${salt.toString('base64')}$${dk.toString('base64')}`
 }
 
-export function verifyPassword(plain: string, stored: string): boolean {
+export async function verifyPassword(plain: string, stored: string): Promise<boolean> {
   const parts = stored.split('$')
   if (parts.length !== 6 || parts[0] !== 'scrypt') return false
   const [, sN, sr, sp, saltB64, hashB64] = parts
-  const salt = unb64(saltB64)
-  const expected = unb64(hashB64)
-  const dk = scrypt(new TextEncoder().encode(plain), salt, {
-    N: Number(sN), r: Number(sr), p: Number(sp), dkLen: expected.length,
-  })
-  // constant-time comparison
-  let diff = dk.length ^ expected.length
-  for (let i = 0; i < Math.min(dk.length, expected.length); i++) diff |= dk[i] ^ expected[i]
-  return diff === 0
+  if (Number(sN) !== N || Number(sr) !== r || Number(sp) !== p) return false
+  const salt = Buffer.from(saltB64, 'base64')
+  const expected = Buffer.from(hashB64, 'base64')
+  if (salt.length !== 16 || expected.length !== DK_LEN) return false
+  return timingSafeEqual(await derivePassword(plain, salt), expected)
 }
 ```
+
+The scrypt helpers run only from `internalAction`s in the Node runtime. Public
+`auth.register` and `auth.login` actions call those helpers, then delegate all
+database writes to internal mutations.
 
 ---
 
@@ -154,9 +153,10 @@ export async function requireAuth(ctx: Ctx, sessionToken: string): Promise<Doc<'
     fail('AUTH_REQUIRED', 'Missing or malformed session token.')
   }
 
+  const tokenHash = await hashSessionToken(sessionToken)
   const session = await ctx.db
     .query('sessions')
-    .withIndex('by_token', (q) => q.eq('token', sessionToken))
+    .withIndex('by_token_hash', (q) => q.eq('tokenHash', tokenHash))
     .unique()
 
   if (!session) {
@@ -276,8 +276,8 @@ Corollaries we enforce in review:
 
 ## 3. Function reference
 
-### `auth.register` 📋
-**Type:** mutation · **Auth:** Public · **PRD ref:** AUTH-01, AUTH-02
+### `auth.register` Planned
+**Type:** action · **Auth:** Public · **PRD ref:** AUTH-01, AUTH-02
 
 Creates a user account with a chosen role and immediately issues a session. Admin accounts cannot be created here.
 
@@ -287,9 +287,8 @@ Creates a user account with a chosen role and immediately issues a session. Admi
 |---|---|---|---|
 | `name` | `v.string()` | Yes | 2–80 chars after trim |
 | `email` | `v.string()` | Yes | Lowercased and trimmed before storage |
-| `password` | `v.string()` | Yes | 8–128 chars; must contain a letter and a digit |
+| `password` | `v.string()` | Yes | 10–128 chars; must contain a letter and a digit |
 | `role` | `v.union(v.literal('consumer'), v.literal('merchant'), v.literal('processor'))` | Yes | **`admin` is not in the union** — unrepresentable, not merely rejected |
-| `phone` | `v.optional(v.string())` | No | Indonesian format; normalised to `+62…` |
 
 **Returns**
 
@@ -299,27 +298,24 @@ type RegisterResult = {
   sessionToken: string
   expiresAt: number                 // epoch ms
   role: 'consumer' | 'merchant' | 'processor'
-  needsProfile: boolean             // true for merchant | processor
+  name: string
 }
 ```
 
-**Authorization** — none; public. Rate limited by IP hash (5 registrations / hour).
+**Authorization** — none; public.
 
 **Validation**
 
-1. Rate limit by IP hash → `RATE_LIMITED`
-2. `name` trimmed length 2–80 → `VALIDATION_FAILED` (`field: 'name'`)
-3. `email` matches a conservative RFC-5322 subset → `VALIDATION_FAILED` (`field: 'email'`)
-4. `password` length 8–128 and contains a letter and a digit → `VALIDATION_FAILED` (`field: 'password'`)
-5. `phone`, if present, normalises to `+62` + 8–13 digits → `VALIDATION_FAILED` (`field: 'phone'`)
-6. No existing user with that email (index `by_email`) → `VALIDATION_FAILED` (`field: 'email'`, message "An account with this email already exists.")
-7. `role` is one of the three literals — enforced by the validator itself, so `admin` is rejected at the boundary before the handler runs
+1. `name` trimmed length 2–80 → `VALIDATION_FAILED`
+2. `email` matches a conservative email pattern → `VALIDATION_FAILED`
+3. `password` length 10–128 and contains a letter and a digit → `VALIDATION_FAILED`
+4. An internal pre-check avoids unnecessary scrypt work for an existing email; the transactional insert mutation repeats the check and remains the uniqueness guarantee
+5. `role` is one of the three literals — enforced by both the public action and internal mutation validators, so `admin` is rejected before either handler runs
 
 **Side effects**
 
-- Insert `users` — `{ name, email, passwordHash, role, phone?, status: 'active', createdAt }`
-- Insert `sessions` — `{ userId, token, expiresAt: now + 30d, createdAt }`
-- Insert `notifications` — welcome message with a role-appropriate next step
+- Insert `users` — `{ name, email, passwordHash, role, createdAt }`
+- Insert `sessions` — `{ userId, tokenHash, expiresAt: now + 30d, createdAt }`; the raw token is returned once and never stored
 - **No ledger event** — account creation moves no material
 
 **Ledger events** — none.
@@ -332,87 +328,66 @@ type RegisterResult = {
 
 | Code | HTTP equiv. | Meaning | Client handling |
 |---|---|---|---|
-| `VALIDATION_FAILED` | 422 | A field failed its rule | Highlight `data.field`, preserve form state |
-| `RATE_LIMITED` | 429 | Too many registrations from this IP | Disable submit for `retryAfterMs` |
+| `VALIDATION_FAILED` | 422 | A field failed its rule | Preserve form state and show a generic validation message |
+| `EMAIL_ALREADY_REGISTERED` | 409 | Normalized email already exists | Show the duplicate-email message |
 | `INTERNAL_ERROR` | 500 | Unhandled fault | Generic toast |
 
 **Example**
 
 ```ts
 // client
-const register = useMutation(api.auth.register)
+const register = useAction(api.auth.register)
 
 const result = await register({
   name: 'Warung Bu Sari',
   email: 'busari@example.com',
   password: 'RescueFood2026',
   role: 'merchant',
-  phone: '081234567890',
 })
 
 await setSessionToken(result.sessionToken)
-navigate(result.needsProfile ? '/merchant/onboarding' : '/discover')
 ```
 
 ```ts
 // convex/auth.ts
-export const register = mutation({
+export const register = action({
   args: {
     name: v.string(),
     email: v.string(),
     password: v.string(),
-    role: v.union(v.literal('consumer'), v.literal('merchant'), v.literal('processor')),
-    phone: v.optional(v.string()),
+    role: registrationRole,
   },
   handler: async (ctx, args) => {
-    const email = args.email.trim().toLowerCase()
-    const name = args.name.trim()
+    const { name, email } = validateRegistrationInput(
+      args.name,
+      args.email,
+      args.password,
+    )
+    const existing = await ctx.runQuery(internal.users.getByEmail, { email })
+    if (existing) throw new ConvexError('EMAIL_ALREADY_REGISTERED')
 
-    if (name.length < 2 || name.length > 80) {
-      fail('VALIDATION_FAILED', 'Name must be 2–80 characters.', { field: 'name' })
-    }
-    if (!EMAIL_RE.test(email)) {
-      fail('VALIDATION_FAILED', 'Enter a valid email address.', { field: 'email' })
-    }
-    if (args.password.length < 8 || args.password.length > 128 ||
-        !/[A-Za-z]/.test(args.password) || !/[0-9]/.test(args.password)) {
-      fail('VALIDATION_FAILED', 'Password must be 8+ characters with a letter and a number.',
-           { field: 'password' })
-    }
+    const passwordHash = await ctx.runAction(internal.authNode.hashPassword, {
+      password: args.password,
+    })
+    const sessionToken = generateSessionToken()
+    const tokenHash = await hashSessionToken(sessionToken)
+    const result = await ctx.runMutation(
+      internal.authInternal.createUserAndSession,
+      {
+        name,
+        email,
+        passwordHash,
+        role: args.role,
+        tokenHash,
+      },
+    )
 
-    const existing = await ctx.db
-      .query('users')
-      .withIndex('by_email', (q) => q.eq('email', email))
-      .unique()
-    if (existing) {
-      fail('VALIDATION_FAILED', 'An account with this email already exists.', { field: 'email' })
-    }
-
-    const userId = await ctx.db.insert('users', {
-      name,
-      email,
-      passwordHash: hashPassword(args.password),
+    return {
+      ...result,
+      sessionToken,
       role: args.role,
-      phone: args.phone ? normalisePhone(args.phone) : undefined,
-      status: 'active',
-      createdAt: Date.now(),
-    })
-
-    const { token, expiresAt } = await createSession(ctx, userId)
-
-    await ctx.db.insert('notifications', {
-      userId,
-      type: 'account',
-      title: 'Welcome to Cirquo',
-      body: args.role === 'consumer'
-        ? 'Find Rescue Items near you and collect them in person.'
-        : 'Complete your profile to begin verification.',
-      read: false,
-      createdAt: Date.now(),
-    })
-
-    return { userId, sessionToken: token, expiresAt, role: args.role,
-             needsProfile: args.role !== 'consumer' }
+      name,
+    }
   },
 })
 ```
@@ -421,8 +396,8 @@ export const register = mutation({
 
 ---
 
-### `auth.login` 📋
-**Type:** mutation · **Auth:** Public · **PRD ref:** AUTH-03
+### `auth.login` Planned
+**Type:** action · **Auth:** Public · **PRD ref:** AUTH-03
 
 Verifies credentials and issues a new session token.
 
@@ -442,26 +417,22 @@ type LoginResult = {
   expiresAt: number
   role: 'consumer' | 'merchant' | 'processor' | 'admin'
   name: string
-  verificationStatus?: 'pending' | 'verified' | 'rejected' | 'suspended'  // merchant | processor
-  needsProfile: boolean
 }
 ```
 
-**Authorization** — none; public. Rate limited 5 attempts / 15 min per `(email, IP hash)`.
+**Authorization** — none; public.
 
 **Validation**
 
-1. Rate limit → `RATE_LIMITED` with `details.retryAfterMs`
-2. Look up user by `by_email`; **if absent, still run a dummy scrypt** then throw `AUTH_REQUIRED` — see the note below
-3. `verifyPassword` → `AUTH_REQUIRED` (identical error and timing to step 2)
-4. `user.status === 'suspended'` → `ACCOUNT_SUSPENDED`
+1. Look up the user through internal `users.getByEmail`
+2. If absent, still run scrypt against a fixed dummy hash
+3. Missing user and wrong password both throw `INVALID_CREDENTIALS`
 
 **Enumeration safety.** Steps 2 and 3 throw the *same* code with the *same* message ("Incorrect email or password."). We additionally run a throwaway scrypt against a fixed dummy hash when the email is unknown, so the response time does not distinguish "no such user" from "wrong password". Without this, an attacker can enumerate every registered merchant email by timing alone.
 
 **Side effects**
 
 - Insert `sessions` (existing sessions on other devices are **not** revoked — a merchant may legitimately use a phone and a counter tablet)
-- Reset the rate-limit counter for that `(email, IP)` on success
 - **No ledger event**
 
 **Ledger events** — none.
@@ -470,9 +441,7 @@ type LoginResult = {
 
 | Code | HTTP equiv. | Meaning | Client handling |
 |---|---|---|---|
-| `AUTH_REQUIRED` | 401 | Wrong email or wrong password — indistinguishable | Toast "Incorrect email or password."; keep email, clear password |
-| `ACCOUNT_SUSPENDED` | 403 | Admin suspended this account | Show support-contact screen; do not offer retry |
-| `RATE_LIMITED` | 429 | Too many attempts | Disable submit, show countdown |
+| `INVALID_CREDENTIALS` | 401 | Wrong email or wrong password — indistinguishable | Show one generic message; keep email and clear password |
 
 **Example**
 
@@ -482,9 +451,9 @@ try {
   const r = await login({ email, password })
   await setSessionToken(r.sessionToken)
   const home = { consumer: '/discover', merchant: '/merchant', processor: '/processor', admin: '/admin' }
-  navigate(r.needsProfile ? `${home[r.role]}/onboarding` : home[r.role])
+  navigate(home[r.role])
 } catch (e) {
-  handleError(e)   // maps AUTH_REQUIRED -> "Incorrect email or password."
+  handleError(e)   // maps INVALID_CREDENTIALS -> one generic message
 }
 ```
 
@@ -494,28 +463,26 @@ const DUMMY_HASH = 'scrypt$16384$8$1$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAA
 
 handler: async (ctx, args) => {
   const email = args.email.trim().toLowerCase()
-  await enforceRateLimit(ctx, 'login', `${email}`, { max: 5, windowMs: 15 * 60_000 })
+  const user = await ctx.runQuery(internal.users.getByEmail, { email })
+  const valid = await ctx.runAction(internal.authNode.verifyPassword, {
+    password: args.password,
+    passwordHash: user?.passwordHash ?? DUMMY_HASH,
+  })
+  if (!user || !valid) throw new ConvexError('INVALID_CREDENTIALS')
 
-  const user = await ctx.db.query('users')
-    .withIndex('by_email', (q) => q.eq('email', email)).unique()
-
-  if (!user) {
-    verifyPassword(args.password, DUMMY_HASH)          // constant-ish timing
-    fail('AUTH_REQUIRED', 'Incorrect email or password.')
-  }
-  if (!verifyPassword(args.password, user.passwordHash)) {
-    fail('AUTH_REQUIRED', 'Incorrect email or password.')
-  }
-  if (user.status === 'suspended') {
-    fail('ACCOUNT_SUSPENDED', 'This account has been suspended.')
-  }
-  // ... create session, resolve profile/verification status ...
+  const sessionToken = generateSessionToken()
+  const tokenHash = await hashSessionToken(sessionToken)
+  const { expiresAt } = await ctx.runMutation(internal.authInternal.createSession, {
+    userId: user._id,
+    tokenHash,
+  })
+  return { userId: user._id, sessionToken, expiresAt, role: user.role, name: user.name }
 }
 ```
 
 ---
 
-### `auth.logout` 📋
+### `auth.logout` Planned
 **Type:** mutation · **Auth:** Any active session · **PRD ref:** AUTH-04
 
 Deletes the current session row, revoking the token immediately and everywhere.
@@ -528,11 +495,11 @@ Deletes the current session row, revoking the token immediately and everywhere.
 
 **Returns** — `{ success: true }`
 
-**Authorization** — `requireAuth`. An already-invalid token returns `{ success: true }` rather than throwing: logging out of a dead session is the desired end state, and failing would strand the client with a token it cannot clear.
+**Authorization** — token lookup only. An already-invalid token returns `{ success: true }` rather than throwing: logging out of a dead session is the desired end state, and failing would strand the client with a token it cannot clear.
 
 **Validation**
 
-1. Look up the session by `by_token`; if absent → return `{ success: true }` (idempotent)
+1. Hash the supplied token with SHA-256 and look up the session by `by_token_hash`; if absent → return `{ success: true }` (idempotent)
 2. Delete the row
 
 **Side effects** — delete one `sessions` row. Other devices are unaffected. No ledger event.
@@ -555,10 +522,10 @@ navigate('/')
 
 ---
 
-### `auth.getCurrentUser` 📋
+### `auth.getCurrentUser` Planned
 **Type:** query · **Auth:** Any active session · **PRD ref:** AUTH-05
 
-Returns the authenticated user plus their role-specific profile summary. This is the single source of truth for client-side routing and role gating.
+Returns a safe projection of the authenticated user. Business profiles are added by M1-05.
 
 **Arguments**
 
@@ -574,20 +541,11 @@ type CurrentUser = {
   name: string
   email: string
   role: 'consumer' | 'merchant' | 'processor' | 'admin'
-  phone?: string
-  status: 'active' | 'suspended'
   createdAt: number
-  profile:
-    | { kind: 'none' }
-    | { kind: 'merchant'; merchantId: Id<'merchants'>; name: string; city: string
-        verificationStatus: 'pending' | 'verified' | 'rejected' | 'suspended' }
-    | { kind: 'processor'; processorId: Id<'processors'>; name: string; city: string
-        facilityType: string
-        verificationStatus: 'pending' | 'verified' | 'rejected' | 'suspended' }
 } | null
 ```
 
-**Authorization** — `requireAuth`, but failures return `null` instead of throwing. A query that throws on every render while the token is loading produces error spam; `null` cleanly means "not signed in".
+**Authorization** — hash the supplied token, resolve `sessions.by_token_hash`, and return `null` for a missing or expired session.
 
 **Validation** — none beyond session resolution.
 
@@ -599,9 +557,9 @@ type CurrentUser = {
 
 | Code | HTTP equiv. | Meaning | Client handling |
 |---|---|---|---|
-| — | 200 | Returns `null` when unauthenticated or suspended | Render the signed-out shell |
+| — | 200 | Returns `null` when unauthenticated or expired | Render the signed-out shell |
 
-**Reactivity note.** Because this is a query, an Admin calling `admin.verifyMerchant` or `admin.suspendUser` propagates to the affected user's open app **instantly**. A suspended user's session-guarded screens flip to the signed-out shell without any polling. This is one of the clearest demonstrations of the reactive model.
+**Security note.** The projection never includes `passwordHash`, and the session row is never returned.
 
 **Example**
 
@@ -611,64 +569,19 @@ const me = useQuery(api.auth.getCurrentUser, token ? { sessionToken: token } : '
 
 if (me === undefined) return <SplashScreen />         // still loading
 if (me === null) return <SignedOutShell />            // not authenticated
-if (me.profile.kind === 'merchant' && me.profile.verificationStatus !== 'verified') {
-  return <VerificationPending status={me.profile.verificationStatus} />
-}
 ```
 
 ---
 
-### `auth.refreshSession` 📋
-**Type:** mutation · **Auth:** Any active session · **PRD ref:** AUTH-06
+### `auth.refreshSession` — not implemented
 
-Extends a session that is nearing expiry, so an active user is never logged out mid-task.
-
-**Arguments**
-
-| Arg | Validator | Required | Notes |
-|---|---|---|---|
-| `sessionToken` | `v.string()` | Yes | Must still be valid — an expired token cannot be refreshed |
-
-**Returns** — `{ expiresAt: number; extended: boolean }`
-
-**Authorization** — `requireAuth`.
-
-**Validation**
-
-1. Session exists and is not expired → `SESSION_EXPIRED` if it is (user must log in again; refresh is not a resurrection mechanism)
-2. If `expiresAt - now > 7 days`, return `{ expiresAt, extended: false }` — no write, so no needless invalidation of subscriptions
-3. Otherwise patch `expiresAt = now + 30 days`
-
-**Side effects** — patch one `sessions` row (only when actually extending). No ledger event.
-
-**Ledger events** — none.
-
-**Errors**
-
-| Code | HTTP equiv. | Meaning | Client handling |
-|---|---|---|---|
-| `AUTH_REQUIRED` | 401 | Unknown token | Clear and redirect to login |
-| `SESSION_EXPIRED` | 401 | Past `expiresAt` | Clear and redirect to login |
-
-**Client policy** — call once on app foreground (`App.addListener('resume')` in Capacitor) and once per cold start. Not on every navigation; the 7-day threshold makes frequent calls pointless writes.
-
-**Example**
-
-```ts
-useEffect(() => {
-  const sub = App.addListener('resume', async () => {
-    const t = await getSessionToken()
-    if (!t) return
-    try { await refreshSession({ sessionToken: t }) }
-    catch { await clearSessionToken(); navigate('/login') }
-  })
-  return () => { void sub.then((s) => s.remove()) }
-}, [])
-```
+Cirquo uses an absolute 30-day session lifetime. Sessions are never extended;
+after expiry the user logs in again and receives a new opaque token. Refresh
+tokens and sliding renewal are outside the MVP scope.
 
 ---
 
-### `auth.requestPasswordReset` 📋
+### `auth.requestPasswordReset` Planned
 **Type:** **action** · **Auth:** Public · **PRD ref:** AUTH-07
 
 Issues a single-use reset token and emails it. This is an **action**, not a mutation, because it calls an external email provider — and actions are the only function kind permitted to make network calls.
@@ -734,7 +647,7 @@ export const requestPasswordReset = action({
 
 ---
 
-### `auth.resetPassword` 📋
+### `auth.resetPassword` Planned
 **Type:** mutation · **Auth:** Valid reset token · **PRD ref:** AUTH-08
 
 Consumes a reset token, sets a new password, and revokes every existing session.
@@ -818,7 +731,7 @@ export const resetPassword = mutation({
 
 ---
 
-### `auth.changePassword` 📋
+### `auth.changePassword` Planned
 **Type:** mutation · **Auth:** Any active session · **PRD ref:** AUTH-09
 
 Changes the password for a signed-in user, requiring the current password as proof of presence.
@@ -860,7 +773,7 @@ Changes the password for a signed-in user, requiring the current password as pro
 
 ---
 
-### `merchants.createProfile` 📋
+### `merchants.createProfile` Planned
 **Type:** mutation · **Auth:** Merchant (no profile yet) · **PRD ref:** MER-00
 
 Creates the business profile for a Merchant account and places it in the verification queue.
@@ -929,7 +842,7 @@ const merchant = await createProfile({
 
 ---
 
-### `processors.createProfile` 📋
+### `processors.createProfile` Planned
 **Type:** mutation · **Auth:** Processor (no profile yet) · **PRD ref:** PRO-00
 
 Creates the facility profile for an Organic Processor, declaring the material types accepted, capacity, service radius, and output types. These fields **are** the Circular Routing eligibility contract.
@@ -1000,7 +913,7 @@ await createProcessorProfile({
 
 ---
 
-### `profiles.update` 📋
+### `profiles.update` Planned
 **Type:** mutation · **Auth:** Owner (Consumer / Merchant / Processor) · **PRD ref:** AUTH-10
 
 Updates the user-level fields shared by all roles. Business and facility fields are updated through `merchants.updateProfile` and `processors.updateProfile` respectively.
@@ -1033,7 +946,7 @@ Updates the user-level fields shared by all roles. Business and facility fields 
 
 ---
 
-### `auth.getVerificationStatus` 📋
+### `auth.getVerificationStatus` Planned
 **Type:** query · **Auth:** Merchant or Processor · **PRD ref:** AUTH-11
 
 Returns the caller's verification state and a precise description of what it currently blocks. This powers the pending-verification screen.
@@ -1101,16 +1014,16 @@ const status = useQuery(api.auth.getVerificationStatus, { sessionToken })
 
 | Role | `verificationStatus` | Can sign in | Can edit profile | Can list / accept | Notes |
 |---|---|---|---|---|---|
-| Merchant | `pending` | ✅ | ✅ | ❌ `NOT_VERIFIED` | Sees the pending screen; can prepare nothing that touches material |
-| Merchant | `verified` | ✅ | ✅ | ✅ | Full access |
-| Merchant | `rejected` | ✅ | ✅ | ❌ `NOT_VERIFIED` | Sees `rejectionNote`; may correct and resubmit |
-| Merchant | `suspended` | ✅ | ❌ | ❌ `NOT_VERIFIED` | Existing active listings are moderated by Admin |
-| Processor | `pending` | ✅ | ✅ | ❌ `NOT_VERIFIED` | Not included in Circular Routing eligibility |
-| Processor | `verified` | ✅ | ✅ | ✅ | Receives routing offers |
-| Processor | `rejected` | ✅ | ✅ | ❌ `NOT_VERIFIED` | Never appears in `findEligibleProcessors` |
-| Processor | `suspended` | ✅ | ❌ | ❌ `NOT_VERIFIED` | In-flight batches are re-routed by Admin |
-| Consumer | n/a | ✅ | ✅ | ✅ | Consumers require no verification |
-| Admin | n/a | ✅ | ✅ | ✅ | Manually provisioned; see [`API_ADMIN.md`](./API_ADMIN.md) |
+| Merchant | `pending` | Implemented | Implemented | Not implemented `NOT_VERIFIED` | Sees the pending screen; can prepare nothing that touches material |
+| Merchant | `verified` | Implemented | Implemented | Implemented | Full access |
+| Merchant | `rejected` | Implemented | Implemented | Not implemented `NOT_VERIFIED` | Sees `rejectionNote`; may correct and resubmit |
+| Merchant | `suspended` | Implemented | Not implemented | Not implemented `NOT_VERIFIED` | Existing active listings are moderated by Admin |
+| Processor | `pending` | Implemented | Implemented | Not implemented `NOT_VERIFIED` | Not included in Circular Routing eligibility |
+| Processor | `verified` | Implemented | Implemented | Implemented | Receives routing offers |
+| Processor | `rejected` | Implemented | Implemented | Not implemented `NOT_VERIFIED` | Never appears in `findEligibleProcessors` |
+| Processor | `suspended` | Implemented | Not implemented | Not implemented `NOT_VERIFIED` | In-flight batches are re-routed by Admin |
+| Consumer | n/a | Implemented | Implemented | Implemented | Consumers require no verification |
+| Admin | n/a | Implemented | Implemented | Implemented | Manually provisioned; see [`API_ADMIN.md`](./API_ADMIN.md) |
 
 ### 4.2 Exactly which functions enforce it
 
@@ -1143,7 +1056,7 @@ The gate is applied **inside** each mutation, not in a middleware layer. Convex 
 | User enumeration via reset | `{ sent: true }` returned unconditionally |
 | Session fixation | Token is generated server-side; the client never proposes one |
 | Stale sessions after compromise | Password change/reset deletes other sessions; Admin suspension is enforced on every `requireAuth` |
-| Long-lived tokens | 30-day cap with sliding renewal; a cron purges rows past `expiresAt` |
+| Long-lived tokens | Absolute 30-day cap; no sliding renewal |
 | Privilege escalation | `role` is never accepted as an argument on any guarded function; it is read from the session-resolved user document |
 | Admin self-registration | `'admin'` is absent from the `auth.register` role union — rejected by the validator, not by a handler branch |
 | Reset-token database leak | Reset tokens are stored SHA-256 hashed |
@@ -1160,7 +1073,8 @@ sequenceDiagram
     autonumber
     participant U as New user
     participant C as Cirquo client
-    participant A as auth.register (mutation)
+    participant A as auth.register (action)
+    participant IM as internal createUserAndSession (mutation)
     participant P as merchants.createProfile (mutation)
     participant AD as Admin
     participant V as admin.verifyMerchant (mutation)
@@ -1168,11 +1082,14 @@ sequenceDiagram
     U->>C: Choose role: Merchant
     C->>A: register({ name, email, password, role: 'merchant', phone })
     activate A
-    Note over A: Transaction BEGIN
-    A->>A: validate fields, check email uniqueness
+    A->>A: validate fields
     A->>A: hashPassword(scrypt)
-    A->>A: insert users, insert sessions, insert notification
-    Note over A: Transaction COMMIT
+    A->>A: generate token; hash token with SHA-256
+    A->>IM: name, normalized email, passwordHash, tokenHash, role
+    activate IM
+    IM->>IM: re-check email uniqueness
+    IM->>IM: transactionally insert users + sessions
+    deactivate IM
     deactivate A
     A-->>C: { sessionToken, needsProfile: true }
     C->>C: setSessionToken() -> Capacitor Preferences
@@ -1205,24 +1122,24 @@ sequenceDiagram
 
 | Function | Status | Notes |
 |---|---|---|
-| `users.getByEmail` | ✅ | Exists in `convex/users.ts`; read-only lookup used by planned login |
-| `merchants.getByOwner` | ✅ | Exists in `convex/merchants.ts`; read-only |
-| `auth.register` | 📋 | Blocks all other auth work |
-| `auth.login` | 📋 | Depends on `lib/password.ts` |
-| `auth.logout` | 📋 | Trivial once sessions exist |
-| `auth.getCurrentUser` | 📋 | Required by every client route guard |
-| `auth.refreshSession` | 📋 | Priority B |
-| `auth.requestPasswordReset` | 📋 | Priority B — needs an email provider key |
-| `auth.resetPassword` | 📋 | Priority B |
-| `auth.changePassword` | 📋 | Priority B |
-| `auth.getVerificationStatus` | 📋 | Priority A — gates the merchant/processor demo |
-| `merchants.createProfile` | 📋 | Priority A |
-| `processors.createProfile` | 📋 | Priority A |
-| `profiles.update` | 📋 | Priority C |
-| `lib/guards.ts` | 📋 | **Highest priority** — every other mutation depends on it |
-| `lib/password.ts` | 📋 | Highest priority |
-| `passwordResets` table | 📋 | Schema addition needed beyond the current `DATABASE.md` set |
-| `rateLimits` table | 📋 | Schema addition needed |
+| `users.getByEmail` | Implemented | Internal query only; cannot be called by clients |
+| `merchants.getByOwner` | Implemented | Owner-scoped; Admin access is an explicit bypass |
+| `auth.register` | Implemented | Public action; transactional uniqueness in internal mutation |
+| `auth.login` | Implemented | Public action; generic invalid-credential response |
+| `auth.logout` | Implemented | Deletes the matching hashed-token session |
+| `auth.getCurrentUser` | Implemented | Returns a safe user projection or `null` |
+| `auth.refreshSession` | — | Deliberately absent; sessions expire absolutely after 30 days |
+| `auth.requestPasswordReset` | Planned | Priority B — needs an email provider key |
+| `auth.resetPassword` | Planned | Priority B |
+| `auth.changePassword` | Planned | Priority B |
+| `auth.getVerificationStatus` | Planned | Priority A — gates the merchant/processor demo |
+| `merchants.createProfile` | Planned | Priority A |
+| `processors.createProfile` | Planned | Priority A |
+| `profiles.update` | Planned | Priority C |
+| `lib/guards.ts` | Planned | **Highest priority** — every other mutation depends on it |
+| `lib/password.ts` | Implemented | Node scrypt with per-password salt and timing-safe verification |
+| `passwordResets` table | Planned | Schema addition needed beyond the current `DATABASE.md` set |
+| `rateLimits` table | Planned | Schema addition needed |
 
 Two tables (`passwordResets`, `rateLimits`) are additions to the schema documented in [`../domain/DATABASE.md`](../domain/DATABASE.md). They are listed here rather than silently assumed, and must be added there before implementation.
 

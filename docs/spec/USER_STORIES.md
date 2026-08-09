@@ -82,7 +82,7 @@ Points are a modified Fibonacci scale calibrated for a **2–3 person team** wor
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Identity | M | 3 | AUTH-01 | 📋 |
+| Identity | M | 3 | AUTH-01 | Planned |
 
 **Acceptance criteria**
 - **Given** I am on the registration screen, **when** I submit a valid name, email, password of at least 8 characters, and select the Consumer role, **then** a `users` record is created with `role = "consumer"` and `status = "active"`, and I am signed in.
@@ -102,7 +102,7 @@ Password is stored as `passwordHash`; the plaintext never leaves the mutation. R
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Identity | M | 3 | AUTH-03 | 📋 |
+| Identity | M | 3 | AUTH-03 | Planned |
 
 **Acceptance criteria**
 - **Given** valid credentials, **when** I log in, **then** a session token is issued and persisted on the device.
@@ -122,7 +122,7 @@ Capacitor WebView storage must be verified on a real device, not only in the bro
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Discovery | M | 8 | CON-01 | 📋 |
+| Discovery | M | 8 | CON-01 | Planned |
 
 **Acceptance criteria**
 - **Given** location permission is granted, **when** the explore screen loads, **then** the map centres on my coordinates and renders one pin per `active` Rescue Item within the visible bounds.
@@ -143,7 +143,7 @@ Reactivity here is a Convex subscription, not polling. Pins must reflect `remain
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Discovery | M | 3 | CON-02 | 📋 |
+| Discovery | M | 3 | CON-02 | Planned |
 
 **Acceptance criteria**
 - **Given** I am on the explore screen, **when** I toggle to list view, **then** the same filtered result set renders as cards sorted by distance ascending.
@@ -162,7 +162,7 @@ Never fabricate a distance. A missing fix means no distance label.
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Discovery | M | 3 | CON-03 | 📋 |
+| Discovery | M | 3 | CON-03 | Planned |
 
 **Acceptance criteria**
 - **Given** the filter sheet is open, **when** I select one or more dietary preference tags, **then** the result set narrows to items whose `dietaryTags` contain every selected tag.
@@ -182,7 +182,7 @@ This is **dietary preference filtering**, a merchant-declared informational tag.
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Discovery | S | 3 | CON-04 | 📋 |
+| Discovery | S | 3 | CON-04 | Planned |
 
 **Acceptance criteria**
 - **Given** I set a maximum distance, **when** results refresh, **then** only items whose merchant is within that radius of my position remain.
@@ -202,7 +202,7 @@ Distance is computed from merchant `latitude`/`longitude`; there is no routing o
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Discovery | M | 3 | CON-05 | 📋 |
+| Discovery | M | 3 | CON-05 | Planned |
 
 **Acceptance criteria**
 - **Given** I open an item, **when** the page renders, **then** it shows item name, merchant name and address, `currentPrice`, `originalPrice`, discount percentage, `remainingQuantity`, `weightPerItemGrams`, dietary tags, and the pickup window in WIB.
@@ -222,7 +222,7 @@ Disabling the button is a courtesy. The reservation mutation re-validates quanti
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Transaction | M | 5 | CON-06 | 📋 |
+| Transaction | M | 5 | CON-06 | Planned |
 
 **Acceptance criteria**
 - **Given** an item with `remainingQuantity >= n`, **when** I reserve `n` units, **then** `remainingQuantity` is decremented by `n` **in the same transaction** as the order creation.
@@ -243,7 +243,7 @@ Decrementing at reservation rather than at payment is the deliberate anti-overse
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Transaction | M | 8 | PAY-01, PAY-02 | 📋 |
+| Transaction | M | 8 | PAY-01, PAY-02 | Planned |
 
 **Acceptance criteria**
 - **Given** a `reserved` order, **when** I proceed to payment, **then** a Midtrans Sandbox QRIS charge is created for exactly `totalPrice` in IDR and the QR is displayed with a live countdown to `paymentHoldExpiresAt`.
@@ -264,7 +264,7 @@ Sandbox only. No production credentials exist in this project. Idempotency keys 
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Fulfilment | M | 3 | CON-07 | 📋 |
+| Fulfilment | M | 3 | CON-07 | Planned |
 
 **Acceptance criteria**
 - **Given** an order becomes `paid`, **when** I open it, **then** a unique `pickupCode` is displayed prominently along with the merchant address and pickup window.
@@ -284,7 +284,7 @@ Code uniqueness is enforced server-side. Only the paying Consumer and the owning
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Fulfilment | M | 3 | CON-08 | 📋 |
+| Fulfilment | M | 3 | CON-08 | Planned |
 
 **Acceptance criteria**
 - **Given** I have orders, **when** I open `/orders`, **then** they are grouped into active (`reserved`, `paid`) and past (`picked_up`, `cancelled`, `expired`, `refunded`).
@@ -304,7 +304,7 @@ The `/orders` route exists today as a placeholder using mock data; this story re
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Transaction | S | 3 | CON-06 | 📋 |
+| Transaction | S | 3 | CON-06 | Planned |
 
 **Acceptance criteria**
 - **Given** an order is `reserved` and unpaid, **when** I cancel, **then** the order becomes `cancelled`, the reserved quantity returns to `remainingQuantity`, and a `CANCELLED` ledger event is recorded.
@@ -324,7 +324,7 @@ Cancellation restores quantity. It does **not** create residual material — not
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Impact | M | 3 | IMP-01 | 📋 |
+| Impact | M | 3 | IMP-01 | Planned |
 
 **Acceptance criteria**
 - **Given** I have `picked_up` orders, **when** I open my impact panel, **then** total rescued weight, number of rescues, and rupiah saved are displayed, all derived from `RESCUED` events in the Material Flow Ledger.
@@ -344,7 +344,7 @@ Never compute impact from `orders`. The ledger is the single source of truth, in
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Platform | S | 3 | NOT-01, NOT-02 | 📋 |
+| Platform | S | 3 | NOT-01, NOT-02 | Planned |
 
 **Acceptance criteria**
 - **Given** my payment hold has 5 minutes left, **when** the scheduler evaluates it, **then** a notification is created telling me to complete payment.
@@ -364,7 +364,7 @@ MVP is in-app only. Copy is Bahasa Indonesia; see the notification table in [USE
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Discovery | C | 2 | CON-09 | 📋 |
+| Discovery | C | 2 | CON-09 | Planned |
 
 **Acceptance criteria**
 - **Given** an order is `picked_up`, **when** I open it, **then** a 1–5 star rating control with an optional comment is available.
@@ -386,7 +386,7 @@ Priority C. This is the first story cut if M7 runs short.
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Identity | M | 3 | AUTH-01, MER-01 | 📋 |
+| Identity | M | 3 | AUTH-01, MER-01 | Planned |
 
 **Acceptance criteria**
 - **Given** I choose the Merchant role at registration, **when** I submit, **then** a `users` record with `role = "merchant"` is created and I am routed to the business profile form.
@@ -405,7 +405,7 @@ Coordinates are required because map discovery depends on them. A merchant witho
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Verification | M | 2 | AUTH-04 | 📋 |
+| Verification | M | 2 | AUTH-04 | Planned |
 
 **Acceptance criteria**
 - **Given** `verificationStatus = "pending"`, **when** I attempt to create a listing, **then** the server rejects the mutation even if the client sends it directly.
@@ -424,7 +424,7 @@ The gate is enforced in the mutation, not in the router. Hiding the button is co
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Listing | M | 5 | MER-02 | 📋 |
+| Listing | M | 5 | MER-02 | Planned |
 
 **Acceptance criteria**
 - **Given** I am verified, **when** I submit name, material type, original price, floor price, initial quantity, weight per item in grams, pickup start and end, and dietary tags, **then** a `surplusItems` record is created with `status = "active"`, `remainingQuantity = initialQuantity`, and a `LISTED` ledger event is recorded.
@@ -445,7 +445,7 @@ Weight is integer grams everywhere. Money is integer IDR. Times are epoch millis
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Pricing | M | 5 | PRC-01, PRC-02 | 📋 |
+| Pricing | M | 5 | PRC-01, PRC-02 | Planned |
 
 **Acceptance criteria**
 - **Given** I enter an original price and a pickup window, **when** the form recalculates, **then** a **Dynamic Rescue Pricing** suggestion is shown with a plain-language explanation of the discount rationale.
@@ -465,7 +465,7 @@ This is rule-based **Dynamic Rescue Pricing**. It is deterministic and explainab
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Pricing | M | 2 | PRC-03 | 📋 |
+| Pricing | M | 2 | PRC-03 | Planned |
 
 **Acceptance criteria**
 - **Given** I set `floorPrice`, **when** the item is saved, **then** the value persists on the item.
@@ -484,7 +484,7 @@ The floor is the merchant's contract with the platform. Nothing overrides it, in
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Pricing | S | 3 | PRC-04 | 📋 |
+| Pricing | S | 3 | PRC-04 | Planned |
 
 **Acceptance criteria**
 - **Given** an `active` item with time remaining in its window, **when** the pricing tick runs, **then** `currentPrice` is recalculated from elapsed window fraction and clamped at `floorPrice`.
@@ -504,7 +504,7 @@ Already-paid orders are never repriced. `totalPrice` is frozen at reservation.
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Listing | M | 3 | MER-03 | 📋 |
+| Listing | M | 3 | MER-03 | Planned |
 
 **Acceptance criteria**
 - **Given** I have items, **when** I open `/merchant/surplus`, **then** they are listed with status badge, remaining/initial quantity, current price, and window countdown.
@@ -524,7 +524,7 @@ The route exists with mock data today; this story swaps in a live scoped query.
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Listing | M | 3 | MER-04 | 📋 |
+| Listing | M | 3 | MER-04 | Planned |
 
 **Acceptance criteria**
 - **Given** an item is `active` with `remainingQuantity == initialQuantity`, **when** I edit it, **then** all fields are editable and the update succeeds.
@@ -543,7 +543,7 @@ The edit lock protects the Consumer's price and weight expectations, which are a
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Listing | S | 3 | MER-07 | 📋 |
+| Listing | S | 3 | MER-07 | Planned |
 
 **Acceptance criteria**
 - **Given** I mark an item `processingOnly = true`, **when** it is created, **then** it never appears in Consumer discovery queries.
@@ -562,7 +562,7 @@ Processing-only material produces `RECOVERED` weight, never `RESCUED` weight.
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Fulfilment | M | 5 | MER-05 | 📋 |
+| Fulfilment | M | 5 | MER-05 | Planned |
 
 **Acceptance criteria**
 - **Given** a `paid` order, **when** I enter the matching `pickupCode` inside the pickup window, **then** the order becomes `picked_up`, `rescuedWeightGrams` is written, and a `RESCUED` ledger event is recorded.
@@ -582,7 +582,7 @@ Processing-only material produces `RECOVERED` weight, never `RESCUED` weight.
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Fulfilment | S | 3 | MER-06 | 📋 |
+| Fulfilment | S | 3 | MER-06 | Planned |
 
 **Acceptance criteria**
 - **Given** a `paid` order whose window has closed, **when** I report a no-show, **then** the order is marked appropriately and the material is queued for **Circular Routing**.
@@ -601,7 +601,7 @@ This is the rule people get wrong most often. A no-show is a **routing** event, 
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Impact | M | 3 | IMP-02 | 📋 |
+| Impact | M | 3 | IMP-02 | Planned |
 
 **Acceptance criteria**
 - **Given** I open `/merchant`, **when** it renders, **then** summary cards show active listings, pending pickups today, weight rescued, weight recovered, and revenue recovered.
@@ -620,7 +620,7 @@ Route exists with placeholder `SummaryCard` components; this story supplies real
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Routing | S | 3 | MER-03, ADM-06 | 📋 |
+| Routing | S | 3 | MER-03, ADM-06 | Planned |
 
 **Acceptance criteria**
 - **Given** my item expires unsold, **when** routing begins, **then** the item status shows `recovery_pending` and the batch state is visible to me.
@@ -639,7 +639,7 @@ The Merchant is a spectator to routing. They never choose the processor.
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Identity | S | 2 | MER-01 | 📋 |
+| Identity | S | 2 | MER-01 | Planned |
 
 **Acceptance criteria**
 - **Given** I edit my profile, **when** I save, **then** the `merchants` record updates and the map position of my future listings reflects the new coordinates.
@@ -658,7 +658,7 @@ Address changes reset verification deliberately — a verified address is the th
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Platform | S | 2 | NOT-03 | 📋 |
+| Platform | S | 2 | NOT-03 | Planned |
 
 **Acceptance criteria**
 - **Given** an order becomes `paid`, **when** it commits, **then** I receive a notification naming the item and quantity.
@@ -679,7 +679,7 @@ Shares the `notifications` table and centre with US-C-14.
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Identity | M | 3 | AUTH-01, PRC-05 | 📋 |
+| Identity | M | 3 | AUTH-01, PRC-05 | Planned |
 
 **Acceptance criteria**
 - **Given** I select the Processor role, **when** I complete the facility form with name, facility type, city, coordinates, and operating hours, **then** a `processors` record is created with `verificationStatus = "pending"`.
@@ -698,7 +698,7 @@ Facility types cover BSF larvae cultivation, composting, biogas digestion, and a
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Recovery | M | 3 | PRC-05 | 📋 |
+| Recovery | M | 3 | PRC-05 | Planned |
 
 **Acceptance criteria**
 - **Given** my profile, **when** I set `acceptedMaterialTypes`, `dailyCapacityGrams`, `maxPickupRadiusMeters`, and `outputTypes`, **then** the values persist and immediately affect routing eligibility.
@@ -718,7 +718,7 @@ These four fields are the entire eligibility contract. They are also the demo's 
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Verification | M | 2 | AUTH-04 | 📋 |
+| Verification | M | 2 | AUTH-04 | Planned |
 
 **Acceptance criteria**
 - **Given** `verificationStatus != "verified"`, **when** I open my queue, **then** an explanatory state is shown instead of an empty list.
@@ -737,7 +737,7 @@ An unverified processor is invisible to the routing engine, not merely blocked i
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Recovery | M | 3 | PRC-06 | 📋 |
+| Recovery | M | 3 | PRC-06 | Planned |
 
 **Acceptance criteria**
 - **Given** offers exist for me, **when** I open `/processor/recovery`, **then** each shows merchant name, distance, material type, offered weight, and a countdown to `offerExpiresAt`.
@@ -756,7 +756,7 @@ Route exists with mock data today. Scoping filters on `processorId` and excludes
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Recovery | M | 3 | PRC-06 | 📋 |
+| Recovery | M | 3 | PRC-06 | Planned |
 
 **Acceptance criteria**
 - **Given** an `offered` batch assigned to me within TTL, **when** I accept, **then** the batch becomes `accepted` and an `INTAKE_ACCEPTED` ledger event is recorded.
@@ -776,7 +776,7 @@ Acceptance does not yet write a weight. Offered weight is an estimate; only meas
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Recovery | M | 3 | PRC-06 | 📋 |
+| Recovery | M | 3 | PRC-06 | Planned |
 
 **Acceptance criteria**
 - **Given** an `offered` batch, **when** I decline with a reason, **then** my id is appended to `declinedByProcessorIds` and an `INTAKE_DECLINED` ledger event is recorded.
@@ -795,7 +795,7 @@ Declining is a first-class, blameless action. It is what makes the retry logic c
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Recovery | M | 5 | PRC-06 | 📋 |
+| Recovery | M | 5 | PRC-06 | Planned |
 
 **Acceptance criteria**
 - **Given** an `accepted` batch, **when** I enter `acceptedWeightGrams` from my scale, **then** the batch becomes `collected` and the measured weight is stored as authoritative.
@@ -815,7 +815,7 @@ Only the Processor writes `acceptedWeightGrams`. Not the Merchant, not the Admin
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Recovery | M | 5 | PRC-06 | 📋 |
+| Recovery | M | 5 | PRC-06 | Planned |
 
 **Acceptance criteria**
 - **Given** a `collected` batch, **when** I submit `outputType`, `outputWeightGrams`, and `residualWeightGrams`, **then** the batch becomes `processed` and a `PROCESSED` ledger event is recorded.
@@ -835,7 +835,7 @@ Residual is honest. A processor that reports zero residual on every batch is a d
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Impact | M | 3 | IMP-03 | 📋 |
+| Impact | M | 3 | IMP-03 | Planned |
 
 **Acceptance criteria**
 - **Given** I open `/processor`, **when** it renders, **then** cards show pending offers, weight collected this week, weight processed, output by type, and capacity utilisation against `dailyCapacityGrams`.
@@ -854,7 +854,7 @@ Route exists with mock data; this story supplies live aggregates.
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Platform | S | 2 | NOT-04 | 📋 |
+| Platform | S | 2 | NOT-04 | Planned |
 
 **Acceptance criteria**
 - **Given** a batch is routed to me, **when** the `ROUTED` event commits, **then** I receive a notification with weight, material type, and TTL.
@@ -875,7 +875,7 @@ Six hours is deliberately generous for perishable material because processors op
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Identity | M | 2 | AUTH-02 | 📋 |
+| Identity | M | 2 | AUTH-02 | Planned |
 
 **Acceptance criteria**
 - **Given** the public registration form, **when** it renders, **then** no Admin role option exists.
@@ -894,7 +894,7 @@ Mass assignment of `role` is the single highest-severity risk in the system. See
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Verification | M | 3 | ADM-01, AUTH-04 | 📋 |
+| Verification | M | 3 | ADM-01, AUTH-04 | Planned |
 
 **Acceptance criteria**
 - **Given** pending applicants exist, **when** I open the verification queue, **then** both merchants and processors are listed with submitted details and coordinates.
@@ -914,7 +914,7 @@ This is the first Admin capability to build because M2 supply work is blocked wi
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Governance | M | 3 | ADM-02 | 📋 |
+| Governance | M | 3 | ADM-02 | Planned |
 
 **Acceptance criteria**
 - **Given** a live listing, **when** I moderate it with a reason, **then** its status becomes `moderated`, it disappears from discovery, and a `MODERATED` ledger event is recorded.
@@ -933,7 +933,7 @@ This is the first Admin capability to build because M2 supply work is blocked wi
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Governance | M | 5 | ADM-03, IMP-04 | 📋 |
+| Governance | M | 5 | ADM-03, IMP-04 | Planned |
 
 **Acceptance criteria**
 - **Given** the ledger view, **when** it renders, **then** events are shown newest first with event type, weight delta, actor, actor role, methodology version, and timestamp.
@@ -953,7 +953,7 @@ This screen is the demo's credibility proof. It shows judges that the numbers ar
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Impact | M | 5 | ADM-04, IMP-04 | 📋 |
+| Impact | M | 5 | ADM-04, IMP-04 | Planned |
 
 **Acceptance criteria**
 - **Given** the dashboard, **when** it renders, **then** it shows total listed weight, rescued weight, recovered weight, residual weight, and the derived **circularity rate**.
@@ -973,7 +973,7 @@ Target for the demo dataset is **93%**. The system must never display 100%, and 
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Governance | S | 5 | ADM-05 | 📋 |
+| Governance | S | 5 | ADM-05 | Planned |
 
 **Acceptance criteria**
 - **Given** open disputes, **when** I open the queue, **then** each shows the order, both parties, the claim, and the full ledger timeline for that item.
@@ -993,7 +993,7 @@ Refunds are recorded as order state. Money movement in Midtrans Sandbox is not s
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Routing | M | 5 | ADM-06 | 📋 |
+| Routing | M | 5 | ADM-06 | Planned |
 
 **Acceptance criteria**
 - **Given** an `unroutable` batch, **when** I open it, **then** I see why routing failed — attempts used, decliners, and which eligibility rules excluded each processor.
@@ -1013,7 +1013,7 @@ Admin may override radius and capacity, but never a processor's `acceptedMateria
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Governance | S | 3 | ADM-01 | 📋 |
+| Governance | S | 3 | ADM-01 | Planned |
 
 **Acceptance criteria**
 - **Given** the user list, **when** it renders, **then** users are searchable by email and filterable by role and status.
@@ -1033,7 +1033,7 @@ Suspension never deletes ledger history. Past events remain and continue to coun
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Fulfilment | S | 3 | MER-05, ADM-05 | 📋 |
+| Fulfilment | S | 3 | MER-05, ADM-05 | Planned |
 
 **Acceptance criteria**
 - **Given** a `paid` order whose window has closed, **when** I confirm pickup with an override reason, **then** the order becomes `picked_up` and a `RESCUED` event is recorded with the override flagged in metadata.
@@ -1052,7 +1052,7 @@ Overrides are visible in the ledger. They are exceptions, and exceptions must be
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Governance | C | 3 | ADM-04 | 📋 |
+| Governance | C | 3 | ADM-04 | Planned |
 
 **Acceptance criteria**
 - **Given** the health panel, **when** it renders, **then** it shows last run time and outcome for each scheduled job.
@@ -1075,7 +1075,7 @@ These stories have no human actor. They are written from the platform's perspect
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Pricing | S | 3 | PRC-04 | 📋 |
+| Pricing | S | 3 | PRC-04 | Planned |
 
 **Acceptance criteria**
 - **Given** the cron fires, **when** it runs, **then** every `active` and `reserved_partial` item inside its pickup window is evaluated.
@@ -1095,7 +1095,7 @@ No-op suppression keeps the ledger readable. A ledger full of identical price ev
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Transaction | M | 3 | PAY-03 | 📋 |
+| Transaction | M | 3 | PAY-03 | Planned |
 
 **Acceptance criteria**
 - **Given** an order is `reserved` with `paymentHoldExpiresAt` in the past, **when** the sweeper runs, **then** the order becomes `expired`, quantity is returned, and an `EXPIRED` event is recorded.
@@ -1115,7 +1115,7 @@ This job is what makes decrement-at-reservation safe. Without it the anti-overse
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Routing | M | 5 | CON-06, PRC-06 | 📋 |
+| Routing | M | 5 | CON-06, PRC-06 | Planned |
 
 **Acceptance criteria**
 - **Given** an item whose `pickupEndAt` has passed with `remainingQuantity > 0`, **when** the sweeper runs, **then** the item becomes `recovery_pending`, an `EXPIRED` event is recorded, and a recovery batch is created with `offeredWeightGrams = remainingQuantity × weightPerItemGrams`.
@@ -1135,7 +1135,7 @@ This job is the hinge between the marketplace and the circular loop. It must be 
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Routing | M | 8 | PRC-06, ADM-06 | 📋 |
+| Routing | M | 8 | PRC-06, ADM-06 | Planned |
 
 **Acceptance criteria**
 - **Given** a `pending` batch, **when** the engine runs, **then** it selects processors that are verified, accept the material type, are within `maxPickupRadiusMeters`, have capacity headroom today, are not in `declinedByProcessorIds`, and are open within the next 24 hours.
@@ -1155,7 +1155,7 @@ This is the single most important engineering story in the project. It is schedu
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Routing | M | 3 | PRC-06 | 📋 |
+| Routing | M | 3 | PRC-06 | Planned |
 
 **Acceptance criteria**
 - **Given** an `offered` batch with `offerExpiresAt` in the past, **when** the sweeper runs, **then** the offer is withdrawn and the batch returns to `pending` for another attempt.
@@ -1175,7 +1175,7 @@ Silence is treated as a decline. It is the only interpretation that keeps perish
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Impact | C | 3 | IMP-04 | 📋 |
+| Impact | C | 3 | IMP-04 | Planned |
 
 **Acceptance criteria**
 - **Given** the check runs, **when** it evaluates each item, **then** it confirms that rescued plus recovered plus residual weight never exceeds total listed weight.
@@ -1251,9 +1251,9 @@ At the scale's indicative band, one point is roughly 1.5–2 hours of focused wo
 
 | Scenario | Daily capacity | Points/day | Days needed | Verdict |
 |---|---|---|---|---|
-| 2 developers, 7 focused h/day | 14 h | ~8 | 25 | ❌ **Misses the deadline by 2 days before any blocker.** Descoping is mandatory, not contingent |
-| 3 developers, 7 focused h/day | 21 h | ~12 | 17 | ⚠️ Fits with 1 day of slack. Any external blocker consumes it |
-| 2 developers, 9 h/day sustained | 18 h | ~10 | 20 | ⚠️ Fits only if sustained for 18 straight days. Not a plan, a hope |
+| 2 developers, 7 focused h/day | 14 h | ~8 | 25 | Not implemented **Misses the deadline by 2 days before any blocker.** Descoping is mandatory, not contingent |
+| 3 developers, 7 focused h/day | 21 h | ~12 | 17 | Fits with 1 day of slack. Any external blocker consumes it |
+| 2 developers, 9 h/day sustained | 18 h | ~10 | 20 | Fits only if sustained for 18 straight days. Not a plan, a hope |
 
 **Verdict:** the committed 197 points do **not** fit a 2-developer team in the remaining time. With three developers it fits with roughly one day of slack.
 

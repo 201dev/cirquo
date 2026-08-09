@@ -20,7 +20,7 @@
 
 ## Documentation Structure
 
-### 📦 Product
+### Product
 
 Defines what Cirquo is and why it exists.
 
@@ -28,7 +28,7 @@ Defines what Cirquo is and why it exists.
 - [VISION.md](product/VISION.md) — Long-term vision and mission
 - [PRD.md](product/PRD.md) — Complete Product Requirements Document
 
-### 💼 Business
+### Business
 
 Business model, strategy, and risk management.
 
@@ -36,7 +36,7 @@ Business model, strategy, and risk management.
 - [ROADMAP.md](business/ROADMAP.md) — Competition MVP, post-competition roadmap
 - [RISKS.md](business/RISKS.md) — Technical, business, operational risks + mitigation
 
-### 📋 Specification
+### Specification
 
 Detailed feature definitions and user journeys.
 
@@ -45,7 +45,7 @@ Detailed feature definitions and user journeys.
 - [USER_FLOW.md](spec/USER_FLOW.md) — Complete user journey with Mermaid diagrams
 - [ROLES.md](spec/ROLES.md) — RBAC, permissions, capabilities per role
 
-### 🗄️ Domain & Data
+### Domain & Data
 
 Domain model, state machines, and database design.
 
@@ -54,7 +54,7 @@ Domain model, state machines, and database design.
 - [DATA_MODEL.md](domain/DATA_MODEL.md) — Entity relationships and data flow
 - [DATABASE.md](domain/DATABASE.md) — Convex schema + future PostgreSQL migration
 
-### 🔌 API
+### API
 
 Backend function contracts per role.
 
@@ -65,7 +65,7 @@ Backend function contracts per role.
 - [API_PROCESSOR.md](api/API_PROCESSOR.md) — Processor-facing queries/mutations
 - [API_ADMIN.md](api/API_ADMIN.md) — Admin-facing queries/mutations
 
-### 🏗️ Architecture
+### Architecture
 
 System design, frontend/backend structure, external integrations.
 
@@ -75,7 +75,7 @@ System design, frontend/backend structure, external integrations.
 - [REALTIME.md](architecture/REALTIME.md) — Realtime subscriptions and reactive dashboards
 - [SCHEDULER.md](architecture/SCHEDULER.md) — Scheduled jobs (pricing updates, routing, expiry)
 
-### 📊 Impact & Algorithms
+### Impact & Algorithms
 
 Material flow tracking and circular economy metrics.
 
@@ -83,7 +83,7 @@ Material flow tracking and circular economy metrics.
 - [IMPACT.md](impact/IMPACT.md) — CO2e estimation methodology, assumptions, limitations
 - [MATERIAL_LEDGER.md](impact/MATERIAL_LEDGER.md) — Append-only event ledger design
 
-### 🔒 Security
+### Security
 
 Authentication, authorization, threat model.
 
@@ -91,7 +91,7 @@ Authentication, authorization, threat model.
 - [AUTH.md](security/AUTH.md) — Session-based authentication design
 - [PERMISSIONS.md](security/PERMISSIONS.md) — Server-side RBAC enforcement
 
-### 🎨 Design
+### Design
 
 UI/UX principles, design system, Figma workflow.
 
@@ -100,7 +100,7 @@ UI/UX principles, design system, Figma workflow.
 - [COMPONENTS.md](design/COMPONENTS.md) — shadcn/ui usage and custom component catalog
 - [FIGMA.md](design/FIGMA.md) — Figma page structure, frames, components, tokens
 
-### 🛠️ Engineering
+### Engineering
 
 Development workflow, testing, deployment.
 
@@ -109,7 +109,7 @@ Development workflow, testing, deployment.
 - [TESTING.md](engineering/TESTING.md) — Testing strategy (unit, integration, E2E, UAT)
 - [DEPLOYMENT.md](engineering/DEPLOYMENT.md) — Hosting, CI/CD, monitoring
 
-### 📁 Project
+### Project
 
 Version history, contribution workflow.
 
@@ -153,7 +153,7 @@ Every document in this system:
 - Is self-contained and can be read independently
 - Cross-references related documents explicitly
 - Uses consistent terminology (always "Rescue Item," "Material Flow Ledger," "Circular Routing," "Cirquo")
-- Distinguishes clearly between **implemented** ✅, **in progress** 🚧, and **planned** 📋 features
+- Distinguishes clearly between **implemented** Implemented, **in progress** In progress, and **planned** Planned features
 - Assumes a real startup context with real technical decisions and trade-offs
 - Uses Mermaid diagrams for flows and architecture where appropriate
 

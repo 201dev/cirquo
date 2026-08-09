@@ -7,8 +7,8 @@
 | **Actor** | Merchant (verified) |
 | **Backend** | Convex (`convex/surplusItems.ts`, `convex/orders.ts`, `convex/merchants.ts`, `convex/impact.ts`, `convex/recoveryBatches.ts`) |
 | **Verification gate** | All listing and fulfilment functions require `merchants.verificationStatus === 'verified'` |
-| **Status legend** | ✅ implemented · 📋 planned |
-| **Implemented today** | `merchants.getByOwner` ✅, `surplusItems.listByStatus` ✅ — everything else 📋 |
+| **Status legend** | implemented · Planned |
+| **Implemented today** | `merchants.getByOwner` Implemented, `surplusItems.listByStatus` Implemented — everything else Planned |
 | **Conventions** | [`API.md`](./API.md) §7 units · §9 errors · §15 ledger contract |
 
 ---
@@ -37,7 +37,7 @@ Three invariants dominate this file:
 
 ## 2. Function reference
 
-### `surplusItems.create` 📋
+### `surplusItems.create` Planned
 **Type:** mutation · **Auth:** Merchant (verified) · **PRD ref:** MER-01
 
 Creates a Rescue Item. Created as `draft` by default so a merchant can prepare a listing without exposing it, or published immediately in one step.
@@ -292,7 +292,7 @@ const result = await createItem({
 
 ---
 
-### `surplusItems.suggestPrice` 📋
+### `surplusItems.suggestPrice` Planned
 **Type:** query · **Auth:** Merchant (verified) · **PRD ref:** MER-02
 
 Wraps **Dynamic Rescue Pricing** — a deterministic, rule-based discount model. It returns a suggested `currentPrice` with a full explanation of how it was reached.
@@ -411,7 +411,7 @@ The floor clamp is not a suggestion. Even at maximum urgency, maximum volume, an
 
 ---
 
-### `surplusItems.update` 📋
+### `surplusItems.update` Planned
 **Type:** mutation · **Auth:** Merchant (owner, verified) · **PRD ref:** MER-03
 
 Updates a listing. **Rejected once any quantity has been reserved.**
@@ -557,7 +557,7 @@ if (args.currentPrice !== undefined &&
 
 ---
 
-### `surplusItems.publish` 📋
+### `surplusItems.publish` Planned
 **Type:** mutation · **Auth:** Merchant (owner, verified) · **PRD ref:** MER-04
 
 Transitions a `draft` to `active`, making it discoverable and writing the `LISTED` ledger event.
@@ -599,7 +599,7 @@ Transitions a `draft` to `active`, making it discoverable and writing the `LISTE
 
 ---
 
-### `surplusItems.cancel` 📋
+### `surplusItems.cancel` Planned
 **Type:** mutation · **Auth:** Merchant (owner, verified) · **PRD ref:** MER-05
 
 Cancels a listing. **Only permitted while untouched** — no reservations, ever.
@@ -647,7 +647,7 @@ The negative delta exactly offsets the `LISTED` opening balance, so the chain su
 
 ---
 
-### `surplusItems.markProcessingOnly` 📋
+### `surplusItems.markProcessingOnly` Planned
 **Type:** mutation · **Auth:** Merchant (owner, verified) · **PRD ref:** MER-06
 
 Marks material as unsuitable for human consumption but valid for organic processing, sending it directly into **Circular Routing** without a consumer stage.
@@ -697,7 +697,7 @@ This function is where the platform's circular claim becomes concrete. A merchan
 
 ---
 
-### `surplusItems.listMine` 📋
+### `surplusItems.listMine` Planned
 **Type:** query · **Auth:** Merchant (verified) · **PRD ref:** MER-07
 
 Paginated list of the merchant's own listings with live reservation counts.
@@ -725,11 +725,11 @@ Paginated list of the merchant's own listings with live reservation counts.
 
 **Errors** — `AUTH_REQUIRED`, `FORBIDDEN`, `VALIDATION_FAILED`.
 
-**Relationship to `surplusItems.listByStatus` ✅** — the existing implemented query is a global, status-only read used by internal routing and admin tooling. It is **not** merchant-scoped and must never be exposed directly to merchant UI.
+**Relationship to `surplusItems.listByStatus` Implemented** — the existing implemented query is a global, status-only read used by internal routing and admin tooling. It is **not** merchant-scoped and must never be exposed directly to merchant UI.
 
 ---
 
-### `surplusItems.get` 📋
+### `surplusItems.get` Planned
 **Type:** query · **Auth:** Merchant (owner) · **PRD ref:** MER-08
 
 Full detail for one of the merchant's own listings, including its complete ledger timeline.
@@ -776,7 +776,7 @@ Full detail for one of the merchant's own listings, including its complete ledge
 
 ---
 
-### `orders.listForMerchant` 📋
+### `orders.listForMerchant` Planned
 **Type:** query · **Auth:** Merchant (verified) · **PRD ref:** MER-09
 
 The fulfilment queue. This is the screen a merchant keeps open at the counter.
@@ -833,7 +833,7 @@ If a merchant could read pickup codes, they could confirm pickups for consumers 
 
 ---
 
-### `orders.confirmPickup` 📋
+### `orders.confirmPickup` Planned
 **Type:** mutation · **Auth:** Merchant (owner, verified) · **PRD ref:** MER-10
 
 **The moment material becomes Rescued.** Verifies the pickup code and the pickup window, transitions the order to `picked_up`, writes the `RESCUED` ledger event, and cascades the item to `closed` when fully resolved.
@@ -1032,7 +1032,7 @@ export const confirmPickup = mutation({
 
 ---
 
-### `orders.reportNoShow` 📋
+### `orders.reportNoShow` Planned
 **Type:** mutation · **Auth:** Merchant (owner, verified) · **PRD ref:** MER-11
 
 Reports that a consumer did not collect a paid order. **This does not create Residual.** The material re-enters Circular Routing.
@@ -1108,7 +1108,7 @@ The only path to `residual` from here is `stillUsable === false` — an explicit
 
 ---
 
-### `impact.getMerchantSummary` 📋
+### `impact.getMerchantSummary` Planned
 **Type:** query · **Auth:** Merchant · **PRD ref:** MER-12
 
 The merchant's impact, derived entirely from the Material Flow Ledger.
@@ -1186,7 +1186,7 @@ The **circularity rate** is `(Rescued + Recovered) / Listed`. It is never 1.0 in
 
 ---
 
-### `merchants.getMine` 📋
+### `merchants.getMine` Planned
 **Type:** query · **Auth:** Merchant · **PRD ref:** MER-13
 
 **Arguments**
@@ -1207,11 +1207,11 @@ The **circularity rate** is `(Rescued + Recovered) / Listed`. It is never 1.0 in
 
 **Errors** — `AUTH_REQUIRED`, `FORBIDDEN`.
 
-**Relationship to `merchants.getByOwner` ✅** — the implemented query takes an explicit `ownerId` argument and is used internally. `getMine` supersedes it for client use because deriving the owner from the session removes the IDOR surface entirely.
+**Relationship to `merchants.getByOwner` Implemented** — the implemented query takes an explicit `ownerId` argument and is used internally. `getMine` supersedes it for client use because deriving the owner from the session removes the IDOR surface entirely.
 
 ---
 
-### `merchants.updateProfile` 📋
+### `merchants.updateProfile` Planned
 **Type:** mutation · **Auth:** Merchant (owner) · **PRD ref:** MER-14
 
 **Arguments**
@@ -1253,7 +1253,7 @@ The **circularity rate** is `(Rescued + Recovered) / Listed`. It is never 1.0 in
 
 ---
 
-### `recoveryBatches.listForMerchant` 📋
+### `recoveryBatches.listForMerchant` Planned
 **Type:** query · **Auth:** Merchant · **PRD ref:** MER-15
 
 Shows what happened to the merchant's material after it left the consumer path — the merchant's window onto Circular Routing.
@@ -1307,23 +1307,23 @@ type MerchantRecoveryBatchSummary = {
 
 | Function | Kind | Auth | Ledger event | Priority | Status |
 |---|---|---|---|---|---|
-| `surplusItems.create` | mutation | Merchant (verified) | `LISTED` (if published) | **A** | 📋 |
-| `surplusItems.suggestPrice` | query | Merchant (verified) | — | B | 📋 |
-| `surplusItems.update` | mutation | Merchant (owner) | `PRICE_ADJUSTED` | B | 📋 |
-| `surplusItems.publish` | mutation | Merchant (owner) | `LISTED` | **A** | 📋 |
-| `surplusItems.cancel` | mutation | Merchant (owner) | `CANCELLED` | B | 📋 |
-| `surplusItems.markProcessingOnly` | mutation | Merchant (owner) | `MODERATED` | B | 📋 |
-| `surplusItems.listMine` | query | Merchant | — | **A** | 📋 |
-| `surplusItems.listByStatus` | query | Internal/Admin | — | — | ✅ |
-| `surplusItems.get` | query | Merchant (owner) | — | A | 📋 |
-| `orders.listForMerchant` | query | Merchant | — | **A** | 📋 |
-| `orders.confirmPickup` | mutation | Merchant (owner) | **`RESCUED`** | **A** | 📋 |
-| `orders.reportNoShow` | mutation | Merchant (owner) | `EXPIRED` + `ROUTED` | B | 📋 |
-| `impact.getMerchantSummary` | query | Merchant | — | B | 📋 |
-| `merchants.getMine` | query | Merchant | — | A | 📋 |
-| `merchants.getByOwner` | query | Internal | — | — | ✅ |
-| `merchants.updateProfile` | mutation | Merchant (owner) | — | C | 📋 |
-| `recoveryBatches.listForMerchant` | query | Merchant | — | B | 📋 |
+| `surplusItems.create` | mutation | Merchant (verified) | `LISTED` (if published) | **A** | Planned |
+| `surplusItems.suggestPrice` | query | Merchant (verified) | — | B | Planned |
+| `surplusItems.update` | mutation | Merchant (owner) | `PRICE_ADJUSTED` | B | Planned |
+| `surplusItems.publish` | mutation | Merchant (owner) | `LISTED` | **A** | Planned |
+| `surplusItems.cancel` | mutation | Merchant (owner) | `CANCELLED` | B | Planned |
+| `surplusItems.markProcessingOnly` | mutation | Merchant (owner) | `MODERATED` | B | Planned |
+| `surplusItems.listMine` | query | Merchant | — | **A** | Planned |
+| `surplusItems.listByStatus` | query | Internal/Admin | — | — | Implemented |
+| `surplusItems.get` | query | Merchant (owner) | — | A | Planned |
+| `orders.listForMerchant` | query | Merchant | — | **A** | Planned |
+| `orders.confirmPickup` | mutation | Merchant (owner) | **`RESCUED`** | **A** | Planned |
+| `orders.reportNoShow` | mutation | Merchant (owner) | `EXPIRED` + `ROUTED` | B | Planned |
+| `impact.getMerchantSummary` | query | Merchant | — | B | Planned |
+| `merchants.getMine` | query | Merchant | — | A | Planned |
+| `merchants.getByOwner` | query | Internal | — | — | Implemented |
+| `merchants.updateProfile` | mutation | Merchant (owner) | — | C | Planned |
+| `recoveryBatches.listForMerchant` | query | Merchant | — | B | Planned |
 
 ---
 

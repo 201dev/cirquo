@@ -1,6 +1,7 @@
-import { internalQuery } from './_generated/server'
+import { query } from './_generated/server'
 
-export const getPlaceholderSummary = internalQuery({
+// Public by design: aggregate placeholder data contains no identifiable rows.
+export const getPlaceholderSummary = query({
   args: {},
   handler: () => ({
     rescuedGrams: 2_400,

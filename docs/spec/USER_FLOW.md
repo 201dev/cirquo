@@ -36,9 +36,9 @@ Every diagram in this document uses the same vocabulary.
 
 | Marker | Meaning |
 |---|---|
-| ✅ | Implemented in the current codebase |
-| 🚧 | Partially implemented — usually a placeholder screen with mock data |
-| 📋 | Planned, not yet built |
+| Implemented | Implemented in the current codebase |
+| In progress | Partially implemented — usually a placeholder screen with mock data |
+| Planned | Planned, not yet built |
 
 | Actor colour convention | Applies to |
 |---|---|
@@ -86,7 +86,7 @@ flowchart TD
     PAYQ ==>|Yes, Midtrans QRIS| PAID[(Order: paid<br/>pickupCode generated<br/>Ledger: PAID)]
     PAID ==> COLLECT{Collected inside<br/>pickup window?}
 
-    COLLECT ==>|Yes, code matches| RESCUED[(Order: picked_up<br/>rescuedWeightGrams written<br/>Ledger: RESCUED ✔ terminal)]
+    COLLECT ==>|Yes, code matches| RESCUED[(Order: picked_up<br/>rescuedWeightGrams written<br/>Ledger: RESCUED terminal)]
     COLLECT -->|No-show| NOSHOW[Merchant reports no-show<br/>NO residual created]
 
     EXPIRED --> BATCH
@@ -96,7 +96,7 @@ flowchart TD
     BATCH[(Recovery Batch created<br/>status: pending<br/>offeredWeightGrams computed)] ==> ROUTE[[Circular Routing engine]]
 
     ROUTE --> ELIG{Any eligible processor?<br/>verified · materialType ok ·<br/>within radius · capacity headroom ·<br/>not declined · open within 24h}
-    ELIG -->|No| UNROUTABLE[(status: unroutable<br/>Ledger: ROUTING_FAILED ✔ terminal)]
+    ELIG -->|No| UNROUTABLE[(status: unroutable<br/>Ledger: ROUTING_FAILED terminal)]
     UNROUTABLE -.-> MANUAL[[Admin manual re-route]]
     MANUAL -.-> OFFER
 
@@ -112,7 +112,7 @@ flowchart TD
 
     RESP ==>|Accept| ACCEPT[(status: accepted<br/>Ledger: INTAKE_ACCEPTED)]
     ACCEPT ==> INTAKE[(status: collected<br/>acceptedWeightGrams measured<br/>by Processor — authoritative)]
-    INTAKE ==> OUTCOME[(status: processed<br/>outputType + outputWeightGrams<br/>+ residualWeightGrams<br/>Ledger: PROCESSED ✔ terminal)]
+    INTAKE ==> OUTCOME[(status: processed<br/>outputType + outputWeightGrams<br/>+ residualWeightGrams<br/>Ledger: PROCESSED terminal)]
 
     RESCUED ==> IMPACT[Material Flow Ledger<br/>All impact metrics derived here]
     OUTCOME ==> IMPACT
@@ -249,7 +249,7 @@ flowchart LR
     C --> D[/Standard login form/]
     D --> E([Admin console])
 
-    F([Public registration]) -.->|role = admin<br/>never offered| X[❌ Not possible]
+    F([Public registration]) -.->|role = admin<br/>never offered| X[Not possible]
     G([Crafted client request<br/>with role = admin]) -.->|Server ignores<br/>the field| X
 ```
 
@@ -313,7 +313,7 @@ flowchart TD
     AI ==> AJ{Merchant verifies:<br/>code matches AND<br/>inside window?}
     AJ -->|Code mismatch| AK[/Rejected — order unchanged/]
     AJ -->|Outside window| AL[/Rejected — Admin override required/]
-    AJ ==>|Valid| AM[(Order: picked_up<br/>rescuedWeightGrams written<br/>Ledger: RESCUED ✔ terminal)]
+    AJ ==>|Valid| AM[(Order: picked_up<br/>rescuedWeightGrams written<br/>Ledger: RESCUED terminal)]
     AM ==> AN[/Consumer screen updates reactively:<br/>Sudah diambil/]
     AN ==> AO([Personal impact panel updated<br/>from ledger])
 
@@ -506,7 +506,7 @@ flowchart TD
     J -->|After window| L[/Di luar jendela pengambilan<br/>Perlu persetujuan Admin/]
     L -.-> M[[Admin override<br/>with stored reason]]
 
-    J ==>|Inside window| N[(Order → picked_up<br/>rescuedWeightGrams =<br/>quantity × weightPerItemGrams<br/>Ledger: RESCUED ✔ terminal)]
+    J ==>|Inside window| N[(Order → picked_up<br/>rescuedWeightGrams =<br/>quantity × weightPerItemGrams<br/>Ledger: RESCUED terminal)]
     M -.-> N
 
     N --> O{All units of the<br/>item collected?}
@@ -576,7 +576,7 @@ sequenceDiagram
 
         alt No eligible processor
             X->>X: status → unroutable
-            X->>X: recordLedgerEvent(ROUTING_FAILED) ✔ terminal
+            X->>X: recordLedgerEvent(ROUTING_FAILED) terminal
             X->>AD: Notification — manual re-route needed
         else Eligible processor found
             X->>X: processorId = top ranked
@@ -627,12 +627,12 @@ sequenceDiagram
         P1->>X: logOutcome(batchId, outputType, outputWeightGrams, residualWeightGrams)
         X->>X: Guard — residualWeightGrams ≤ acceptedWeightGrams
         X->>X: status → processed
-        X->>X: recordLedgerEvent(PROCESSED) ✔ terminal
+        X->>X: recordLedgerEvent(PROCESSED) terminal
         X-->>P1: Dashboard updates reactively
         X-->>AD: Platform circularity rate recalculated
     else Attempts exhausted
         X->>X: status → unroutable
-        X->>X: recordLedgerEvent(ROUTING_FAILED) ✔ terminal
+        X->>X: recordLedgerEvent(ROUTING_FAILED) terminal
         X->>AD: Notification — manual re-route needed
         AD->>X: manualReroute(batchId, processorId, overrideReason)
         X->>X: status → offered, fresh 6h TTL
@@ -644,12 +644,12 @@ sequenceDiagram
 
 | # | Rule | Field(s) evaluated | Admin may override? |
 |---|---|---|---|
-| 1 | Processor is verified | `processors.verificationStatus == "verified"` | ❌ Never |
-| 2 | Material type is accepted | `batch.materialType ∈ processors.acceptedMaterialTypes` | ❌ Never — physical safety |
-| 3 | Merchant is within collection radius | `distance(merchant, processor) ≤ maxPickupRadiusMeters` | ✅ With stored reason |
-| 4 | Capacity headroom exists today | `acceptedToday + offeredWeightGrams ≤ dailyCapacityGrams` | ✅ With stored reason |
-| 5 | Processor has not already declined | `processorId ∉ batch.declinedByProcessorIds` | ⚠️ Only by explicit re-offer |
-| 6 | Facility opens within 24 hours | `operatingHoursStart` / `operatingHoursEnd` | ✅ With stored reason |
+| 1 | Processor is verified | `processors.verificationStatus == "verified"` | Never |
+| 2 | Material type is accepted | `batch.materialType ∈ processors.acceptedMaterialTypes` | Never — physical safety |
+| 3 | Merchant is within collection radius | `distance(merchant, processor) ≤ maxPickupRadiusMeters` | Implemented With stored reason |
+| 4 | Capacity headroom exists today | `acceptedToday + offeredWeightGrams ≤ dailyCapacityGrams` | Implemented With stored reason |
+| 5 | Processor has not already declined | `processorId ∉ batch.declinedByProcessorIds` | Warning Only by explicit re-offer |
+| 6 | Facility opens within 24 hours | `operatingHoursStart` / `operatingHoursEnd` | Implemented With stored reason |
 
 **Limits.** Maximum **3 routing attempts** per batch. Offer TTL is **6 hours**. On the third exhausted attempt the batch becomes `unroutable` and `ROUTING_FAILED` is written — a terminal event that Admin manual re-route can supersede with a fresh `ROUTED` event.
 
@@ -674,8 +674,8 @@ stateDiagram-v2
 
     unroutable --> offered: Admin manual re-route, fresh TTL
 
-    processed --> [*]: PROCESSED ✔ terminal
-    unroutable --> [*]: ROUTING_FAILED ✔ terminal
+    processed --> [*]: PROCESSED terminal
+    unroutable --> [*]: ROUTING_FAILED terminal
 ```
 
 ---
@@ -713,7 +713,7 @@ flowchart TD
     U ==> V{residualWeightGrams<br/>≤ acceptedWeightGrams?}
     V -->|No| W[/Rejected: Neraca massa tidak valid/]
     W --> U
-    V ==>|Yes| X[(status → processed<br/>Ledger: PROCESSED ✔ terminal)]
+    V ==>|Yes| X[(status → processed<br/>Ledger: PROCESSED terminal)]
 
     X ==> Y[Recovered weight counts toward<br/>circularity rate]
     X ==> Z[Residual weight counts against it]
@@ -759,7 +759,7 @@ flowchart TD
     C --> D{Violates<br/>platform rules?}
     D -->|No| E([Dismiss, no state change])
     D -->|Yes| F[/Enter moderation reason/]
-    F --> G[(Item status → moderated<br/>Ledger: MODERATED ✔ terminal<br/>Admin action audited)]
+    F --> G[(Item status → moderated<br/>Ledger: MODERATED terminal<br/>Admin action audited)]
     G --> H[Item disappears from<br/>Consumer discovery immediately]
     G --> I{Paid orders<br/>exist?}
     I -->|Yes| J[Orders flagged for refund<br/>Never silently voided]
@@ -811,8 +811,8 @@ flowchart TD
     G --> M
     H --> M
 
-    N[❌ No edit control exists] -.-> C
-    O[❌ No delete control exists] -.-> C
+    N[No edit control exists] -.-> C
+    O[No delete control exists] -.-> C
 ```
 
 The ledger view has no edit and no delete affordance because the ledger is **append-only**. Nothing writes to it directly either — every entry arrives through `recordLedgerEvent(ctx, {...})` called inside the same transaction as the state change that caused it.
@@ -827,7 +827,7 @@ flowchart TD
     D -->|None at all| E[/Plain statement:<br/>Belum ada fasilitas terverifikasi<br/>No empty picker shown/]
     D -->|Yes| F[Select a processor manually]
     F --> G{materialType in their<br/>acceptedMaterialTypes?}
-    G -->|No| H[/❌ Blocked — never overridable<br/>Physical safety rule/]
+    G -->|No| H[/Not implemented Blocked — never overridable<br/>Physical safety rule/]
     G -->|Yes| I{Overriding radius,<br/>capacity, or hours?}
     I -->|Yes| J[/Enter override reason — required/]
     I -->|No| K[Standard assignment]
@@ -902,7 +902,7 @@ flowchart LR
     C --> D[/Non-blocking banner:<br/>Lokasi tidak aktif.<br/>Menampilkan seluruh Semarang./]
     D --> E[Distance filter disabled<br/>with explanatory label]
     E --> F[List sorts by<br/>soonest pickupEndAt]
-    F --> G[❌ No distance labels shown —<br/>never fabricate a number]
+    F --> G[No distance labels shown —<br/>never fabricate a number]
     G --> H([Fully usable, just less personalised])
 ```
 
@@ -944,7 +944,7 @@ flowchart LR
 flowchart LR
     A([Pickup window ends,<br/>paid order uncollected]) --> B[/Merchant reports no-show/]
     B --> C[(Material queued for routing<br/>at FULL offered weight)]
-    C --> D[❌ NO residual created]
+    C --> D[Not implemented NO residual created]
     D --> E([Circular Routing begins])
     E --> F([Material still counts as<br/>recovered if processed])
 ```
@@ -1006,59 +1006,59 @@ Reconciliation of what exists today against what the flows above require.
 
 | Route | Purpose | Key components | Status |
 |---|---|---|---|
-| `/` | Consumer home — nearby highlights, personal impact summary | ConsumerLayout, SummaryCard, item cards | 🚧 Exists with mock data |
-| `/explore` | Map and list discovery with filters | Mapbox map, filter Sheet, item cards, toggle | 🚧 Exists with mock data; map and filters planned |
-| `/orders` | Active and past orders, live countdowns | Order cards, Tabs, countdown | 🚧 Exists with mock data |
-| `/login` | Email + password sign in | Form, Input, Button | 📋 Planned |
-| `/register` | Registration with role selection | Form, Select, Input | 📋 Planned |
-| `/items/:itemId` | Rescue Item detail and reserve action | Detail panel, quantity picker, Button | 📋 Planned |
-| `/checkout/:orderId` | Midtrans QRIS payment with hold countdown | QR display, countdown, Alert | 📋 Planned |
-| `/orders/:orderId` | Order detail, pickup code, completion summary | Code panel, status Badge, map link | 📋 Planned |
-| `/impact` | Personal impact detail derived from ledger | SummaryCard, ledger-derived charts | 📋 Planned |
-| `/notifications` | Notification centre | List, unread Badge | 📋 Planned |
-| `/profile` | Account settings, logout | Form, Button | 📋 Planned |
+| `/` | Consumer home — nearby highlights, personal impact summary | ConsumerLayout, SummaryCard, item cards | In progress Exists with mock data |
+| `/explore` | Map and list discovery with filters | Mapbox map, filter Sheet, item cards, toggle | In progress Exists with mock data; map and filters planned |
+| `/orders` | Active and past orders, live countdowns | Order cards, Tabs, countdown | In progress Exists with mock data |
+| `/login` | Email + password sign in | Form, Input, Button | Planned |
+| `/register` | Registration with role selection | Form, Select, Input | Planned |
+| `/items/:itemId` | Rescue Item detail and reserve action | Detail panel, quantity picker, Button | Planned |
+| `/checkout/:orderId` | Midtrans QRIS payment with hold countdown | QR display, countdown, Alert | Planned |
+| `/orders/:orderId` | Order detail, pickup code, completion summary | Code panel, status Badge, map link | Planned |
+| `/impact` | Personal impact detail derived from ledger | SummaryCard, ledger-derived charts | Planned |
+| `/notifications` | Notification centre | List, unread Badge | Planned |
+| `/profile` | Account settings, logout | Form, Button | Planned |
 
 ### 13.2 Merchant surface
 
 | Route | Purpose | Key components | Status |
 |---|---|---|---|
-| `/merchant` | Dashboard — listings, pickups today, impact | RoleShell, PageHeader, SummaryCard | 🚧 Exists with mock data |
-| `/merchant/surplus` | Listing management table with status filter | RoleShell, Table, Badge, Select | 🚧 Exists with mock data |
-| `/merchant/surplus/new` | Create Rescue Item with pricing suggestion | Form, Zod schema, price suggestion panel | 🚧 Exists as placeholder form |
-| `/merchant/surplus/:itemId/edit` | Edit listing, locked once reserved | Form, read-only state, Alert | 📋 Planned |
-| `/merchant/onboarding` | Business profile with map pin | Form, Mapbox picker | 📋 Planned |
-| `/merchant/pickups` | Pickup code verification console | Code input, order list, Button | 📋 Planned |
-| `/merchant/recovery` | Read-only view of routing state for own items | Batch cards, status Badge | 📋 Planned |
-| `/merchant/profile` | Business profile management | Form, Mapbox picker | 📋 Planned |
+| `/merchant` | Dashboard — listings, pickups today, impact | RoleShell, PageHeader, SummaryCard | In progress Exists with mock data |
+| `/merchant/surplus` | Listing management table with status filter | RoleShell, Table, Badge, Select | In progress Exists with mock data |
+| `/merchant/surplus/new` | Create Rescue Item with pricing suggestion | Form, Zod schema, price suggestion panel | In progress Exists as placeholder form |
+| `/merchant/surplus/:itemId/edit` | Edit listing, locked once reserved | Form, read-only state, Alert | Planned |
+| `/merchant/onboarding` | Business profile with map pin | Form, Mapbox picker | Planned |
+| `/merchant/pickups` | Pickup code verification console | Code input, order list, Button | Planned |
+| `/merchant/recovery` | Read-only view of routing state for own items | Batch cards, status Badge | Planned |
+| `/merchant/profile` | Business profile management | Form, Mapbox picker | Planned |
 
 ### 13.3 Processor surface
 
 | Route | Purpose | Key components | Status |
 |---|---|---|---|
-| `/processor` | Dashboard — throughput, outputs, capacity utilisation | RoleShell, PageHeader, SummaryCard | 🚧 Exists with mock data |
-| `/processor/recovery` | Offer queue with accept and decline | RoleShell, Table, countdown, Button | 🚧 Exists with mock data |
-| `/processor/onboarding` | Facility profile and capability declaration | Form, multi-select, Mapbox picker | 📋 Planned |
-| `/processor/recovery/:batchId` | Batch detail, intake logging, outcome logging | Form, Input, mass-balance validation | 📋 Planned |
-| `/processor/profile` | Capability and capacity management | Form, multi-select | 📋 Planned |
+| `/processor` | Dashboard — throughput, outputs, capacity utilisation | RoleShell, PageHeader, SummaryCard | In progress Exists with mock data |
+| `/processor/recovery` | Offer queue with accept and decline | RoleShell, Table, countdown, Button | In progress Exists with mock data |
+| `/processor/onboarding` | Facility profile and capability declaration | Form, multi-select, Mapbox picker | Planned |
+| `/processor/recovery/:batchId` | Batch detail, intake logging, outcome logging | Form, Input, mass-balance validation | Planned |
+| `/processor/profile` | Capability and capacity management | Form, multi-select | Planned |
 
 ### 13.4 Admin surface
 
 | Route | Purpose | Key components | Status |
 |---|---|---|---|
-| `/admin` | Platform dashboard with circularity rate | RoleShell, PageHeader, SummaryCard | 🚧 Exists with mock data |
-| `/admin/verification` | Merchant and processor verification queue | Table, Dialog, Button | 📋 Planned |
-| `/admin/moderation` | Listing moderation | Table, Dialog, Textarea | 📋 Planned |
-| `/admin/ledger` | Material Flow Ledger inspection with filters | Table, filters, pagination — no edit controls | 📋 Planned |
-| `/admin/disputes` | Dispute queue and resolution | Table, Dialog, ledger timeline panel | 📋 Planned |
-| `/admin/routing` | Unroutable batches and manual re-route | Table, diagnostics panel, Select, Dialog | 📋 Planned |
-| `/admin/users` | Account management, suspend and reactivate | Table, search, Dialog | 📋 Planned |
-| `/admin/health` | Scheduler status and integrity anomalies | Table, Badge | 📋 Planned |
+| `/admin` | Platform dashboard with circularity rate | RoleShell, PageHeader, SummaryCard | In progress Exists with mock data |
+| `/admin/verification` | Merchant and processor verification queue | Table, Dialog, Button | Planned |
+| `/admin/moderation` | Listing moderation | Table, Dialog, Textarea | Planned |
+| `/admin/ledger` | Material Flow Ledger inspection with filters | Table, filters, pagination — no edit controls | Planned |
+| `/admin/disputes` | Dispute queue and resolution | Table, Dialog, ledger timeline panel | Planned |
+| `/admin/routing` | Unroutable batches and manual re-route | Table, diagnostics panel, Select, Dialog | Planned |
+| `/admin/users` | Account management, suspend and reactivate | Table, search, Dialog | Planned |
+| `/admin/health` | Scheduler status and integrity anomalies | Table, Badge | Planned |
 
 ### 13.5 Shared
 
 | Route | Purpose | Key components | Status |
 |---|---|---|---|
-| `*` | Not-found fallback | Card, Button | ✅ Exists |
+| `*` | Not-found fallback | Card, Button | Implemented Exists |
 
 **Summary.** 9 placeholder screens exist today across the four role surfaces, all driven by `src/constants/mock-data.ts`. Reaching the flows in this document requires 25 new routes and the replacement of mock data with live Convex queries in the 9 existing ones. Layout infrastructure — `ConsumerLayout` with its fixed mobile bottom navigation, and `RoleShell` with its large-screen sidebar and Sheet hamburger — is already in place and will not need structural change.
 

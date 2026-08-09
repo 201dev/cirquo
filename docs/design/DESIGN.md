@@ -154,7 +154,7 @@ Accessibility is a build-time constraint, not an audit-time cleanup. Every compo
 | Respect `prefers-reduced-motion` in every transition | Animate the countdown timer with a spinning ring regardless |
 | Announce async outcomes via Sonner (`role="status"`) | Silently mutate a number after a mutation resolves |
 
-**Honest limitation.** We target WCAG 2.1 AA contrast ratios and have designed tokens to meet 4.5:1 for body text and 3:1 for large text and UI boundaries. **We have not performed manual assistive-technology testing.** No screen reader pass (TalkBack, NVDA, VoiceOver), no keyboard-only walkthrough of every flow, no expert accessibility audit has been carried out. Any claim of "WCAG AA compliant" is therefore unsupported; the accurate statement is **"designed against WCAG AA criteria, formal validation pending."** Full conformance requires manual testing with real assistive technology and review by a qualified accessibility specialist, and that work is 📋 planned, not done.
+**Honest limitation.** We target WCAG 2.1 AA contrast ratios and have designed tokens to meet 4.5:1 for body text and 3:1 for large text and UI boundaries. **We have not performed manual assistive-technology testing.** No screen reader pass (TalkBack, NVDA, VoiceOver), no keyboard-only walkthrough of every flow, no expert accessibility audit has been carried out. Any claim of "WCAG AA compliant" is therefore unsupported; the accurate statement is **"designed against WCAG AA criteria, formal validation pending."** Full conformance requires manual testing with real assistive technology and review by a qualified accessibility specialist, and that work is Planned, not done.
 
 ### 2.7 Trust Through Traceability
 
@@ -207,13 +207,13 @@ graph TD
 
 | Level | Screen | Route | Status | Purpose |
 | --- | --- | --- | --- | --- |
-| 1 | Beranda | `/` | ✅ exists (placeholder) | Nearby Rescue Items, personal impact snapshot, entry to explore |
-| 1 | Jelajahi | `/explore` | ✅ exists (placeholder) | Map-first discovery with list toggle and `FilterSheet` |
-| 1 | Pesanan | `/orders` | ✅ exists (placeholder) | Active reservations with pickup code, plus history |
-| 2 | Detail Rescue Item | `/item/:id` | 📋 planned | Photo, price, pickup window, dietary tags, merchant, reserve CTA |
-| 2 | Detail Pesanan | `/orders/:id` | 📋 planned | `OrderTimeline`, `PickupCodeCard`, ledger link |
-| 2 | Dampak Saya | `/impact` | 📋 planned | Personal `ImpactBreakdownBar`, estimated CO2e |
-| 2 | Profil | `/profile` | 📋 planned | Dietary preferences, location, language |
+| 1 | Beranda | `/` | Implemented exists (placeholder) | Nearby Rescue Items, personal impact snapshot, entry to explore |
+| 1 | Jelajahi | `/explore` | Implemented exists (placeholder) | Map-first discovery with list toggle and `FilterSheet` |
+| 1 | Pesanan | `/orders` | Implemented exists (placeholder) | Active reservations with pickup code, plus history |
+| 2 | Detail Rescue Item | `/item/:id` | Planned | Photo, price, pickup window, dietary tags, merchant, reserve CTA |
+| 2 | Detail Pesanan | `/orders/:id` | Planned | `OrderTimeline`, `PickupCodeCard`, ledger link |
+| 2 | Dampak Saya | `/impact` | Planned | Personal `ImpactBreakdownBar`, estimated CO2e |
+| 2 | Profil | `/profile` | Planned | Dietary preferences, location, language |
 
 **Depth rule:** no consumer task exceeds three taps from `/`. Reserve = Beranda → item → reserve.
 
@@ -221,31 +221,31 @@ graph TD
 
 | Level | Screen | Route | Status | Purpose |
 | --- | --- | --- | --- | --- |
-| 1 | Dasbor | `/merchant` | ✅ exists (placeholder) | `SummaryCard` row, today's pickups, impact bar |
-| 1 | Daftar Surplus | `/merchant/surplus` | ✅ exists (placeholder) | Table of all Rescue Items by status |
-| 2 | Buat Surplus | `/merchant/surplus/new` | ✅ exists (placeholder) | The 120-second form |
-| 2 | Detail Surplus | `/merchant/surplus/:id` | 📋 planned | Item state, orders, ledger |
-| 2 | Verifikasi Kode | `/merchant/pickup` | 📋 planned | `PickupCodeInput` — the counter-side moment |
-| 2 | Dampak | `/merchant/impact` | 📋 planned | Business-level circularity and revenue recovered |
+| 1 | Dasbor | `/merchant` | Implemented exists (placeholder) | `SummaryCard` row, today's pickups, impact bar |
+| 1 | Daftar Surplus | `/merchant/surplus` | Implemented exists (placeholder) | Table of all Rescue Items by status |
+| 2 | Buat Surplus | `/merchant/surplus/new` | Implemented exists (placeholder) | The 120-second form |
+| 2 | Detail Surplus | `/merchant/surplus/:id` | Planned | Item state, orders, ledger |
+| 2 | Verifikasi Kode | `/merchant/pickup` | Planned | `PickupCodeInput` — the counter-side moment |
+| 2 | Dampak | `/merchant/impact` | Planned | Business-level circularity and revenue recovered |
 
 ### 3.4 Processor IA
 
 | Level | Screen | Route | Status | Purpose |
 | --- | --- | --- | --- | --- |
-| 1 | Dasbor | `/processor` | ✅ exists (placeholder) | `CapacityMeter`, intake this week, outcome mix |
-| 1 | Permintaan Pemulihan | `/processor/recovery` | ✅ exists (placeholder) | Routed batch queue: pending / offered / accepted |
-| 2 | Detail Batch | `/processor/recovery/:id` | 📋 planned | Accept/decline, `IntakeForm`, `OutcomeForm` |
-| 2 | Riwayat | `/processor/history` | 📋 planned | Processed batches with outcome types |
+| 1 | Dasbor | `/processor` | Implemented exists (placeholder) | `CapacityMeter`, intake this week, outcome mix |
+| 1 | Permintaan Pemulihan | `/processor/recovery` | Implemented exists (placeholder) | Routed batch queue: pending / offered / accepted |
+| 2 | Detail Batch | `/processor/recovery/:id` | Planned | Accept/decline, `IntakeForm`, `OutcomeForm` |
+| 2 | Riwayat | `/processor/history` | Planned | Processed batches with outcome types |
 
 ### 3.5 Admin IA
 
 | Level | Screen | Route | Status | Purpose |
 | --- | --- | --- | --- | --- |
-| 1 | Dasbor | `/admin` | ✅ exists (placeholder) | Platform circularity, verification queue depth |
-| 2 | Verifikasi | `/admin/verifications` | 📋 planned | Merchant/processor approval queue |
-| 2 | Moderasi | `/admin/moderation` | 📋 planned | Reported/suspect Rescue Items |
-| 2 | Ledger | `/admin/ledger` | 📋 planned | Search + per-item audit trail |
-| 2 | Sengketa | `/admin/disputes` | 📋 planned | Order disputes and refunds |
+| 1 | Dasbor | `/admin` | Implemented exists (placeholder) | Platform circularity, verification queue depth |
+| 2 | Verifikasi | `/admin/verifications` | Planned | Merchant/processor approval queue |
+| 2 | Moderasi | `/admin/moderation` | Planned | Reported/suspect Rescue Items |
+| 2 | Ledger | `/admin/ledger` | Planned | Search + per-item audit trail |
+| 2 | Sengketa | `/admin/disputes` | Planned | Order disputes and refunds |
 
 ---
 
@@ -279,7 +279,7 @@ graph TD
 
 Roles do not share a navigation shell. A user with two roles switches via an explicit role switcher in the profile/account menu, which performs a full route change (`/` ⇄ `/merchant`). We do **not** build a unified nav that mixes consumer and merchant destinations — it invites mis-taps at the counter, and the mental models are different.
 
-`RoleGuard` (📋 planned) wraps route groups and redirects unauthorised roles rather than hiding items, so a wrong-role deep link never renders a half-populated shell.
+`RoleGuard` (Planned) wraps route groups and redirects unauthorised roles rather than hiding items, so a wrong-role deep link never renders a half-populated shell.
 
 ---
 
@@ -313,17 +313,17 @@ Mobile-first. Base styles target a 390 px viewport; every breakpoint is additive
 
 | Commitment | Implementation | Status |
 | --- | --- | --- |
-| Contrast — body text ≥ 4.5:1 | Token pairs designed against WCAG AA; `--muted-foreground` at `oklch(0.556 0 0)` on `oklch(1 0 0)` ≈ 4.6:1 | ✅ token-level |
-| Contrast — large text & UI boundaries ≥ 3:1 | Brand ramp steps chosen so `--brand-700` on white and `--brand-200` on `--brand-950` both clear 3:1 | 📋 pending measurement |
-| Visible focus | shadcn default `focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]` retained everywhere | ✅ exists |
-| Tap targets ≥ 44×44 px | Buttons `size="lg"` on mobile primary actions; icon buttons get `min-h-11 min-w-11` even when the glyph is 20 px | 📋 needs audit of existing icon buttons |
-| Icon-only buttons named | `aria-label` in Bahasa Indonesia on every icon-only control | 📋 planned |
-| Form error association | React Hook Form + `FormMessage` wires `aria-describedby` and `aria-invalid` automatically | ✅ exists in `CreateSurplusPage` |
-| Reduced motion | All transitions wrapped in `motion-safe:`; countdown updates are text-only, never animated rings | 📋 planned |
-| Colour never sole carrier | Every `StatusBadge` renders a text label alongside its colour | 📋 planned (component not built) |
-| Keyboard traps | Radix/base-ui `Dialog` and `Sheet` manage focus trapping and restoration | ✅ inherited from primitives |
-| Language attribute | `<html lang="id">` | 📋 needs verification |
-| Screen-reader live regions | Sonner toasts; countdown announces at 30/10/5-minute thresholds only, not every second | 📋 planned |
+| Contrast — body text ≥ 4.5:1 | Token pairs designed against WCAG AA; `--muted-foreground` at `oklch(0.556 0 0)` on `oklch(1 0 0)` ≈ 4.6:1 | Implemented token-level |
+| Contrast — large text & UI boundaries ≥ 3:1 | Brand ramp steps chosen so `--brand-700` on white and `--brand-200` on `--brand-950` both clear 3:1 | Planned pending measurement |
+| Visible focus | shadcn default `focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]` retained everywhere | Implemented exists |
+| Tap targets ≥ 44×44 px | Buttons `size="lg"` on mobile primary actions; icon buttons get `min-h-11 min-w-11` even when the glyph is 20 px | Planned needs audit of existing icon buttons |
+| Icon-only buttons named | `aria-label` in Bahasa Indonesia on every icon-only control | Planned |
+| Form error association | React Hook Form + `FormMessage` wires `aria-describedby` and `aria-invalid` automatically | Implemented exists in `CreateSurplusPage` |
+| Reduced motion | All transitions wrapped in `motion-safe:`; countdown updates are text-only, never animated rings | Planned |
+| Colour never sole carrier | Every `StatusBadge` renders a text label alongside its colour | Planned (component not built) |
+| Keyboard traps | Radix/base-ui `Dialog` and `Sheet` manage focus trapping and restoration | Implemented inherited from primitives |
+| Language attribute | `<html lang="id">` | Planned needs verification |
+| Screen-reader live regions | Sonner toasts; countdown announces at 30/10/5-minute thresholds only, not every second | Planned |
 
 **Restating the limitation, because it matters:** the table above describes design intent and inherited primitive behaviour. It does not describe verified conformance. **No manual assistive-technology testing has been performed on Cirquo.** We will not describe the product as accessible or WCAG AA compliant in any submission material; we will describe it as designed against WCAG AA criteria with validation pending.
 
@@ -340,7 +340,7 @@ UI copy is Bahasa Indonesia first. English is a later localisation pass, not a p
 | Direct | Verb-first instructions, no hedging | `Ambil sebelum 21.00` not `Anda mungkin dapat mengambil…` |
 | Plain | Everyday Indonesian, not corporate sustainability jargon | `Sisa yang tidak terolah` not `Residu material non-terkonversi` |
 | Honest | State limits and estimates plainly | `Estimasi, bukan pengukuran langsung` |
-| Neutral in operator surfaces | No exclamation marks in merchant/processor/admin | `Batch diterima` not `Batch diterima! 🎉` |
+| Neutral in operator surfaces | No exclamation marks in merchant/processor/admin | `Batch diterima` not `Batch diterima! ` |
 | Warm in consumer surfaces | Second person, light encouragement, no guilt | `Kamu menyelamatkan 2,4 kg minggu ini` not `Jangan biarkan makanan terbuang!` |
 
 **Person:** consumer copy uses `kamu`. Operator copy uses no pronoun (impersonal). Never `Anda` in consumer surfaces — it reads institutional.

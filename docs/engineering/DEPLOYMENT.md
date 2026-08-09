@@ -17,12 +17,12 @@ Convex deployment, no signed APK.
 
 | Component | Status |
 | --- | --- |
-| Frontend hosting | 📋 Planned — provider chosen in §3, not yet provisioned |
-| Convex production deployment | 📋 Planned |
-| GitHub Actions CI | 📋 Planned — workflow written in §6, not yet committed |
-| Android release keystore | 📋 Planned |
-| Midtrans webhook endpoint | 📋 Planned — no `convex/http.ts` exists |
-| Monitoring / alerting | 📋 Planned |
+| Frontend hosting | Planned — provider chosen in §3, not yet provisioned |
+| Convex production deployment | Planned |
+| GitHub Actions CI | Planned — workflow written in §6, not yet committed |
+| Android release keystore | Planned |
+| Midtrans webhook endpoint | Planned — no `convex/http.ts` exists |
+| Monitoring / alerting | Planned |
 
 Everything below is the plan, written concretely enough to execute without
 further design work.
@@ -123,10 +123,10 @@ server-side rendering and no Node server. Any static host works.
 
 | Host | Free tier | Bun support | SPA fallback | Preview deploys | Custom domain + TLS | Build minutes |
 | --- | --- | --- | --- | --- | --- | --- |
-| **Vercel** | Generous, hobby | ✅ Detects `bun.lock` | ✅ Automatic for SPAs | ✅ Every PR | ✅ Free | 6,000 min/mo |
-| **Netlify** | Generous | ✅ Via `BUN_VERSION` | ⚠️ Needs `_redirects` | ✅ Every PR | ✅ Free | 300 min/mo |
-| **Cloudflare Pages** | Very generous, unlimited bandwidth | ✅ Detects `bun.lock` | ✅ Via config | ✅ Every PR | ✅ Free | 500 builds/mo |
-| **GitHub Pages** | Unlimited public repos | ⚠️ Manual in Actions | ❌ 404 hack required | ❌ None | ✅ Free | Uses Actions minutes |
+| **Vercel** | Generous, hobby | Detects `bun.lock` | Automatic for SPAs | Every PR | Free | 6,000 min/mo |
+| **Netlify** | Generous | Via `BUN_VERSION` | Needs `_redirects` | Every PR | Free | 300 min/mo |
+| **Cloudflare Pages** | Very generous, unlimited bandwidth | Detects `bun.lock` | Via config | Every PR | Free | 500 builds/mo |
+| **GitHub Pages** | Unlimited public repos | Manual in Actions | 404 hack required | None | Free | Uses Actions minutes |
 
 ### 3.2 Recommendation: Vercel
 
@@ -317,14 +317,14 @@ forge a payment notification and mark orders as paid.
 
 | Variable | Set where | Local | Preview | Staging | Production | Android | Public? |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `VITE_CONVEX_URL` | Host / `.env.local` | Dev deploy URL | Shared dev URL | Shared dev URL | Prod URL | Prod URL | 🔓 Public |
-| `CONVEX_DEPLOYMENT` | `.env.local` (CLI only) | Auto-written | — | — | — | — | 🔓 Public |
-| `VITE_MAPBOX_TOKEN` | Host / `.env.local` | Dev-restricted `pk.*` | Preview-restricted `pk.*` | Staging `pk.*` | Prod `pk.*` | Prod `pk.*` | 🔓 **Public** |
-| `MIDTRANS_SERVER_KEY` | **Convex env** | Dev deploy | Shared dev | Shared dev | Prod | via Convex | 🔒 **SECRET** |
-| `MIDTRANS_CLIENT_KEY` | **Convex env** | Dev deploy | Shared dev | Shared dev | Prod | via Convex | 🔓 Public value, server-held |
-| `MIDTRANS_IS_PRODUCTION` | **Convex env** | `"false"` | `"false"` | `"false"` | `"false"` | `"false"` | 🔓 Public value |
-| `CONVEX_DEPLOY_KEY` | GitHub Secrets | — | — | — | Used by CI | — | 🔒 **SECRET** |
-| `VERCEL_TOKEN` | GitHub Secrets | — | — | — | Used by CI | — | 🔒 **SECRET** |
+| `VITE_CONVEX_URL` | Host / `.env.local` | Dev deploy URL | Shared dev URL | Shared dev URL | Prod URL | Prod URL | Public |
+| `CONVEX_DEPLOYMENT` | `.env.local` (CLI only) | Auto-written | — | — | — | — | Public |
+| `VITE_MAPBOX_TOKEN` | Host / `.env.local` | Dev-restricted `pk.*` | Preview-restricted `pk.*` | Staging `pk.*` | Prod `pk.*` | Prod `pk.*` | **Public** |
+| `MIDTRANS_SERVER_KEY` | **Convex env** | Dev deploy | Shared dev | Shared dev | Prod | via Convex | Restricted **SECRET** |
+| `MIDTRANS_CLIENT_KEY` | **Convex env** | Dev deploy | Shared dev | Shared dev | Prod | via Convex | Public value, server-held |
+| `MIDTRANS_IS_PRODUCTION` | **Convex env** | `"false"` | `"false"` | `"false"` | `"false"` | `"false"` | Public value |
+| `CONVEX_DEPLOY_KEY` | GitHub Secrets | — | — | — | Used by CI | — | Restricted **SECRET** |
+| `VERCEL_TOKEN` | GitHub Secrets | — | — | — | Used by CI | — | Restricted **SECRET** |
 
 `MIDTRANS_IS_PRODUCTION` stays `"false"` in every environment for the
 competition. Cirquo uses **Midtrans Sandbox** throughout — we are not processing
@@ -1173,9 +1173,9 @@ This is precisely why the additive → backfill → tighten discipline exists:
 
 | Step | Deploy | Rollback safety |
 | --- | --- | --- |
-| 1. Add field as `v.optional()` | Deploy A | ✅ Trivially safe both ways |
-| 2. Backfill existing rows | Migration mutation | ✅ Safe; data only |
-| 3. Tighten to required | Deploy B | ⚠️ Rolling back to A is safe; the field simply becomes optional again |
+| 1. Add field as `v.optional()` | Deploy A | Implemented Trivially safe both ways |
+| 2. Backfill existing rows | Migration mutation | Implemented Safe; data only |
+| 3. Tighten to required | Deploy B | Warning Rolling back to A is safe; the field simply becomes optional again |
 
 Never combine the three into one deploy. See
 [DATABASE.md](../domain/DATABASE.md).

@@ -18,21 +18,21 @@ Cirquo is a Convex application. There are no REST endpoints for processors. The 
 
 | Function | Type | Auth | PRD ref | Status |
 | --- | --- | --- | --- | --- |
-| [`recoveryBatches.listQueue`](#recoverybatcheslistqueue-) | `query` | Processor (verified) | PRC-01 | 📋 Planned |
-| [`recoveryBatches.get`](#recoverybatchesget-) | `query` | Processor (assigned) | PRC-01 | 📋 Planned |
-| [`recoveryBatches.accept`](#recoverybatchesaccept-) | `mutation` | Processor (verified) | PRC-02 | 📋 Planned |
-| [`recoveryBatches.decline`](#recoverybatchesdecline-) | `mutation` | Processor (verified) | PRC-02 | 📋 Planned |
-| [`recoveryBatches.logIntake`](#recoverybatcheslogintake-) | `mutation` | Processor (assigned) | PRC-03 | 📋 Planned |
-| [`recoveryBatches.logOutcome`](#recoverybatcheslogoutcome-) | `mutation` | Processor (assigned) | PRC-04 | 📋 Planned |
-| [`recoveryBatches.listHistory`](#recoverybatcheslisthistory-) | `query` | Processor (verified) | PRC-05 | 📋 Planned |
-| [`processors.getMine`](#processorsgetmine-) | `query` | Processor | PRC-06 | 📋 Planned |
-| [`processors.updateProfile`](#processorsupdateprofile-) | `mutation` | Processor (owner) | PRC-06 | 📋 Planned |
-| [`processors.updateCapacity`](#processorsupdatecapacity-) | `mutation` | Processor (owner) | PRC-06 | 📋 Planned |
-| [`impact.getProcessorSummary`](#impactgetprocessorsummary-) | `query` | Processor (verified) | PRC-05 / IMP-03 | 📋 Planned |
+| [`recoveryBatches.listQueue`](#recoverybatcheslistqueue-) | `query` | Processor (verified) | PRC-01 | Planned |
+| [`recoveryBatches.get`](#recoverybatchesget-) | `query` | Processor (assigned) | PRC-01 | Planned |
+| [`recoveryBatches.accept`](#recoverybatchesaccept-) | `mutation` | Processor (verified) | PRC-02 | Planned |
+| [`recoveryBatches.decline`](#recoverybatchesdecline-) | `mutation` | Processor (verified) | PRC-02 | Planned |
+| [`recoveryBatches.logIntake`](#recoverybatcheslogintake-) | `mutation` | Processor (assigned) | PRC-03 | Planned |
+| [`recoveryBatches.logOutcome`](#recoverybatcheslogoutcome-) | `mutation` | Processor (assigned) | PRC-04 | Planned |
+| [`recoveryBatches.listHistory`](#recoverybatcheslisthistory-) | `query` | Processor (verified) | PRC-05 | Planned |
+| [`processors.getMine`](#processorsgetmine-) | `query` | Processor | PRC-06 | Planned |
+| [`processors.updateProfile`](#processorsupdateprofile-) | `mutation` | Processor (owner) | PRC-06 | Planned |
+| [`processors.updateCapacity`](#processorsupdatecapacity-) | `mutation` | Processor (owner) | PRC-06 | Planned |
+| [`impact.getProcessorSummary`](#impactgetprocessorsummary-) | `query` | Processor (verified) | PRC-05 / IMP-03 | Planned |
 
-**Status legend:** ✅ Implemented · 🚧 In progress · 📋 Planned.
+**Status legend:** Implemented · In progress In progress · Planned.
 
-Only six read-only queries currently exist in the codebase (`users.getByEmail`, `merchants.getByOwner`, `surplusItems.listByStatus`, `orders.listByUser`, `recoveryBatches.listByStatus`, `impact.getPlaceholderSummary`). Everything on this page is **📋 Planned** and documented ahead of implementation so that the contract is stable before code lands.
+Only six read-only queries currently exist in the codebase (`users.getByEmail`, `merchants.getByOwner`, `surplusItems.listByStatus`, `orders.listByUser`, `recoveryBatches.listByStatus`, `impact.getPlaceholderSummary`). Everything on this page is **Planned** and documented ahead of implementation so that the contract is stable before code lands.
 
 ---
 
@@ -178,7 +178,7 @@ Sanity constraints enforced server-side: `acceptedWeightGrams > 0`, and `accepte
 
 ---
 
-## 5. `recoveryBatches.listQueue` 📋
+## 5. `recoveryBatches.listQueue` Planned
 
 **Type:** query · **Auth:** Processor (verified) · **PRD ref:** PRC-01
 
@@ -303,7 +303,7 @@ const { items, capacityRemainingGrams } = useQuery(api.recoveryBatches.listQueue
 
 ---
 
-## 6. `recoveryBatches.get` 📋
+## 6. `recoveryBatches.get` Planned
 
 **Type:** query · **Auth:** Processor (assigned to this batch) · **PRD ref:** PRC-01
 
@@ -370,7 +370,7 @@ const detail = useQuery(api.recoveryBatches.get, { batchId })
 
 ---
 
-## 7. `recoveryBatches.accept` 📋
+## 7. `recoveryBatches.accept` Planned
 
 **Type:** mutation · **Auth:** Processor (verified, assigned) · **PRD ref:** PRC-02
 
@@ -503,7 +503,7 @@ const result = await convex.mutation(api.recoveryBatches.accept, {
 
 ---
 
-## 8. `recoveryBatches.decline` 📋
+## 8. `recoveryBatches.decline` Planned
 
 **Type:** mutation · **Auth:** Processor (verified, assigned) · **PRD ref:** PRC-02
 
@@ -642,7 +642,7 @@ await convex.mutation(api.recoveryBatches.decline, {
 
 ---
 
-## 9. `recoveryBatches.logIntake` 📋
+## 9. `recoveryBatches.logIntake` Planned
 
 **Type:** mutation · **Auth:** Processor (verified, assigned) · **PRD ref:** PRC-03
 
@@ -782,7 +782,7 @@ const result = await convex.mutation(api.recoveryBatches.logIntake, {
 
 ---
 
-## 10. `recoveryBatches.logOutcome` 📋
+## 10. `recoveryBatches.logOutcome` Planned
 
 **Type:** mutation · **Auth:** Processor (verified, assigned) · **PRD ref:** PRC-04
 
@@ -980,7 +980,7 @@ const result = await convex.mutation(api.recoveryBatches.logOutcome, {
 
 ---
 
-## 11. `recoveryBatches.listHistory` 📋
+## 11. `recoveryBatches.listHistory` Planned
 
 **Type:** query · **Auth:** Processor (verified) · **PRD ref:** PRC-05
 
@@ -1079,7 +1079,7 @@ A bakery in Semarang lists 20 loaves at 500 g each. Nobody collects them. Here i
 **Weight conservation**
 
 ```
-+10 000 − 10 000 + 0 + 10 000 − 10 000 = 0  ✓
++10 000 − 10 000 + 0 + 10 000 − 10 000 = 0  Valid
 ```
 
 The item is in a terminal status (`recovered`) and its ledger sums to zero. `admin.checkWeightConservation` reports no violation for this item.
@@ -1120,7 +1120,7 @@ Circularity rate for this item: `(0 + 8 000) / 10 000 = 80%`.
 
 ---
 
-## 13. `processors.getMine` 📋
+## 13. `processors.getMine` Planned
 
 **Type:** query · **Auth:** Processor · **PRD ref:** PRC-06
 
@@ -1178,7 +1178,7 @@ if (mine?.processor?.verificationStatus === 'pending') return <VerificationPendi
 
 ---
 
-## 14. `processors.updateProfile` 📋
+## 14. `processors.updateProfile` Planned
 
 **Type:** mutation · **Auth:** Processor (owner) · **PRD ref:** PRC-06
 
@@ -1248,7 +1248,7 @@ await convex.mutation(api.processors.updateProfile, {
 
 ---
 
-## 15. `processors.updateCapacity` 📋
+## 15. `processors.updateCapacity` Planned
 
 **Type:** mutation · **Auth:** Processor (owner) · **PRD ref:** PRC-06
 
@@ -1322,7 +1322,7 @@ const result = await convex.mutation(api.processors.updateCapacity, {
 
 ---
 
-## 16. `impact.getProcessorSummary` 📋
+## 16. `impact.getProcessorSummary` Planned
 
 **Type:** query · **Auth:** Processor (verified) · **PRD ref:** PRC-05 / IMP-03
 

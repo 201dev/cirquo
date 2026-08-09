@@ -25,7 +25,7 @@ Presenting CO2e as the headline would be the single easiest way to lose credibil
 
 ### What we never claim
 
-| ❌ Never say | ✅ Say instead |
+| Never say | Implemented Say instead |
 |---|---|
 | "Zero waste" | "93% circularity rate, 7% residual" |
 | "100% closed-loop" | "We track where every kilogram goes" |
@@ -170,7 +170,7 @@ Reported as an estimate: original price is merchant-declared, and some consumers
 
 ## 5. Tier 3 — CO2e Estimation
 
-> ⚠️ **This is a model, not a measurement.** Every display of a CO2e figure in the product carries the word "estimated."
+> Warning **This is a model, not a measurement.** Every display of a CO2e figure in the product carries the word "estimated."
 
 ### 5.1 Method
 
@@ -311,7 +311,7 @@ A one-month pilot period.
 | Residual | 45.0 kg |
 | In progress | 25.0 kg |
 
-**Verification:** 620 + 310 + 45 + 25 = 1,000 ✓
+**Verification:** 620 + 310 + 45 + 25 = 1,000 Valid
 
 **Derived:**
 

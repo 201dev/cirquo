@@ -70,66 +70,66 @@ Out of scope: backend function design (see [`BACKEND.md`](BACKEND.md)), realtime
 
 ## 3. Folder Structure
 
-Status legend used throughout this document: **✅ exists in the repository today** · **📋 planned, not yet written**.
+Status legend used throughout this document: **Implemented exists in the repository today** · **Planned, not yet written**.
 
 ```
 src/
 ├── app/
-│   ├── providers.tsx        ✅ Convex + theme + Sonner composition
-│   └── router.tsx           ✅ every route declared in one file
-├── assets/                  ✅ static images, logo marks
+│   ├── providers.tsx        Implemented Convex + theme + Sonner composition
+│   └── router.tsx           Implemented every route declared in one file
+├── assets/                  Implemented static images, logo marks
 ├── components/
-│   ├── ui/                  ✅ 17 shadcn/ui primitives
-│   ├── common/              ✅ PageHeader, SummaryCard, RoleShell
-│   ├── consumer/            ✅ empty (.gitkeep)
-│   ├── merchant/            ✅ empty (.gitkeep)
-│   ├── processor/           ✅ empty (.gitkeep)
-│   └── admin/               ✅ empty (.gitkeep)
+│   ├── ui/                  Implemented 17 shadcn/ui primitives
+│   ├── common/              Implemented PageHeader, SummaryCard, RoleShell
+│   ├── consumer/            Implemented empty (.gitkeep)
+│   ├── merchant/            Implemented empty (.gitkeep)
+│   ├── processor/           Implemented empty (.gitkeep)
+│   └── admin/               Implemented empty (.gitkeep)
 ├── constants/
-│   └── mock-data.ts         ✅ placeholder fixtures for the 9 pages
+│   └── mock-data.ts         Implemented placeholder fixtures for the 9 pages
 ├── features/
-│   ├── auth/                ✅ empty (.gitkeep)
-│   ├── impact/              ✅ empty (.gitkeep)
-│   ├── orders/              ✅ empty (.gitkeep)
-│   ├── pricing/             ✅ empty (.gitkeep)
-│   ├── recovery/            ✅ empty (.gitkeep)
-│   └── surplus/             ✅ empty (.gitkeep)
-├── hooks/                   ✅ empty (.gitkeep)
-├── layouts/                 ✅ ConsumerLayout, MerchantLayout, ProcessorLayout, AdminLayout
+│   ├── auth/                Implemented empty (.gitkeep)
+│   ├── impact/              Implemented empty (.gitkeep)
+│   ├── orders/              Implemented empty (.gitkeep)
+│   ├── pricing/             Implemented empty (.gitkeep)
+│   ├── recovery/            Implemented empty (.gitkeep)
+│   └── surplus/             Implemented empty (.gitkeep)
+├── hooks/                   Implemented empty (.gitkeep)
+├── layouts/                 Implemented ConsumerLayout, MerchantLayout, ProcessorLayout, AdminLayout
 ├── lib/
-│   ├── convex.ts            ✅ conditional client construction
-│   ├── utils.ts             ✅ cn()
-│   ├── pricing.ts           📋 suggestRescuePrice
-│   ├── routing.ts           📋 rankEligibleProcessors
-│   ├── ranking.ts           📋 rankListings
-│   ├── impact.ts            📋 summariseLedger, estimateCo2e
-│   ├── geo.ts               📋 haversineMeters
-│   └── format.ts            📋 grams/IDR/WIB formatters
+│   ├── convex.ts            Implemented conditional client construction
+│   ├── utils.ts             Implemented cn()
+│   ├── pricing.ts           Planned suggestRescuePrice
+│   ├── routing.ts           Planned rankEligibleProcessors
+│   ├── ranking.ts           Planned rankListings
+│   ├── impact.ts            Planned summariseLedger, estimateCo2e
+│   ├── geo.ts               Planned haversineMeters
+│   └── format.ts            Planned grams/IDR/WIB formatters
 ├── pages/
-│   ├── auth/                ✅ empty (.gitkeep)
-│   └── *.tsx                ✅ 9 placeholder pages
+│   ├── auth/                Implemented empty (.gitkeep)
+│   └── *.tsx                Implemented 9 placeholder pages
 ├── types/
-│   ├── domain.ts            ✅ mirrors the Convex schema
-│   └── navigation.ts        ✅ NavigationItem
-└── main.tsx                 ✅ StrictMode → BrowserRouter → AppProviders → App
+│   ├── domain.ts            Implemented mirrors the Convex schema
+│   └── navigation.ts        Implemented NavigationItem
+└── main.tsx                 Implemented StrictMode → BrowserRouter → AppProviders → App
 ```
 
 ### 3.1 Directory Responsibilities
 
 | Directory | Responsibility | Must not contain | Status |
 | --- | --- | --- | --- |
-| `app/` | Application composition root: provider tree and route table. Two files, deliberately. | Business logic, data fetching | ✅ |
-| `assets/` | Bundled static media referenced by import. | Anything fetched at runtime | ✅ |
-| `components/ui/` | Generated shadcn/ui primitives. Edited only to add variants. | Domain vocabulary (`RescueItem`, `pickupCode`) | ✅ 17 primitives |
-| `components/common/` | Cross-role presentational components (`PageHeader`, `SummaryCard`, `RoleShell`). | Role-specific copy or queries | ✅ |
-| `components/{consumer,merchant,processor,admin}/` | Role-scoped presentational components. Props in, JSX out. | `useQuery` calls (those live in features/pages) | ✅ empty |
-| `constants/` | Static enumerations, label maps, and — temporarily — `mock-data.ts`. | Anything mutable at runtime | ✅ |
-| `features/` | Vertical slices: hooks + composed components + local schemas for one domain area. | Cross-feature imports (go through `lib/` or `components/common/`) | ✅ empty |
-| `hooks/` | Generic reusable hooks (`useGeolocation`, `useCountdown`, `useMediaQuery`). | Domain-specific hooks (those belong in `features/`) | ✅ empty |
-| `layouts/` | Chrome: header, nav, sidebar, `<Outlet />`. | Data fetching beyond the session/current user | ✅ |
-| `lib/` | **Framework-agnostic pure logic** and thin client factories. | React imports, Convex imports (in the algorithm files) | ✅ partial |
-| `pages/` | One component per route. Fetches data, composes components, owns page-level layout. | Reusable UI (extract to `components/`) | ✅ 9 placeholders |
-| `types/` | Shared TypeScript types mirroring the domain. | Runtime values | ✅ |
+| `app/` | Application composition root: provider tree and route table. Two files, deliberately. | Business logic, data fetching | Implemented |
+| `assets/` | Bundled static media referenced by import. | Anything fetched at runtime | Implemented |
+| `components/ui/` | Generated shadcn/ui primitives. Edited only to add variants. | Domain vocabulary (`RescueItem`, `pickupCode`) | Implemented 17 primitives |
+| `components/common/` | Cross-role presentational components (`PageHeader`, `SummaryCard`, `RoleShell`). | Role-specific copy or queries | Implemented |
+| `components/{consumer,merchant,processor,admin}/` | Role-scoped presentational components. Props in, JSX out. | `useQuery` calls (those live in features/pages) | Implemented empty |
+| `constants/` | Static enumerations, label maps, and — temporarily — `mock-data.ts`. | Anything mutable at runtime | Implemented |
+| `features/` | Vertical slices: hooks + composed components + local schemas for one domain area. | Cross-feature imports (go through `lib/` or `components/common/`) | Implemented empty |
+| `hooks/` | Generic reusable hooks (`useGeolocation`, `useCountdown`, `useMediaQuery`). | Domain-specific hooks (those belong in `features/`) | Implemented empty |
+| `layouts/` | Chrome: header, nav, sidebar, `<Outlet />`. | Data fetching beyond the session/current user | Implemented |
+| `lib/` | **Framework-agnostic pure logic** and thin client factories. | React imports, Convex imports (in the algorithm files) | Partially implemented |
+| `pages/` | One component per route. Fetches data, composes components, owns page-level layout. | Reusable UI (extract to `components/`) | Implemented 9 placeholders |
+| `types/` | Shared TypeScript types mirroring the domain. | Runtime values | Implemented |
 
 ### 3.2 The `lib/` Purity Rule
 
@@ -141,7 +141,7 @@ The single most important architectural discipline in Cirquo is that **the algor
 - Deterministic output for identical input
 
 ```ts
-// src/lib/pricing.ts — 📋 planned
+// src/lib/pricing.ts — Planned
 export type MaterialType =
   | "bakery" | "produce" | "prepared_meal" | "dairy" | "grocery" | "beverage";
 
@@ -167,22 +167,22 @@ Justification for judges: pure logic is **unit-testable without a Convex runtime
 
 ## 4. Routing
 
-All routes are declared in `src/app/router.tsx` (✅). A single route table is intentional at this size: it is the fastest way for a reviewer to see the entire surface area of the product.
+All routes are declared in `src/app/router.tsx` (Implemented). A single route table is intentional at this size: it is the fastest way for a reviewer to see the entire surface area of the product.
 
 ### 4.1 Existing Routes
 
 | Path | Page | Layout | Guard | Status |
 | --- | --- | --- | --- | --- |
-| `/` | `HomePage` | `ConsumerLayout` | none | ✅ |
-| `/explore` | `ExplorePage` | `ConsumerLayout` | none | ✅ |
-| `/orders` | `OrdersPage` | `ConsumerLayout` | none today, `RequireAuth` planned | ✅ |
-| `/merchant` | `MerchantDashboardPage` | `MerchantLayout` (RoleShell) | none today | ✅ |
-| `/merchant/surplus` | `MerchantSurplusPage` | `MerchantLayout` | none today | ✅ |
-| `/merchant/surplus/new` | `CreateSurplusPage` | `MerchantLayout` | none today | ✅ |
-| `/processor` | `ProcessorDashboardPage` | `ProcessorLayout` | none today | ✅ |
-| `/processor/recovery` | `ProcessorRecoveryPage` | `ProcessorLayout` | none today | ✅ |
-| `/admin` | `AdminDashboardPage` | `AdminLayout` | none today | ✅ |
-| `*` | `NotFoundPage` | none | none | ✅ |
+| `/` | `HomePage` | `ConsumerLayout` | none | Implemented |
+| `/explore` | `ExplorePage` | `ConsumerLayout` | none | Implemented |
+| `/orders` | `OrdersPage` | `ConsumerLayout` | none today, `RequireAuth` planned | Implemented |
+| `/merchant` | `MerchantDashboardPage` | `MerchantLayout` (RoleShell) | none today | Implemented |
+| `/merchant/surplus` | `MerchantSurplusPage` | `MerchantLayout` | none today | Implemented |
+| `/merchant/surplus/new` | `CreateSurplusPage` | `MerchantLayout` | none today | Implemented |
+| `/processor` | `ProcessorDashboardPage` | `ProcessorLayout` | none today | Implemented |
+| `/processor/recovery` | `ProcessorRecoveryPage` | `ProcessorLayout` | none today | Implemented |
+| `/admin` | `AdminDashboardPage` | `AdminLayout` | none today | Implemented |
+| `*` | `NotFoundPage` | none | none | Implemented |
 
 All nine pages currently read from `src/constants/mock-data.ts`. Six read-only Convex queries exist (`users.getByEmail`, `merchants.getByOwner`, `surplusItems.listByStatus`, `orders.listByUser`, `recoveryBatches.listByStatus`, `impact.getPlaceholderSummary`) but the pages are not yet wired to them.
 
@@ -190,8 +190,8 @@ All nine pages currently read from `src/constants/mock-data.ts`. Six read-only C
 
 | Path | Page | Layout | Guard | Notes |
 | --- | --- | --- | --- | --- |
-| `/auth/login` | `LoginPage` | `AuthLayout` 📋 | redirect if authenticated | Email + password |
-| `/auth/register` | `RegisterPage` | `AuthLayout` 📋 | redirect if authenticated | Role picker: consumer / merchant / processor |
+| `/auth/login` | `LoginPage` | `AuthLayout` Planned | redirect if authenticated | Email + password |
+| `/auth/register` | `RegisterPage` | `AuthLayout` Planned | redirect if authenticated | Role picker: consumer / merchant / processor |
 | `/auth/onboarding/merchant` | `MerchantOnboardingPage` | `AuthLayout` | `RequireRole("merchant")` | Captures address + lat/lng; sets `verificationStatus: "pending"` |
 | `/auth/onboarding/processor` | `ProcessorOnboardingPage` | `AuthLayout` | `RequireRole("processor")` | Facility type, accepted material types, capacity, radius, hours |
 | `/item/:itemId` | `ListingDetailPage` | `ConsumerLayout` | none (public) | Live price, live `remainingQuantity`, pickup window countdown |
@@ -214,7 +214,7 @@ All nine pages currently read from `src/constants/mock-data.ts`. Six read-only C
 ### 4.3 Route Protection Design
 
 ```tsx
-// src/features/auth/RequireAuth.tsx — 📋 planned
+// src/features/auth/RequireAuth.tsx — Planned
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "@/../convex/_generated/api";
@@ -234,7 +234,7 @@ export function RequireAuth() {
 ```
 
 ```tsx
-// src/features/auth/RequireRole.tsx — 📋 planned
+// src/features/auth/RequireRole.tsx — Planned
 export function RequireRole({ role }: { role: UserRole }) {
   const me = useQuery(api.auth.currentUser);
 
@@ -298,7 +298,7 @@ The dashed box is cosmetic. The bold box is the security boundary.
 
 Two layout shells exist today, and the split is deliberate.
 
-### 5.1 ConsumerLayout ✅
+### 5.1 ConsumerLayout (Implemented)
 
 | Property | Value |
 | --- | --- |
@@ -308,7 +308,7 @@ Two layout shells exist today, and the split is deliberate.
 | Mobile nav | **Fixed bottom nav, 3 items** — Jelajah, Pesanan, Dampak |
 | Content padding | `pb-20` on mobile to clear the bottom bar |
 
-### 5.2 RoleShell ✅
+### 5.2 RoleShell (Implemented)
 
 Used by `MerchantLayout`, `ProcessorLayout`, and `AdminLayout`.
 
@@ -430,7 +430,7 @@ Explore filters live in the query string:
 Benefits: shareable links, working back button, refresh-safe, and — importantly for the demo — a judge can be handed a URL that reproduces an exact map view.
 
 ```tsx
-// src/features/surplus/useExploreFilters.ts — 📋 planned
+// src/features/surplus/useExploreFilters.ts — Planned
 export function useExploreFilters() {
   const [params, setParams] = useSearchParams();
 
@@ -461,7 +461,7 @@ export function useExploreFilters() {
 `useQuery` returns `undefined` while loading, `null` for an intentionally absent document, and the value otherwise. **Every call site must handle all three.** Conflating `undefined` with "empty" produces an empty state that flashes on every navigation.
 
 ```tsx
-// src/pages/ExplorePage.tsx — 📋 wiring
+// src/pages/ExplorePage.tsx — Planned wiring
 export function ExplorePage() {
   const { filters } = useExploreFilters();
   const { coords, status: geoStatus } = useGeolocation();
@@ -513,7 +513,7 @@ Rule: never render a bare spinner where a skeleton is possible; a spinner commun
 Convex query errors throw during render, so a boundary is required. One boundary per layout, one per risky widget (the map).
 
 ```tsx
-// src/components/common/AppErrorBoundary.tsx — 📋 planned
+// src/components/common/AppErrorBoundary.tsx — Planned
 export class AppErrorBoundary extends React.Component<Props, State> {
   state: State = { error: null };
   static getDerivedStateFromError(error: Error) { return { error }; }
@@ -538,7 +538,7 @@ Placement: inside each layout around `<Outlet />` so chrome survives a page cras
 ### 8.4 Mutations
 
 ```tsx
-// src/features/orders/useReserveItem.ts — 📋 planned
+// src/features/orders/useReserveItem.ts — Planned
 export function useReserveItem() {
   const reserve = useMutation(api.orders.reserve);
   const [pending, setPending] = useState(false);
@@ -578,13 +578,13 @@ Convex supports optimistic updates via `.withOptimisticUpdate`. We use them **na
 
 | Action | Optimistic? | Reason |
 | --- | --- | --- |
-| Mark notification read | ✅ Yes | Idempotent, invisible if it fails, zero business consequence |
-| Toggle a saved/favourite item | ✅ Yes | Purely local preference |
-| Merchant edits a draft listing's title | ✅ Yes | Owner-scoped, no contention |
-| **Reserve a Rescue Item** | ❌ **Never** | Contended resource — see below |
-| Confirm pickup (`RESCUED`) | ❌ Never | Terminal ledger event; must be server-confirmed |
-| Processor logs `acceptedWeightGrams` | ❌ Never | Authoritative measurement |
-| Accept a routed batch | ❌ Never | Another processor may have accepted first |
+| Mark notification read | Yes | Idempotent, invisible if it fails, zero business consequence |
+| Toggle a saved/favourite item | Yes | Purely local preference |
+| Merchant edits a draft listing's title | Yes | Owner-scoped, no contention |
+| **Reserve a Rescue Item** | Not implemented **Never** | Contended resource — see below |
+| Confirm pickup (`RESCUED`) | Never | Terminal ledger event; must be server-confirmed |
+| Processor logs `acceptedWeightGrams` | Never | Authoritative measurement |
+| Accept a routed batch | Never | Another processor may have accepted first |
 
 **Why reservation must never be optimistic.** Quantity is decremented at reservation, not at payment, precisely to prevent overselling. An optimistic decrement would render "diamankan!" locally, then roll back when the server rejects because another consumer won the race. The user experiences the platform *telling them they got the last portion and then taking it away* — the exact failure mode the reservation-time decrement exists to eliminate. We would be defeating a backend guarantee with a frontend animation.
 
@@ -616,7 +616,7 @@ Two client-side rules that recur across Cirquo forms:
 ### 9.1 Full Example — CreateSurplusPage
 
 ```ts
-// src/features/surplus/schema.ts — 📋 planned
+// src/features/surplus/schema.ts — Planned
 import { z } from "zod";
 
 export const MATERIAL_TYPES = [
@@ -669,7 +669,7 @@ export type CreateSurplusValues = z.infer<typeof createSurplusSchema>;
 ```
 
 ```tsx
-// src/pages/merchant/CreateSurplusPage.tsx — 📋 wiring
+// src/pages/merchant/CreateSurplusPage.tsx — Planned wiring
 export function CreateSurplusPage() {
   const create = useMutation(api.surplusItems.create);
   const navigate = useNavigate();
@@ -832,7 +832,7 @@ export function CreateSurplusPage() {
 
 ---
 
-## 10. Mapbox Integration Plan 📋
+## 10. Mapbox Integration Plan (Planned)
 
 No map code exists yet. This is the plan.
 
@@ -841,7 +841,7 @@ No map code exists yet. This is the plan.
 Mapbox GL JS is ~230 KB gzipped plus a CSS file. Loading it in the main bundle would blow the performance budget for users who never open Explore.
 
 ```tsx
-// src/features/surplus/RescueMap.tsx — 📋 planned
+// src/features/surplus/RescueMap.tsx — Planned
 const MapCanvas = lazy(() => import("./MapCanvas")); // mapbox-gl imported only here
 
 export function RescueMap(props: RescueMapProps) {
@@ -896,7 +896,7 @@ Tapping an unclustered point opens a bottom sheet with the `RescueItemCard`, not
 ### 10.4 Geolocation and Denial Fallback
 
 ```ts
-// src/hooks/useGeolocation.ts — 📋 planned
+// src/hooks/useGeolocation.ts — Planned
 export const SEMARANG_CENTER = { latitude: -6.9932, longitude: 110.4203 }; // Simpang Lima
 
 export function useGeolocation() {
@@ -949,17 +949,17 @@ Plan: a thin `getPosition()` wrapper that uses `@capacitor/geolocation` when `Ca
 
 | Aspect | Configuration | Status |
 | --- | --- | --- |
-| App ID | `com.cirquo.app` | ✅ |
-| Web directory | `dist` | ✅ |
-| Sync flow | `bun run build` → `bun run android:sync` → `android:open` / `android:run` | ✅ scripts |
-| Min SDK target | Android 8.0+ (WebView 60+) | 📋 verify |
+| App ID | `com.cirquo.app` | Implemented |
+| Web directory | `dist` | Implemented |
+| Sync flow | `bun run build` → `bun run android:sync` → `android:open` / `android:run` | Implemented scripts |
+| Min SDK target | Android 8.0+ (WebView 60+) | Planned verify |
 
 ### 11.1 Safe-Area Insets
 
 The consumer bottom nav must clear gesture bars.
 
 ```css
-/* src/index.css — 📋 planned addition */
+/* src/index.css — Planned addition */
 @theme {
   --spacing-safe-bottom: env(safe-area-inset-bottom, 0px);
   --spacing-safe-top: env(safe-area-inset-top, 0px);
@@ -977,7 +977,7 @@ Requires `viewport-fit=cover` in the `<meta name="viewport">` tag.
 Android's back button must not exit the app from a nested route.
 
 ```ts
-// src/hooks/useAndroidBackButton.ts — 📋 planned
+// src/hooks/useAndroidBackButton.ts — Planned
 useEffect(() => {
   if (!Capacitor.isNativePlatform()) return;
   const handler = App.addListener("backButton", ({ canGoBack }) => {
@@ -1017,7 +1017,7 @@ Cirquo Android is a **Capacitor WebView wrapper**, not a native app. We do not c
 
 ## 12. PWA and Service Worker
 
-Current state ✅: `src/main.tsx` registers `/sw.js` in `PROD` only; the manifest declares `theme_color: #047857`.
+Current state Implemented: `src/main.tsx` registers `/sw.js` in `PROD` only; the manifest declares `theme_color: #047857`.
 
 | Rule | Reason |
 | --- | --- |
@@ -1072,16 +1072,16 @@ A consumer — the overwhelming majority of sessions — never downloads merchan
 | No moment.js, lodash, or a second date library | Dependency review |
 | No chart library until a chart is actually shipped | Impact numbers are large type first, charts second |
 | Self-hosted variable font, `font-display: swap` | `@fontsource-variable/geist` |
-| Images served as WebP with explicit dimensions | Upload pipeline 📋 |
+| Images served as WebP with explicit dimensions | Upload pipeline Planned |
 
 ---
 
-## 14. Formatting Helpers 📋
+## 14. Formatting Helpers (Planned)
 
 Storage conventions are **integer grams**, **integer IDR**, and **integer epoch milliseconds UTC**. Conversion happens only at render.
 
 ```ts
-// src/lib/format.ts — 📋 planned
+// src/lib/format.ts — Planned
 import { format as formatDate } from "date-fns/format";
 import { formatDistanceToNowStrict } from "date-fns/formatDistanceToNowStrict";
 import { id as idLocale } from "date-fns/locale/id";
@@ -1178,18 +1178,18 @@ export const formatCo2e = (kg: number): string =>
 
 | Area | Commitment | Status |
 | --- | --- | --- |
-| Contrast | WCAG AA (4.5:1 body, 3:1 large) — OKLCH tokens chosen to satisfy this in both themes | 📋 audit |
-| Focus visibility | Never remove outlines; `focus-visible` ring on every interactive element | ✅ via shadcn defaults |
-| Touch targets | Minimum 44×44 CSS px, especially bottom nav and map pins | 📋 |
-| Keyboard | Full operation without a pointer for merchant/processor/admin surfaces | 📋 |
-| Semantics | `render={<Link/>}` produces real anchors — middle-click, right-click, and screen readers all work | ✅ pattern |
-| Live regions | `aria-live="polite"` on remaining quantity, price, and order status so realtime changes are announced | 📋 |
-| Countdowns | `<time dateTime>` with a text alternative; never colour alone for urgency | 📋 |
-| Status pills | Icon + text, never colour alone (Rescued / Recovered / Residual must be distinguishable in greyscale) | 📋 |
-| Forms | Every input has a `<FormLabel>`; errors linked via `aria-describedby` (shadcn `FormMessage` does this) | ✅ pattern |
-| Map | Always paired with an equivalent list view; the map is never the only path to an item | 📋 |
-| Motion | Respect `prefers-reduced-motion`; disable marquee/pulse on urgency indicators | 📋 |
-| Language | `<html lang="id">` | 📋 |
+| Contrast | WCAG AA (4.5:1 body, 3:1 large) — OKLCH tokens chosen to satisfy this in both themes | Planned audit |
+| Focus visibility | Never remove outlines; `focus-visible` ring on every interactive element | Implemented via shadcn defaults |
+| Touch targets | Minimum 44×44 CSS px, especially bottom nav and map pins | Planned |
+| Keyboard | Full operation without a pointer for merchant/processor/admin surfaces | Planned |
+| Semantics | `render={<Link/>}` produces real anchors — middle-click, right-click, and screen readers all work | Implemented pattern |
+| Live regions | `aria-live="polite"` on remaining quantity, price, and order status so realtime changes are announced | Planned |
+| Countdowns | `<time dateTime>` with a text alternative; never colour alone for urgency | Planned |
+| Status pills | Icon + text, never colour alone (Rescued / Recovered / Residual must be distinguishable in greyscale) | Planned |
+| Forms | Every input has a `<FormLabel>`; errors linked via `aria-describedby` (shadcn `FormMessage` does this) | Implemented pattern |
+| Map | Always paired with an equivalent list view; the map is never the only path to an item | Planned |
+| Motion | Respect `prefers-reduced-motion`; disable marquee/pulse on urgency indicators | Planned |
+| Language | `<html lang="id">` | Planned |
 
 The map/list pairing is the most important item: a WebGL canvas cannot be made fully accessible, so **every Rescue Item reachable by pin is reachable by list**, and the list is the primary implementation.
 
@@ -1199,29 +1199,29 @@ The map/list pairing is the most important item: a WebGL canvas cannot be made f
 
 | # | Component | Directory | Depends on | Why this order | Status |
 | --- | --- | --- | --- | --- | --- |
-| 1 | `RescueItemCard` | `components/consumer/` | `format.ts` | Appears in Explore, Home, detail, order history — the most reused unit in the product | 📋 |
-| 2 | `StatusBadge` | `components/common/` | domain types | Every role needs item/order/batch status rendering | 📋 |
-| 3 | `EmptyState` | `components/common/` | — | Nine pages currently have no empty state; a shared one prevents nine variants | 📋 |
-| 4 | `LoadingSkeletons` | `components/common/` | — | Required before any page is wired to a live query | 📋 |
-| 5 | `AppErrorBoundary` | `components/common/` | — | Query errors throw during render; nothing is safe to wire without it | 📋 |
-| 6 | `RequireAuth` / `RequireRole` | `features/auth/` | `api.auth.currentUser` | Unblocks every guarded route | 📋 |
-| 7 | `PickupWindowCountdown` | `components/consumer/` | `format.ts` | Urgency is the core consumer motivator | 📋 |
-| 8 | `PriceDisplay` | `components/consumer/` | `format.ts`, `pricing.ts` | Renders original, current, and discount; consumes PRICE_ADJUSTED live | 📋 |
-| 9 | `RescueMap` + `MapCanvas` | `features/surplus/` | `geo.ts`, geolocation hook | Highest-risk integration; isolate early | 📋 |
-| 10 | `ReserveSheet` | `features/orders/` | `useReserveItem` | Quantity picker + reservation; the money path begins here | 📋 |
-| 11 | `CheckoutPanel` | `features/orders/` | Midtrans action | Snap token + QRIS + 15-minute hold countdown | 📋 |
-| 12 | `PickupCodeCard` | `features/orders/` | order query | The artefact the consumer shows at the counter | 📋 |
-| 13 | `VerifyCodeForm` | `components/merchant/` | `orders.confirmPickup` | Writes the terminal `RESCUED` event — the demo's climax | 📋 |
-| 14 | `SurplusItemForm` | `features/surplus/` | schema, `pricing.ts` | Merchant supply side | 📋 |
-| 15 | `IncomingReservationsTable` | `components/merchant/` | live query | Realtime showcase for merchants | 📋 |
-| 16 | `BatchOfferCard` | `components/processor/` | batch query | TTL countdown, accept/decline | 📋 |
-| 17 | `IntakeForm` | `features/recovery/` | `recoveryBatches.logIntake` | Authoritative `acceptedWeightGrams` | 📋 |
-| 18 | `OutcomeForm` | `features/recovery/` | `recoveryBatches.logOutcome` | Closes the loop → `RECOVERED` + `RESIDUAL` | 📋 |
-| 19 | `ImpactSummary` | `features/impact/` | `impact.ts` | Rescued / Recovered / Residual + estimated CO₂e | 📋 |
-| 20 | `CircularityGauge` | `features/impact/` | `impact.ts` | The single number judges will remember | 📋 |
-| 21 | `LedgerTimeline` | `features/impact/` | ledger query | Per-item audit trail; proves the ledger is real | 📋 |
-| 22 | `VerificationQueue` | `components/admin/` | admin queries | Unblocks onboarding merchants and processors | 📋 |
-| 23 | `NotificationBell` | `components/common/` | notifications query | Cross-role; lowest urgency | 📋 |
+| 1 | `RescueItemCard` | `components/consumer/` | `format.ts` | Appears in Explore, Home, detail, order history — the most reused unit in the product | Planned |
+| 2 | `StatusBadge` | `components/common/` | domain types | Every role needs item/order/batch status rendering | Planned |
+| 3 | `EmptyState` | `components/common/` | — | Nine pages currently have no empty state; a shared one prevents nine variants | Planned |
+| 4 | `LoadingSkeletons` | `components/common/` | — | Required before any page is wired to a live query | Planned |
+| 5 | `AppErrorBoundary` | `components/common/` | — | Query errors throw during render; nothing is safe to wire without it | Planned |
+| 6 | `RequireAuth` / `RequireRole` | `features/auth/` | `api.auth.currentUser` | Unblocks every guarded route | Planned |
+| 7 | `PickupWindowCountdown` | `components/consumer/` | `format.ts` | Urgency is the core consumer motivator | Planned |
+| 8 | `PriceDisplay` | `components/consumer/` | `format.ts`, `pricing.ts` | Renders original, current, and discount; consumes PRICE_ADJUSTED live | Planned |
+| 9 | `RescueMap` + `MapCanvas` | `features/surplus/` | `geo.ts`, geolocation hook | Highest-risk integration; isolate early | Planned |
+| 10 | `ReserveSheet` | `features/orders/` | `useReserveItem` | Quantity picker + reservation; the money path begins here | Planned |
+| 11 | `CheckoutPanel` | `features/orders/` | Midtrans action | Snap token + QRIS + 15-minute hold countdown | Planned |
+| 12 | `PickupCodeCard` | `features/orders/` | order query | The artefact the consumer shows at the counter | Planned |
+| 13 | `VerifyCodeForm` | `components/merchant/` | `orders.confirmPickup` | Writes the terminal `RESCUED` event — the demo's climax | Planned |
+| 14 | `SurplusItemForm` | `features/surplus/` | schema, `pricing.ts` | Merchant supply side | Planned |
+| 15 | `IncomingReservationsTable` | `components/merchant/` | live query | Realtime showcase for merchants | Planned |
+| 16 | `BatchOfferCard` | `components/processor/` | batch query | TTL countdown, accept/decline | Planned |
+| 17 | `IntakeForm` | `features/recovery/` | `recoveryBatches.logIntake` | Authoritative `acceptedWeightGrams` | Planned |
+| 18 | `OutcomeForm` | `features/recovery/` | `recoveryBatches.logOutcome` | Closes the loop → `RECOVERED` + `RESIDUAL` | Planned |
+| 19 | `ImpactSummary` | `features/impact/` | `impact.ts` | Rescued / Recovered / Residual + estimated CO₂e | Planned |
+| 20 | `CircularityGauge` | `features/impact/` | `impact.ts` | The single number judges will remember | Planned |
+| 21 | `LedgerTimeline` | `features/impact/` | ledger query | Per-item audit trail; proves the ledger is real | Planned |
+| 22 | `VerificationQueue` | `components/admin/` | admin queries | Unblocks onboarding merchants and processors | Planned |
+| 23 | `NotificationBell` | `components/common/` | notifications query | Cross-role; lowest urgency | Planned |
 
 Ordering rationale: items 1–6 are infrastructure that every subsequent item depends on; 7–13 complete the consumer money path end-to-end; 14–15 complete the merchant supply path; 16–18 complete the **Circular Routing** loop, which is the platform's differentiator; 19–21 make the loop legible; 22–23 are operational polish.
 

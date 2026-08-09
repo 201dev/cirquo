@@ -82,11 +82,11 @@ Admins are **provisioned manually**. They are never created through public regis
 
 | Mechanism | Allowed |
 |---|---|
-| Seed script run against the Convex deployment | ✅ |
-| Internal Convex mutation not exposed to the client | ✅ |
-| Public registration form with an admin option | ❌ The option does not exist |
-| Public registration mutation receiving `role: "admin"` | ❌ Server ignores the field entirely |
-| An existing Admin creating another Admin through the console | ❌ Out of scope for the MVP |
+| Seed script run against the Convex deployment | Implemented |
+| Internal Convex mutation not exposed to the client | Implemented |
+| Public registration form with an admin option | Not implemented The option does not exist |
+| Public registration mutation receiving `role: "admin"` | Not implemented Server ignores the field entirely |
+| An existing Admin creating another Admin through the console | Not implemented Out of scope for the MVP |
 
 The registration mutation does not accept `role` as an arbitrary string. It accepts a union restricted to `"consumer" | "merchant" | "processor"`, and Convex's validator rejects anything else at the boundary before a single line of handler code runs.
 
@@ -238,58 +238,58 @@ An Admin is a powerful reader and a constrained writer. They can change *governa
 
 ## 4. Master capability matrix
 
-**Legend:** ✅ permitted · ❌ denied · ⚠️ conditional, see footnote
+**Legend:** Implemented permitted · Not implemented denied · Warning conditional, see footnote
 
 | # | Capability | Consumer | Merchant | Processor | Admin |
 |---|---|---|---|---|---|
-| 1 | Register a public account | ✅ | ✅ | ✅ | ❌ ⁽¹⁾ |
-| 2 | Log in and hold a session | ✅ | ✅ | ✅ | ✅ |
-| 3 | Set own `role` at registration | ⚠️ ⁽²⁾ | ⚠️ ⁽²⁾ | ⚠️ ⁽²⁾ | ❌ ⁽¹⁾ |
-| 4 | Change own `role` after registration | ❌ | ❌ | ❌ | ❌ |
-| 5 | Edit own user profile | ✅ | ✅ | ✅ | ✅ |
-| 6 | Create a merchant business profile | ❌ | ✅ | ❌ | ❌ |
-| 7 | Create a processor facility profile | ❌ | ❌ | ✅ | ❌ |
-| 8 | Edit own business/facility profile | ❌ | ⚠️ ⁽³⁾ | ⚠️ ⁽³⁾ | ❌ |
-| 9 | Approve or reject verification | ❌ | ❌ | ❌ | ✅ |
-| 10 | Browse active Rescue Items | ✅ | ✅ ⁽⁴⁾ | ❌ | ✅ |
-| 11 | View Rescue Item detail | ✅ | ✅ ⁽⁴⁾ | ❌ | ✅ |
-| 12 | Filter by dietary preference | ✅ | ✅ | ❌ | ✅ |
-| 13 | Create a Rescue Item | ❌ | ⚠️ ⁽⁵⁾ | ❌ | ❌ |
-| 14 | Edit a Rescue Item | ❌ | ⚠️ ⁽⁶⁾ | ❌ | ❌ |
-| 15 | Delete a Rescue Item | ❌ | ❌ ⁽⁷⁾ | ❌ | ❌ ⁽⁷⁾ |
-| 16 | Set `floorPrice` | ❌ | ✅ | ❌ | ❌ |
-| 17 | Override the price suggestion | ❌ | ⚠️ ⁽⁸⁾ | ❌ | ❌ |
-| 18 | Publish a `processingOnly` listing | ❌ | ⚠️ ⁽⁵⁾ | ❌ | ❌ |
-| 19 | Reserve a Rescue Item | ✅ | ❌ | ❌ | ❌ |
-| 20 | Pay for an order | ⚠️ ⁽⁹⁾ | ❌ | ❌ | ❌ |
-| 21 | Cancel an unpaid reservation | ⚠️ ⁽⁹⁾ | ❌ | ❌ | ❌ |
-| 22 | Cancel a paid order | ❌ ⁽¹⁰⁾ | ❌ | ❌ | ⚠️ ⁽¹⁰⁾ |
-| 23 | View own pickup code | ⚠️ ⁽⁹⁾ | ❌ | ❌ | ✅ |
-| 24 | View a pickup code for own item's orders | ❌ | ⚠️ ⁽¹¹⁾ | ❌ | ✅ |
-| 25 | Verify a pickup inside the window | ❌ | ⚠️ ⁽¹¹⁾ | ❌ | ✅ |
-| 26 | Verify a pickup outside the window | ❌ | ❌ | ❌ | ✅ ⁽¹²⁾ |
-| 27 | Report a consumer no-show | ❌ | ⚠️ ⁽¹¹⁾ | ❌ | ✅ |
-| 28 | View recovery batches | ❌ | ⚠️ ⁽¹³⁾ | ⚠️ ⁽¹⁴⁾ | ✅ |
-| 29 | Accept a recovery offer | ❌ | ❌ | ⚠️ ⁽¹⁴⁾ | ❌ |
-| 30 | Decline a recovery offer | ❌ | ❌ | ⚠️ ⁽¹⁴⁾ | ❌ |
-| 31 | Write `acceptedWeightGrams` | ❌ | ❌ | ⚠️ ⁽¹⁵⁾ | ❌ |
-| 32 | Write `outputWeightGrams` / `residualWeightGrams` | ❌ | ❌ | ⚠️ ⁽¹⁵⁾ | ❌ |
-| 33 | Manually re-route an unroutable batch | ❌ | ❌ | ❌ | ✅ ⁽¹⁶⁾ |
-| 34 | View own impact metrics | ✅ | ✅ | ✅ | ✅ |
-| 35 | View platform-wide impact metrics | ⚠️ ⁽¹⁷⁾ | ⚠️ ⁽¹⁷⁾ | ⚠️ ⁽¹⁷⁾ | ✅ |
-| 36 | Read raw Material Flow Ledger entries | ❌ ⁽¹⁸⁾ | ❌ ⁽¹⁸⁾ | ❌ ⁽¹⁸⁾ | ✅ |
-| 37 | Write directly to the ledger | ❌ ⁽¹⁹⁾ | ❌ ⁽¹⁹⁾ | ❌ ⁽¹⁹⁾ | ❌ ⁽¹⁹⁾ |
-| 38 | Modify or delete a ledger entry | ❌ | ❌ | ❌ | ❌ |
-| 39 | Open a dispute | ⚠️ ⁽⁹⁾ | ⚠️ ⁽¹¹⁾ | ❌ | ❌ |
-| 40 | Resolve a dispute | ❌ | ❌ | ❌ | ✅ |
-| 41 | Issue a refund | ❌ | ❌ | ❌ | ✅ |
-| 42 | Moderate a listing | ❌ | ❌ | ❌ | ✅ |
-| 43 | Suspend or reactivate a user | ❌ | ❌ | ❌ | ✅ |
-| 44 | List all platform users | ❌ | ❌ | ❌ | ✅ |
-| 45 | View scheduler health and integrity anomalies | ❌ | ❌ | ❌ | ✅ |
-| 46 | Read own notifications | ✅ | ✅ | ✅ | ✅ |
-| 47 | Read another user's notifications | ❌ | ❌ | ❌ | ✅ |
-| 48 | Trigger a scheduled job manually | ❌ | ❌ | ❌ | ⚠️ ⁽²⁰⁾ |
+| 1 | Register a public account | Implemented | Implemented | Implemented | Not implemented ⁽¹⁾ |
+| 2 | Log in and hold a session | Implemented | Implemented | Implemented | Implemented |
+| 3 | Set own `role` at registration | Warning ⁽²⁾ | Warning ⁽²⁾ | Warning ⁽²⁾ | Not implemented ⁽¹⁾ |
+| 4 | Change own `role` after registration | Not implemented | Not implemented | Not implemented | Not implemented |
+| 5 | Edit own user profile | Implemented | Implemented | Implemented | Implemented |
+| 6 | Create a merchant business profile | Not implemented | Implemented | Not implemented | Not implemented |
+| 7 | Create a processor facility profile | Not implemented | Not implemented | Implemented | Not implemented |
+| 8 | Edit own business/facility profile | Not implemented | Warning ⁽³⁾ | Warning ⁽³⁾ | Not implemented |
+| 9 | Approve or reject verification | Not implemented | Not implemented | Not implemented | Implemented |
+| 10 | Browse active Rescue Items | Implemented | Implemented ⁽⁴⁾ | Not implemented | Implemented |
+| 11 | View Rescue Item detail | Implemented | Implemented ⁽⁴⁾ | Not implemented | Implemented |
+| 12 | Filter by dietary preference | Implemented | Implemented | Not implemented | Implemented |
+| 13 | Create a Rescue Item | Not implemented | Warning ⁽⁵⁾ | Not implemented | Not implemented |
+| 14 | Edit a Rescue Item | Not implemented | Warning ⁽⁶⁾ | Not implemented | Not implemented |
+| 15 | Delete a Rescue Item | Not implemented | Not implemented ⁽⁷⁾ | Not implemented | Not implemented ⁽⁷⁾ |
+| 16 | Set `floorPrice` | Not implemented | Implemented | Not implemented | Not implemented |
+| 17 | Override the price suggestion | Not implemented | Warning ⁽⁸⁾ | Not implemented | Not implemented |
+| 18 | Publish a `processingOnly` listing | Not implemented | Warning ⁽⁵⁾ | Not implemented | Not implemented |
+| 19 | Reserve a Rescue Item | Implemented | Not implemented | Not implemented | Not implemented |
+| 20 | Pay for an order | Warning ⁽⁹⁾ | Not implemented | Not implemented | Not implemented |
+| 21 | Cancel an unpaid reservation | Warning ⁽⁹⁾ | Not implemented | Not implemented | Not implemented |
+| 22 | Cancel a paid order | Not implemented ⁽¹⁰⁾ | Not implemented | Not implemented | Warning ⁽¹⁰⁾ |
+| 23 | View own pickup code | Warning ⁽⁹⁾ | Not implemented | Not implemented | Implemented |
+| 24 | View a pickup code for own item's orders | Not implemented | Warning ⁽¹¹⁾ | Not implemented | Implemented |
+| 25 | Verify a pickup inside the window | Not implemented | Warning ⁽¹¹⁾ | Not implemented | Implemented |
+| 26 | Verify a pickup outside the window | Not implemented | Not implemented | Not implemented | Implemented ⁽¹²⁾ |
+| 27 | Report a consumer no-show | Not implemented | Warning ⁽¹¹⁾ | Not implemented | Implemented |
+| 28 | View recovery batches | Not implemented | Warning ⁽¹³⁾ | Warning ⁽¹⁴⁾ | Implemented |
+| 29 | Accept a recovery offer | Not implemented | Not implemented | Warning ⁽¹⁴⁾ | Not implemented |
+| 30 | Decline a recovery offer | Not implemented | Not implemented | Warning ⁽¹⁴⁾ | Not implemented |
+| 31 | Write `acceptedWeightGrams` | Not implemented | Not implemented | Warning ⁽¹⁵⁾ | Not implemented |
+| 32 | Write `outputWeightGrams` / `residualWeightGrams` | Not implemented | Not implemented | Warning ⁽¹⁵⁾ | Not implemented |
+| 33 | Manually re-route an unroutable batch | Not implemented | Not implemented | Not implemented | Implemented ⁽¹⁶⁾ |
+| 34 | View own impact metrics | Implemented | Implemented | Implemented | Implemented |
+| 35 | View platform-wide impact metrics | Warning ⁽¹⁷⁾ | Warning ⁽¹⁷⁾ | Warning ⁽¹⁷⁾ | Implemented |
+| 36 | Read raw Material Flow Ledger entries | Not implemented ⁽¹⁸⁾ | Not implemented ⁽¹⁸⁾ | Not implemented ⁽¹⁸⁾ | Implemented |
+| 37 | Write directly to the ledger | Not implemented ⁽¹⁹⁾ | Not implemented ⁽¹⁹⁾ | Not implemented ⁽¹⁹⁾ | Not implemented ⁽¹⁹⁾ |
+| 38 | Modify or delete a ledger entry | Not implemented | Not implemented | Not implemented | Not implemented |
+| 39 | Open a dispute | Warning ⁽⁹⁾ | Warning ⁽¹¹⁾ | Not implemented | Not implemented |
+| 40 | Resolve a dispute | Not implemented | Not implemented | Not implemented | Implemented |
+| 41 | Issue a refund | Not implemented | Not implemented | Not implemented | Implemented |
+| 42 | Moderate a listing | Not implemented | Not implemented | Not implemented | Implemented |
+| 43 | Suspend or reactivate a user | Not implemented | Not implemented | Not implemented | Implemented |
+| 44 | List all platform users | Not implemented | Not implemented | Not implemented | Implemented |
+| 45 | View scheduler health and integrity anomalies | Not implemented | Not implemented | Not implemented | Implemented |
+| 46 | Read own notifications | Implemented | Implemented | Implemented | Implemented |
+| 47 | Read another user's notifications | Not implemented | Not implemented | Not implemented | Implemented |
+| 48 | Trigger a scheduled job manually | Not implemented | Not implemented | Not implemented | Warning ⁽²⁰⁾ |
 
 **Footnotes**
 
@@ -322,21 +322,21 @@ An Admin is a powerful reader and a constrained writer. They can change *governa
 
 | Operation | Consumer | Merchant | Processor | Admin | Conditions |
 |---|---|---|---|---|---|
-| Create | ❌ | ⚠️ | ❌ | ❌ | Merchant: verified only |
-| Read — `active`, not `processingOnly` | ✅ | ✅ | ❌ | ✅ | Consumer: platform-wide |
-| Read — own, any status | — | ✅ | — | ✅ | Merchant: own only |
-| Read — `draft` | ❌ | ⚠️ | ❌ | ✅ | Merchant: own only |
-| Read — `processingOnly` | ❌ | ⚠️ | ❌ | ✅ | Merchant: own only |
-| Read — `expired` / `recovery_pending` | ❌ | ⚠️ | ❌ | ✅ | Merchant: own only |
-| Read — `moderated` | ❌ | ⚠️ | ❌ | ✅ | Merchant: own only, with reason |
-| Update — content fields | ❌ | ⚠️ | ❌ | ❌ | Own, verified, before any reservation |
-| Update — `currentPrice` | ❌ | ⚠️ | ❌ | ❌ | Own; `floorPrice <= p < originalPrice` |
-| Update — `floorPrice` | ❌ | ⚠️ | ❌ | ❌ | Own, before any reservation |
-| Update — `remainingQuantity` | ❌ ⁽ᵃ⁾ | ❌ ⁽ᵃ⁾ | ❌ | ❌ | System-managed only |
-| Update — `status` | ❌ ⁽ᵃ⁾ | ⚠️ | ❌ | ⚠️ | Merchant: `draft → active` only. Admin: `→ moderated` only |
-| Publish a draft | ❌ | ⚠️ | ❌ | ❌ | Own, verified |
-| Moderate | ❌ | ❌ | ❌ | ✅ | Reason required; terminal |
-| Delete | ❌ | ❌ | ❌ | ❌ | No delete path exists |
+| Create | Not implemented | Warning | Not implemented | Not implemented | Merchant: verified only |
+| Read — `active`, not `processingOnly` | Implemented | Implemented | Not implemented | Implemented | Consumer: platform-wide |
+| Read — own, any status | — | Implemented | — | Implemented | Merchant: own only |
+| Read — `draft` | Not implemented | Warning | Not implemented | Implemented | Merchant: own only |
+| Read — `processingOnly` | Not implemented | Warning | Not implemented | Implemented | Merchant: own only |
+| Read — `expired` / `recovery_pending` | Not implemented | Warning | Not implemented | Implemented | Merchant: own only |
+| Read — `moderated` | Not implemented | Warning | Not implemented | Implemented | Merchant: own only, with reason |
+| Update — content fields | Not implemented | Warning | Not implemented | Not implemented | Own, verified, before any reservation |
+| Update — `currentPrice` | Not implemented | Warning | Not implemented | Not implemented | Own; `floorPrice <= p < originalPrice` |
+| Update — `floorPrice` | Not implemented | Warning | Not implemented | Not implemented | Own, before any reservation |
+| Update — `remainingQuantity` | Not implemented ⁽ᵃ⁾ | Not implemented ⁽ᵃ⁾ | Not implemented | Not implemented | System-managed only |
+| Update — `status` | Not implemented ⁽ᵃ⁾ | Warning | Not implemented | Warning | Merchant: `draft → active` only. Admin: `→ moderated` only |
+| Publish a draft | Not implemented | Warning | Not implemented | Not implemented | Own, verified |
+| Moderate | Not implemented | Not implemented | Not implemented | Implemented | Reason required; terminal |
+| Delete | Not implemented | Not implemented | Not implemented | Not implemented | No delete path exists |
 
 ⁽ᵃ⁾ `remainingQuantity` and most status transitions are side effects of guarded mutations — reserve, cancel, pickup, sweep — never direct writes.
 
@@ -357,19 +357,19 @@ Admin:     surplusItems (unscoped)
 
 | Operation | Consumer | Merchant | Processor | Admin | Conditions |
 |---|---|---|---|---|---|
-| Create (reserve) | ✅ | ❌ | ❌ | ❌ | Item active, not processingOnly, quantity available, window open |
-| Read — own | ✅ | — | — | ✅ | `userId == session.userId` |
-| Read — for own item | — | ✅ | — | ✅ | `merchantId == ownMerchantProfile._id` |
-| Read — any | ❌ | ❌ | ❌ | ✅ | — |
-| Read `pickupCode` | ⚠️ | ⚠️ | ❌ | ✅ | Consumer: own, `status == "paid"`. Merchant: own item's orders |
-| Update — pay | ⚠️ | ❌ | ❌ | ❌ | Own, `status == "reserved"`, within hold |
-| Update — cancel | ⚠️ | ❌ | ❌ | ❌ | Own, `status == "reserved"` only |
-| Update — confirm pickup | ❌ | ⚠️ | ❌ | ✅ | Merchant: own item, code match, inside window. Admin: override with reason |
-| Update — report no-show | ❌ | ⚠️ | ❌ | ✅ | Own item, window closed |
-| Update — expire | ❌ ⁽ᵃ⁾ | ❌ ⁽ᵃ⁾ | ❌ | ❌ ⁽ᵃ⁾ | Scheduler only |
-| Update — refund | ❌ | ❌ | ❌ | ✅ | Via dispute resolution |
-| Update — `rescuedWeightGrams` | ❌ | ❌ ⁽ᵇ⁾ | ❌ | ❌ | Computed at pickup confirmation |
-| Delete | ❌ | ❌ | ❌ | ❌ | No delete path exists |
+| Create (reserve) | Implemented | Not implemented | Not implemented | Not implemented | Item active, not processingOnly, quantity available, window open |
+| Read — own | Implemented | — | — | Implemented | `userId == session.userId` |
+| Read — for own item | — | Implemented | — | Implemented | `merchantId == ownMerchantProfile._id` |
+| Read — any | Not implemented | Not implemented | Not implemented | Implemented | — |
+| Read `pickupCode` | Warning | Warning | Not implemented | Implemented | Consumer: own, `status == "paid"`. Merchant: own item's orders |
+| Update — pay | Warning | Not implemented | Not implemented | Not implemented | Own, `status == "reserved"`, within hold |
+| Update — cancel | Warning | Not implemented | Not implemented | Not implemented | Own, `status == "reserved"` only |
+| Update — confirm pickup | Not implemented | Warning | Not implemented | Implemented | Merchant: own item, code match, inside window. Admin: override with reason |
+| Update — report no-show | Not implemented | Warning | Not implemented | Implemented | Own item, window closed |
+| Update — expire | Not implemented ⁽ᵃ⁾ | Not implemented ⁽ᵃ⁾ | Not implemented | Not implemented ⁽ᵃ⁾ | Scheduler only |
+| Update — refund | Not implemented | Not implemented | Not implemented | Implemented | Via dispute resolution |
+| Update — `rescuedWeightGrams` | Not implemented | Not implemented ⁽ᵇ⁾ | Not implemented | Not implemented | Computed at pickup confirmation |
+| Delete | Not implemented | Not implemented | Not implemented | Not implemented | No delete path exists |
 
 ⁽ᵃ⁾ Expiry is written by the payment-hold sweeper, not by any human actor.
 ⁽ᵇ⁾ Derived as `quantity × weightPerItemGrams` inside the pickup mutation. The Merchant triggers the mutation but does not supply the value.
@@ -389,20 +389,20 @@ Admin:     orders (unscoped)
 
 | Operation | Consumer | Merchant | Processor | Admin | Conditions |
 |---|---|---|---|---|---|
-| Create | ❌ | ❌ ⁽ᵃ⁾ | ❌ | ❌ | Scheduler only — expiry sweep, no-show, or processingOnly listing |
-| Read — offered/accepted to me | ❌ | — | ✅ | ✅ | `processorId == ownProcessorProfile._id` |
-| Read — from my items | ❌ | ✅ | — | ✅ | `merchantId == ownMerchantProfile._id`, read-only |
-| Read — declined by me | ❌ | — | ❌ | ✅ | Permanently removed from the processor's view |
-| Read — any | ❌ | ❌ | ❌ | ✅ | — |
-| Accept | ❌ | ❌ | ⚠️ | ❌ | Assigned processor, `status == "offered"`, TTL not passed |
-| Decline | ❌ | ❌ | ⚠️ | ❌ | Assigned processor, `status == "offered"`, TTL not passed |
-| Write `acceptedWeightGrams` | ❌ | ❌ | ⚠️ | ❌ | Assigned processor, `status == "accepted"`, positive integer |
-| Write `outputType` / `outputWeightGrams` | ❌ | ❌ | ⚠️ | ❌ | Assigned processor, `status == "collected"` |
-| Write `residualWeightGrams` | ❌ | ❌ | ⚠️ | ❌ | Assigned processor; must satisfy `<= acceptedWeightGrams` |
-| Assign `processorId` | ❌ | ❌ | ❌ | ⚠️ | Routing engine normally; Admin manual re-route on `unroutable` |
-| Update `routingAttempts` | ❌ | ❌ | ❌ | ❌ | Engine only |
-| Update `declinedByProcessorIds` | ❌ | ❌ | ❌ ⁽ᵇ⁾ | ❌ | Appended by decline mutation and TTL sweeper |
-| Delete | ❌ | ❌ | ❌ | ❌ | No delete path exists |
+| Create | Not implemented | Not implemented ⁽ᵃ⁾ | Not implemented | Not implemented | Scheduler only — expiry sweep, no-show, or processingOnly listing |
+| Read — offered/accepted to me | Not implemented | — | Implemented | Implemented | `processorId == ownProcessorProfile._id` |
+| Read — from my items | Not implemented | Implemented | — | Implemented | `merchantId == ownMerchantProfile._id`, read-only |
+| Read — declined by me | Not implemented | — | Not implemented | Implemented | Permanently removed from the processor's view |
+| Read — any | Not implemented | Not implemented | Not implemented | Implemented | — |
+| Accept | Not implemented | Not implemented | Warning | Not implemented | Assigned processor, `status == "offered"`, TTL not passed |
+| Decline | Not implemented | Not implemented | Warning | Not implemented | Assigned processor, `status == "offered"`, TTL not passed |
+| Write `acceptedWeightGrams` | Not implemented | Not implemented | Warning | Not implemented | Assigned processor, `status == "accepted"`, positive integer |
+| Write `outputType` / `outputWeightGrams` | Not implemented | Not implemented | Warning | Not implemented | Assigned processor, `status == "collected"` |
+| Write `residualWeightGrams` | Not implemented | Not implemented | Warning | Not implemented | Assigned processor; must satisfy `<= acceptedWeightGrams` |
+| Assign `processorId` | Not implemented | Not implemented | Not implemented | Warning | Routing engine normally; Admin manual re-route on `unroutable` |
+| Update `routingAttempts` | Not implemented | Not implemented | Not implemented | Not implemented | Engine only |
+| Update `declinedByProcessorIds` | Not implemented | Not implemented | Not implemented ⁽ᵇ⁾ | Not implemented | Appended by decline mutation and TTL sweeper |
+| Delete | Not implemented | Not implemented | Not implemented | Not implemented | No delete path exists |
 
 ⁽ᵃ⁾ A `processingOnly` listing causes batch creation, but the Merchant does not construct the batch document.
 ⁽ᵇ⁾ The Processor's decline mutation causes the append; the Processor cannot write the array directly.
@@ -423,14 +423,14 @@ Admin:     recoveryBatches (unscoped)
 
 | Operation | Consumer | Merchant | Processor | Admin | Conditions |
 |---|---|---|---|---|---|
-| Read raw entries | ❌ | ❌ | ❌ | ✅ | Admin only |
-| Read derived metrics — own scope | ✅ | ✅ | ✅ | ✅ | Aggregated, never raw documents |
-| Read published platform aggregates | ✅ | ✅ | ✅ | ✅ | Fixed set of figures only |
-| Filter by surplus item | ❌ | ❌ | ❌ | ✅ | Admin ledger view |
-| Filter by event type / date / actor | ❌ | ❌ | ❌ | ✅ | Admin ledger view |
-| Create an entry directly | ❌ | ❌ | ❌ | ❌ | Only `recordLedgerEvent` inside a state-changing transaction |
-| Update an entry | ❌ | ❌ | ❌ | ❌ | Append-only; no update path exists in code |
-| Delete an entry | ❌ | ❌ | ❌ | ❌ | Append-only; no delete path exists in code |
+| Read raw entries | Not implemented | Not implemented | Not implemented | Implemented | Admin only |
+| Read derived metrics — own scope | Implemented | Implemented | Implemented | Implemented | Aggregated, never raw documents |
+| Read published platform aggregates | Implemented | Implemented | Implemented | Implemented | Fixed set of figures only |
+| Filter by surplus item | Not implemented | Not implemented | Not implemented | Implemented | Admin ledger view |
+| Filter by event type / date / actor | Not implemented | Not implemented | Not implemented | Implemented | Admin ledger view |
+| Create an entry directly | Not implemented | Not implemented | Not implemented | Not implemented | Only `recordLedgerEvent` inside a state-changing transaction |
+| Update an entry | Not implemented | Not implemented | Not implemented | Not implemented | Append-only; no update path exists in code |
+| Delete an entry | Not implemented | Not implemented | Not implemented | Not implemented | Append-only; no delete path exists in code |
 
 Full access rules are in §8.
 
@@ -440,20 +440,20 @@ Full access rules are in §8.
 
 | Operation | Consumer | Merchant | Processor | Admin | Conditions |
 |---|---|---|---|---|---|
-| Read own `users` record | ✅ | ✅ | ✅ | ✅ | Never includes `passwordHash` |
-| Read another user's record | ❌ | ❌ | ❌ | ✅ | — |
-| Read public merchant info | ✅ | ✅ | ⚠️ | ✅ | Processor: only for a batch offered to them |
-| Read merchant operational data | ❌ | ⚠️ | ❌ | ✅ | Own only |
-| Read public processor info | ❌ | ⚠️ | ✅ | ✅ | Merchant: only the processor assigned to their batch |
-| Read processor capability data | ❌ | ❌ | ⚠️ | ✅ | Own only |
-| Update own name / phone | ✅ | ✅ | ✅ | ✅ | — |
-| Update own email | ⚠️ | ⚠️ | ⚠️ | ⚠️ | Must remain unique |
-| Update own password | ✅ | ✅ | ✅ | ✅ | Current password required |
-| Update own `role` | ❌ | ❌ | ❌ | ❌ | Immutable after creation |
-| Update own `status` | ❌ | ❌ | ❌ | ❌ | Admin-controlled |
-| Update own `verificationStatus` | — | ❌ | ❌ | ✅ | Admin only |
-| Suspend / reactivate a user | ❌ | ❌ | ❌ | ✅ | Audited |
-| Delete a user | ❌ | ❌ | ❌ | ❌ | Suspension only; ledger history is preserved |
+| Read own `users` record | Implemented | Implemented | Implemented | Implemented | Never includes `passwordHash` |
+| Read another user's record | Not implemented | Not implemented | Not implemented | Implemented | — |
+| Read public merchant info | Implemented | Implemented | Warning | Implemented | Processor: only for a batch offered to them |
+| Read merchant operational data | Not implemented | Warning | Not implemented | Implemented | Own only |
+| Read public processor info | Not implemented | Warning | Implemented | Implemented | Merchant: only the processor assigned to their batch |
+| Read processor capability data | Not implemented | Not implemented | Warning | Implemented | Own only |
+| Update own name / phone | Implemented | Implemented | Implemented | Implemented | — |
+| Update own email | Warning | Warning | Warning | Warning | Must remain unique |
+| Update own password | Implemented | Implemented | Implemented | Implemented | Current password required |
+| Update own `role` | Not implemented | Not implemented | Not implemented | Not implemented | Immutable after creation |
+| Update own `status` | Not implemented | Not implemented | Not implemented | Not implemented | Admin-controlled |
+| Update own `verificationStatus` | — | Not implemented | Not implemented | Implemented | Admin only |
+| Suspend / reactivate a user | Not implemented | Not implemented | Not implemented | Implemented | Audited |
+| Delete a user | Not implemented | Not implemented | Not implemented | Not implemented | Suspension only; ledger history is preserved |
 
 ---
 
@@ -461,13 +461,13 @@ Full access rules are in §8.
 
 | Operation | Consumer | Merchant | Processor | Admin | Conditions |
 |---|---|---|---|---|---|
-| Create | ⚠️ | ⚠️ | ❌ | ❌ | Consumer: own order. Merchant: order on own item |
-| Read — own | ✅ | ✅ | — | ✅ | Party to the dispute |
-| Read — any | ❌ | ❌ | ❌ | ✅ | — |
-| Add evidence | ⚠️ | ⚠️ | ❌ | ✅ | While `status == "open"` |
-| Resolve | ❌ | ❌ | ❌ | ✅ | Rationale required; audited |
-| Trigger a refund | ❌ | ❌ | ❌ | ✅ | Via resolution only |
-| Delete | ❌ | ❌ | ❌ | ❌ | No delete path exists |
+| Create | Warning | Warning | Not implemented | Not implemented | Consumer: own order. Merchant: order on own item |
+| Read — own | Implemented | Implemented | — | Implemented | Party to the dispute |
+| Read — any | Not implemented | Not implemented | Not implemented | Implemented | — |
+| Add evidence | Warning | Warning | Not implemented | Implemented | While `status == "open"` |
+| Resolve | Not implemented | Not implemented | Not implemented | Implemented | Rationale required; audited |
+| Trigger a refund | Not implemented | Not implemented | Not implemented | Implemented | Via resolution only |
+| Delete | Not implemented | Not implemented | Not implemented | Not implemented | No delete path exists |
 
 ---
 
@@ -475,12 +475,12 @@ Full access rules are in §8.
 
 | Operation | Consumer | Merchant | Processor | Admin | Conditions |
 |---|---|---|---|---|---|
-| Create | ❌ | ❌ | ❌ | ❌ | System-generated only |
-| Read own | ✅ | ✅ | ✅ | ✅ | `userId == session.userId` |
-| Read another user's | ❌ | ❌ | ❌ | ✅ | For support investigation |
-| Mark read | ⚠️ | ⚠️ | ⚠️ | ⚠️ | Own only |
-| Delete own | ⚠️ | ⚠️ | ⚠️ | ⚠️ | Own only |
-| Delete another user's | ❌ | ❌ | ❌ | ❌ | — |
+| Create | Not implemented | Not implemented | Not implemented | Not implemented | System-generated only |
+| Read own | Implemented | Implemented | Implemented | Implemented | `userId == session.userId` |
+| Read another user's | Not implemented | Not implemented | Not implemented | Implemented | For support investigation |
+| Mark read | Warning | Warning | Warning | Warning | Own only |
+| Delete own | Warning | Warning | Warning | Warning | Own only |
+| Delete another user's | Not implemented | Not implemented | Not implemented | Not implemented | — |
 
 ---
 
@@ -492,17 +492,17 @@ Full access rules are in §8.
 
 | Capability | `pending` | `verified` | `rejected` | `suspended` ⁽*⁾ |
 |---|---|---|---|---|
-| Log in | ✅ | ✅ | ✅ | ❌ |
-| Read own dashboard | ✅ | ✅ | ✅ | ❌ |
-| Edit business profile | ✅ | ✅ ⁽ᵃ⁾ | ✅ | ❌ |
-| Create a Rescue Item | ❌ | ✅ | ❌ | ❌ |
-| Publish a draft | ❌ | ✅ | ❌ | ❌ |
-| Edit an existing listing | ❌ | ✅ ⁽ᵇ⁾ | ❌ | ❌ |
-| Existing listings visible to Consumers | ❌ ⁽ᶜ⁾ | ✅ | ❌ | ❌ |
-| Verify a pickup | ❌ | ✅ | ❌ | ❌ |
-| Report a no-show | ❌ | ✅ | ❌ | ❌ |
-| Receive notifications | ✅ | ✅ | ✅ | ⚠️ |
-| See rejection reason | — | — | ✅ | — |
+| Log in | Implemented | Implemented | Implemented | Not implemented |
+| Read own dashboard | Implemented | Implemented | Implemented | Not implemented |
+| Edit business profile | Implemented | Implemented ⁽ᵃ⁾ | Implemented | Not implemented |
+| Create a Rescue Item | Not implemented | Implemented | Not implemented | Not implemented |
+| Publish a draft | Not implemented | Implemented | Not implemented | Not implemented |
+| Edit an existing listing | Not implemented | Implemented ⁽ᵇ⁾ | Not implemented | Not implemented |
+| Existing listings visible to Consumers | Not implemented ⁽ᶜ⁾ | Implemented | Not implemented | Not implemented |
+| Verify a pickup | Not implemented | Implemented | Not implemented | Not implemented |
+| Report a no-show | Not implemented | Implemented | Not implemented | Not implemented |
+| Receive notifications | Implemented | Implemented | Implemented | Warning |
+| See rejection reason | — | — | Implemented | — |
 
 ⁽ᵃ⁾ Changing the address returns `verificationStatus` to `pending`.
 ⁽ᵇ⁾ Also requires the item to have no reservations.
@@ -512,17 +512,17 @@ Full access rules are in §8.
 
 | Capability | `pending` | `verified` | `rejected` | `suspended` ⁽*⁾ |
 |---|---|---|---|---|
-| Log in | ✅ | ✅ | ✅ | ❌ |
-| Read own dashboard | ✅ | ✅ | ✅ | ❌ |
-| Edit facility profile | ✅ | ✅ ⁽ᵃ⁾ | ✅ | ❌ |
-| Declare capability fields | ✅ | ✅ ⁽ᵃ⁾ | ✅ | ❌ |
-| Appear in the routing eligibility set | ❌ | ✅ | ❌ | ❌ |
-| Receive a routed offer | ❌ | ✅ | ❌ | ❌ |
-| Accept or decline an offer | ❌ | ✅ | ❌ | ⚠️ ⁽ᵇ⁾ |
-| Write `acceptedWeightGrams` | ❌ | ✅ | ❌ | ⚠️ ⁽ᵇ⁾ |
-| Write outcome fields | ❌ | ✅ | ❌ | ⚠️ ⁽ᵇ⁾ |
-| Be eligible for Admin manual re-route | ❌ | ✅ | ❌ | ❌ |
-| Receive notifications | ✅ | ✅ | ✅ | ⚠️ |
+| Log in | Implemented | Implemented | Implemented | Not implemented |
+| Read own dashboard | Implemented | Implemented | Implemented | Not implemented |
+| Edit facility profile | Implemented | Implemented ⁽ᵃ⁾ | Implemented | Not implemented |
+| Declare capability fields | Implemented | Implemented ⁽ᵃ⁾ | Implemented | Not implemented |
+| Appear in the routing eligibility set | Not implemented | Implemented | Not implemented | Not implemented |
+| Receive a routed offer | Not implemented | Implemented | Not implemented | Not implemented |
+| Accept or decline an offer | Not implemented | Implemented | Not implemented | Warning ⁽ᵇ⁾ |
+| Write `acceptedWeightGrams` | Not implemented | Implemented | Not implemented | Warning ⁽ᵇ⁾ |
+| Write outcome fields | Not implemented | Implemented | Not implemented | Warning ⁽ᵇ⁾ |
+| Be eligible for Admin manual re-route | Not implemented | Implemented | Not implemented | Not implemented |
+| Receive notifications | Implemented | Implemented | Implemented | Warning |
 
 ⁽ᵃ⁾ Changing coordinates or `acceptedMaterialTypes` returns `verificationStatus` to `pending` and removes the facility from routing until re-approved.
 ⁽ᵇ⁾ A suspended processor holding accepted batches must still be able to close them out, or physically collected material would be permanently unaccounted for. Admin grants a scoped completion path per batch; no new offers are routed.
@@ -673,19 +673,19 @@ The ledger is the platform's central claim: every kilogram is accounted for, fro
 
 | Event type | Consumer | Merchant | Processor | Admin |
 |---|---|---|---|---|
-| `LISTED` | ❌ | derived, own item | ❌ | ✅ raw |
-| `PRICE_ADJUSTED` | ❌ | derived, own item | ❌ | ✅ raw |
-| `RESERVED` | derived, own order | derived, own item | ❌ | ✅ raw |
-| `PAID` | derived, own order | derived, own item | ❌ | ✅ raw |
-| `RESCUED` | derived, own order | derived, own item | ❌ | ✅ raw |
-| `CANCELLED` | derived, own order | derived, own item | ❌ | ✅ raw |
-| `EXPIRED` | derived, own order | derived, own item | ❌ | ✅ raw |
-| `ROUTED` | ❌ | derived, own item | derived, own batch | ✅ raw |
-| `ROUTING_FAILED` | ❌ | derived, own item | ❌ | ✅ raw |
-| `INTAKE_ACCEPTED` | ❌ | derived, own item | derived, own batch | ✅ raw |
-| `INTAKE_DECLINED` | ❌ | ❌ ⁽ᵃ⁾ | derived, own batch | ✅ raw |
-| `PROCESSED` | ❌ | derived, own item | derived, own batch | ✅ raw |
-| `MODERATED` | ❌ | derived, own item | ❌ | ✅ raw |
+| `LISTED` | Not implemented | derived, own item | Not implemented | Implemented raw |
+| `PRICE_ADJUSTED` | Not implemented | derived, own item | Not implemented | Implemented raw |
+| `RESERVED` | derived, own order | derived, own item | Not implemented | Implemented raw |
+| `PAID` | derived, own order | derived, own item | Not implemented | Implemented raw |
+| `RESCUED` | derived, own order | derived, own item | Not implemented | Implemented raw |
+| `CANCELLED` | derived, own order | derived, own item | Not implemented | Implemented raw |
+| `EXPIRED` | derived, own order | derived, own item | Not implemented | Implemented raw |
+| `ROUTED` | Not implemented | derived, own item | derived, own batch | Implemented raw |
+| `ROUTING_FAILED` | Not implemented | derived, own item | Not implemented | Implemented raw |
+| `INTAKE_ACCEPTED` | Not implemented | derived, own item | derived, own batch | Implemented raw |
+| `INTAKE_DECLINED` | Not implemented | Not implemented ⁽ᵃ⁾ | derived, own batch | Implemented raw |
+| `PROCESSED` | Not implemented | derived, own item | derived, own batch | Implemented raw |
+| `MODERATED` | Not implemented | derived, own item | Not implemented | Implemented raw |
 
 ⁽ᵃ⁾ Declines are hidden from Merchants deliberately. A Merchant learning which facilities refused their material creates friction with no operational benefit; they see only that routing is in progress or has completed.
 
@@ -998,23 +998,23 @@ export const confirmPickup = mutation({
 
 | # | Risk | Attack | Severity | Mitigation | Status |
 |---|---|---|---|---|---|
-| 1 | **Mass assignment of `role` at registration** | Attacker posts `{ role: "admin" }` to the public registration mutation and becomes a platform administrator | 🔴 Critical | The registration validator accepts a union restricted to `"consumer" \| "merchant" \| "processor"`. Convex rejects `"admin"` at the argument boundary before the handler runs. No update mutation anywhere accepts `role`. | 📋 |
-| 2 | **IDOR on Convex document ids** | Attacker substitutes another user's `orderId` to read a pickup code, or another merchant's `surplusItemId` to edit a listing | 🔴 Critical | `requireOwnership` on every scoped operation, comparing against a server-resolved owner id. Failures return `NOT_FOUND` so ids cannot be enumerated. | 📋 |
-| 3 | **Role spoofing from the client** | Attacker sends `{ role: "admin" }` or a forged claim alongside an ordinary request, hoping a handler reads role from args | 🔴 Critical | Role is only ever read from the `users` document resolved via the session. No handler accepts a role argument. Enforced by review checklist item 2. | 📋 |
-| 4 | **Admin self-provisioning** | An authenticated user calls a mutation that sets `role = "admin"` on their own account | 🔴 Critical | No mutation exists that writes `role` after creation. Admin provisioning is a seed script or an internal function absent from the client API surface. | 📋 |
-| 5 | **Session fixation** | Attacker plants a known token, then waits for the victim to authenticate with it | 🟠 High | Tokens are generated server-side with a CSPRNG on every successful login. A client-supplied token is never adopted. Any prior token is discarded on login. | 📋 |
-| 6 | **Session token leakage on shared devices** | A stale token in Capacitor WebView storage grants access to the next user of the device | 🟠 High | Bounded `expiresAt`; explicit logout deletes the session row server-side, not just the local copy; suspension invalidates all sessions for that user. | 📋 |
-| 7 | **Verification gate bypass** | Unverified merchant calls the create-listing mutation directly, bypassing the disabled UI button | 🟠 High | `requireVerifiedMerchant` reads `verificationStatus` from the database on every call. The UI gate is cosmetic. | 📋 |
-| 8 | **Ledger tampering** | An actor attempts to insert, edit, or delete a ledger entry to inflate impact figures | 🔴 Critical | No public mutation touches `materialFlowLedger`. The write helper is internal. No update or delete code path exists in the module at all. | 📋 |
-| 9 | **Measurement forgery** | A Merchant or Admin writes `acceptedWeightGrams` to inflate recovered weight | 🟠 High | The intake mutation calls `requireVerifiedProcessor` and verifies `batch.processorId == processor._id`. No other function writes the field. | 📋 |
-| 10 | **Mass balance violation** | A Processor submits `residualWeightGrams > acceptedWeightGrams`, or `outputWeightGrams` exceeding intake | 🟡 Medium | Server-side inequality guard in the outcome mutation, plus a scheduled integrity check that surfaces violations to the Admin health panel. | 📋 |
-| 11 | **Negative or oversold quantity** | Concurrent reservations drive `remainingQuantity` below zero | 🟠 High | The decrement and the order creation occur in one Convex transaction with a pre-check. Convex serialises conflicting transactions, so exactly one succeeds. | 📋 |
-| 12 | **Price floor bypass** | Attacker submits `currentPrice` below `floorPrice`, or a client-computed `totalPrice` | 🟡 Medium | Price bounds re-validated server-side. `totalPrice` is computed from the server's `currentPrice`, never accepted from the request. | 📋 |
-| 13 | **Payment replay** | Midtrans notification replayed to produce multiple `PAID` events for one order | 🟠 High | Signature verification, plus an idempotency check on the transaction id before any state change. A repeat returns 200 with no mutation. | 📋 |
-| 14 | **Cross-processor batch access** | Processor accepts a batch offered to a different facility | 🟡 Medium | Accept and decline mutations verify `batch.processorId == ownProcessorProfile._id` and that the TTL has not elapsed. | 📋 |
-| 15 | **Enumeration through error messages** | Attacker distinguishes "exists but not yours" from "does not exist" to map the id space | 🟡 Medium | Ownership failures return `NOT_FOUND`. Login failures use one generic message for both unknown email and wrong password. | 📋 |
-| 16 | **Suspended user continues acting** | A suspended account keeps operating on a still-valid session | 🟡 Medium | `requireAuth` re-reads `users.status` on every call and rejects `suspended`. Suspension also deletes existing session rows. | 📋 |
-| 17 | **Admin overrides a physical safety rule** | Admin manually routes material to a facility that does not accept that material type | 🟠 High | `acceptedMaterialTypes` is checked in the manual re-route mutation and is not overridable. Only radius, capacity, and hours may be overridden, each requiring a stored reason. | 📋 |
+| 1 | **Mass assignment of `role` at registration** | Attacker posts `{ role: "admin" }` to the public registration mutation and becomes a platform administrator | Critical | The registration validator accepts a union restricted to `"consumer" \| "merchant" \| "processor"`. Convex rejects `"admin"` at the argument boundary before the handler runs. No update mutation anywhere accepts `role`. | Planned |
+| 2 | **IDOR on Convex document ids** | Attacker substitutes another user's `orderId` to read a pickup code, or another merchant's `surplusItemId` to edit a listing | Critical | `requireOwnership` on every scoped operation, comparing against a server-resolved owner id. Failures return `NOT_FOUND` so ids cannot be enumerated. | Planned |
+| 3 | **Role spoofing from the client** | Attacker sends `{ role: "admin" }` or a forged claim alongside an ordinary request, hoping a handler reads role from args | Critical | Role is only ever read from the `users` document resolved via the session. No handler accepts a role argument. Enforced by review checklist item 2. | Planned |
+| 4 | **Admin self-provisioning** | An authenticated user calls a mutation that sets `role = "admin"` on their own account | Critical | No mutation exists that writes `role` after creation. Admin provisioning is a seed script or an internal function absent from the client API surface. | Planned |
+| 5 | **Session fixation** | Attacker plants a known token, then waits for the victim to authenticate with it | High | Tokens are generated server-side with a CSPRNG on every successful login. A client-supplied token is never adopted. Any prior token is discarded on login. | Planned |
+| 6 | **Session token leakage on shared devices** | A stale token in Capacitor WebView storage grants access to the next user of the device | High | Bounded `expiresAt`; explicit logout deletes the session row server-side, not just the local copy; suspension invalidates all sessions for that user. | Planned |
+| 7 | **Verification gate bypass** | Unverified merchant calls the create-listing mutation directly, bypassing the disabled UI button | High | `requireVerifiedMerchant` reads `verificationStatus` from the database on every call. The UI gate is cosmetic. | Planned |
+| 8 | **Ledger tampering** | An actor attempts to insert, edit, or delete a ledger entry to inflate impact figures | Critical | No public mutation touches `materialFlowLedger`. The write helper is internal. No update or delete code path exists in the module at all. | Planned |
+| 9 | **Measurement forgery** | A Merchant or Admin writes `acceptedWeightGrams` to inflate recovered weight | High | The intake mutation calls `requireVerifiedProcessor` and verifies `batch.processorId == processor._id`. No other function writes the field. | Planned |
+| 10 | **Mass balance violation** | A Processor submits `residualWeightGrams > acceptedWeightGrams`, or `outputWeightGrams` exceeding intake | Medium | Server-side inequality guard in the outcome mutation, plus a scheduled integrity check that surfaces violations to the Admin health panel. | Planned |
+| 11 | **Negative or oversold quantity** | Concurrent reservations drive `remainingQuantity` below zero | High | The decrement and the order creation occur in one Convex transaction with a pre-check. Convex serialises conflicting transactions, so exactly one succeeds. | Planned |
+| 12 | **Price floor bypass** | Attacker submits `currentPrice` below `floorPrice`, or a client-computed `totalPrice` | Medium | Price bounds re-validated server-side. `totalPrice` is computed from the server's `currentPrice`, never accepted from the request. | Planned |
+| 13 | **Payment replay** | Midtrans notification replayed to produce multiple `PAID` events for one order | High | Signature verification, plus an idempotency check on the transaction id before any state change. A repeat returns 200 with no mutation. | Planned |
+| 14 | **Cross-processor batch access** | Processor accepts a batch offered to a different facility | Medium | Accept and decline mutations verify `batch.processorId == ownProcessorProfile._id` and that the TTL has not elapsed. | Planned |
+| 15 | **Enumeration through error messages** | Attacker distinguishes "exists but not yours" from "does not exist" to map the id space | Medium | Ownership failures return `NOT_FOUND`. Login failures use one generic message for both unknown email and wrong password. | Planned |
+| 16 | **Suspended user continues acting** | A suspended account keeps operating on a still-valid session | Medium | `requireAuth` re-reads `users.status` on every call and rejects `suspended`. Suspension also deletes existing session rows. | Planned |
+| 17 | **Admin overrides a physical safety rule** | Admin manually routes material to a facility that does not accept that material type | High | `acceptedMaterialTypes` is checked in the manual re-route mutation and is not overridable. Only radius, capacity, and hours may be overridden, each requiring a stored reason. | Planned |
 
 **Priority.** Risks 1, 2, 3, 4, and 8 are build-blocking. They are implemented and tested in M1 alongside the ledger and authentication, before any feature depends on them. Everything else is addressed in the milestone that introduces the affected capability.
 
@@ -1122,7 +1122,7 @@ flowchart LR
     P -->|read + update own| US
     P -->|read own| NO
     P -.->|derived metrics only| LG
-    P -.->|❌ no access| SI
+    P -.->|Not implemented no access| SI
 
     A -->|read all · moderate| SI
     A -->|read all · override ·<br/>refund| OR
@@ -1144,8 +1144,8 @@ flowchart LR
     OR -.->|state change| LG
     RB -.->|state change| LG
 
-    X[❌ NO actor writes<br/>the ledger directly] -.-> LG
-    Y[❌ NO update path<br/>❌ NO delete path] -.-> LG
+    X[Not implemented NO actor writes<br/>the ledger directly] -.-> LG
+    Y[Not implemented NO update path<br/>Not implemented NO delete path] -.-> LG
 ```
 
 **Reading the diagram.** Solid arrows are direct access. Dashed arrows are indirect — derived metrics, or ledger entries produced as a side effect of a guarded state change. The Processor has no arrow to `surplusItems` at all, which is the visual statement that the recovery half of the platform is fully isolated from the marketplace half. The only bold arrow into the ledger comes from the System, because `recordLedgerEvent` is the sole write path in the codebase.

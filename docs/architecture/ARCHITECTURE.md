@@ -53,14 +53,14 @@ These principles are load-bearing. Every decision later in this document traces 
 
 | # | Principle | Practical consequence | Status |
 | --- | --- | --- | --- |
-| P1 | **The ledger is the truth** | No mutable impact counters. All metrics are reductions over `materialFlowLedger`. | 📋 Planned |
-| P2 | **Ledger writes are transactional with the state change** | `recordLedgerEvent` is called inside the same Convex mutation that mutates state. Never from an action, never from the client. | 📋 Planned |
-| P3 | **Business logic is framework-agnostic** | Algorithms live in `src/lib/*.ts` with zero Convex imports. Convex functions load data, call the pure function, persist the result. | ✅ Directory exists, 📋 logic pending |
-| P4 | **Weight is an integer in grams; money is an integer in IDR; time is epoch milliseconds UTC** | No floats in persisted domain data. No `Date` objects in the database. WIB conversion happens only at render. | 📋 Planned |
-| P5 | **Server-side authorization is the only authorization** | Client route guards are a UX affordance. Every Convex function re-checks identity and role. | 📋 Planned |
-| P6 | **Append-only means append-only** | Ledger rows are never updated or deleted. Corrections are compensating events. | 📋 Planned |
-| P7 | **Prefer boring, reversible technology** | Where two options are close, pick the one with the cheaper exit. | ✅ Applied |
-| P8 | **Honesty over polish in documentation** | Every capability is marked ✅ implemented, 🚧 in progress, or 📋 planned. | ✅ Applied |
+| P1 | **The ledger is the truth** | No mutable impact counters. All metrics are reductions over `materialFlowLedger`. | Planned |
+| P2 | **Ledger writes are transactional with the state change** | `recordLedgerEvent` is called inside the same Convex mutation that mutates state. Never from an action, never from the client. | Planned |
+| P3 | **Business logic is framework-agnostic** | Algorithms live in `src/lib/*.ts` with zero Convex imports. Convex functions load data, call the pure function, persist the result. | Implemented Directory exists, Planned logic pending |
+| P4 | **Weight is an integer in grams; money is an integer in IDR; time is epoch milliseconds UTC** | No floats in persisted domain data. No `Date` objects in the database. WIB conversion happens only at render. | Planned |
+| P5 | **Server-side authorization is the only authorization** | Client route guards are a UX affordance. Every Convex function re-checks identity and role. | Planned |
+| P6 | **Append-only means append-only** | Ledger rows are never updated or deleted. Corrections are compensating events. | Planned |
+| P7 | **Prefer boring, reversible technology** | Where two options are close, pick the one with the cheaper exit. | Implemented Applied |
+| P8 | **Honesty over polish in documentation** | Every capability is marked implemented, In progress in progress, or Planned. | Implemented Applied |
 
 ### 2.1 Honest Implementation Status
 
@@ -68,18 +68,18 @@ The system today is a **read-only skeleton**. This is stated plainly because ove
 
 | Layer | Status | Detail |
 | --- | --- | --- |
-| Convex schema (12 tables) | ✅ Implemented | `users`, `sessions`, `merchants`, `processors`, `surplusItems`, `orders`, `payments`, `recoveryBatches`, `materialFlowLedger`, `notifications`, `disputes`, `impactSnapshots` |
-| Convex queries | ✅ 6 implemented | `users.getByEmail`, `merchants.getByOwner`, `surplusItems.listByStatus`, `orders.listByUser`, `recoveryBatches.listByStatus`, `impact.getPlaceholderSummary` |
-| Convex mutations | 📋 None | Zero mutations exist. All writes are planned. |
-| Convex actions / httpAction / crons | 📋 None | Midtrans and scheduler work is planned. |
-| React routes | ✅ 10 implemented | Consumer `/`, `/explore`, `/orders`; Merchant `/merchant`, `/merchant/surplus`, `/merchant/surplus/new`; Processor `/processor`, `/processor/recovery`; Admin `/admin`; `*` fallback |
-| Layouts | ✅ Implemented | `ConsumerLayout`, `RoleShell` (used by Merchant/Processor/Admin layouts) |
-| UI primitives | ✅ 17 shadcn/ui components | new-york style, neutral base |
-| Pure-logic modules | 📋 Planned | `src/lib/pricing.ts`, `routing.ts`, `ranking.ts`, `impact.ts`, `geo.ts` |
-| Auth | 📋 Planned | `src/pages/auth` exists and is empty |
-| Mapbox | 📋 Planned | No SDK integration yet |
-| Midtrans | 📋 Planned | Sandbox credentials not yet wired |
-| Capacitor Android | ✅ Configured | `com.cirquo.app`, `webDir: dist`, sync/open/run scripts present |
+| Convex schema (12 tables) | Implemented | `users`, `sessions`, `merchants`, `processors`, `surplusItems`, `orders`, `payments`, `recoveryBatches`, `materialFlowLedger`, `notifications`, `disputes`, `impactSnapshots` |
+| Convex queries | Implemented 6 implemented | `users.getByEmail`, `merchants.getByOwner`, `surplusItems.listByStatus`, `orders.listByUser`, `recoveryBatches.listByStatus`, `impact.getPlaceholderSummary` |
+| Convex mutations | Planned None | Zero mutations exist. All writes are planned. |
+| Convex actions / httpAction / crons | Planned None | Midtrans and scheduler work is planned. |
+| React routes | Implemented 10 implemented | Consumer `/`, `/explore`, `/orders`; Merchant `/merchant`, `/merchant/surplus`, `/merchant/surplus/new`; Processor `/processor`, `/processor/recovery`; Admin `/admin`; `*` fallback |
+| Layouts | Implemented | `ConsumerLayout`, `RoleShell` (used by Merchant/Processor/Admin layouts) |
+| UI primitives | Implemented 17 shadcn/ui components | new-york style, neutral base |
+| Pure-logic modules | Planned | `src/lib/pricing.ts`, `routing.ts`, `ranking.ts`, `impact.ts`, `geo.ts` |
+| Auth | Planned | `src/pages/auth` exists and is empty |
+| Mapbox | Planned | No SDK integration yet |
+| Midtrans | Planned | Sandbox credentials not yet wired |
+| Capacitor Android | Implemented Configured | `com.cirquo.app`, `webDir: dist`, sync/open/run scripts present |
 
 ---
 
@@ -199,16 +199,16 @@ graph TB
 
 | Container | Technology | Responsibility | Deployment | Status |
 | --- | --- | --- | --- | --- |
-| **React SPA** | React 19.2, Vite 8, TS 6 | All UI, routing, forms, map | Static bundle on CDN | ✅ Skeleton |
-| **Pure Logic** | Plain TypeScript | Pricing, routing rank, listing rank, impact math, geo | Bundled into SPA and imported by Convex | 📋 Planned |
-| **Capacitor Shell** | Capacitor 8 | Android WebView host, native permissions | Play Store / APK | ✅ Configured |
-| **Service Worker** | Vanilla SW | Shell caching, PROD only | Served with the SPA | ✅ Registered |
-| **Convex Queries** | Convex 1.43 | Reactive reads | Convex cloud | ✅ 6 exist |
-| **Convex Mutations** | Convex 1.43 | Transactional writes + ledger | Convex cloud | 📋 Planned |
-| **Convex Actions** | Convex 1.43 | Midtrans Snap token creation | Convex cloud | 📋 Planned |
-| **httpAction** | Convex 1.43 | Midtrans notification endpoint | Convex cloud (public URL) | 📋 Planned |
-| **Crons** | Convex 1.43 | 10 scheduled jobs | Convex cloud | 📋 Planned |
-| **Document DB** | Convex storage | 12 tables | Convex cloud | ✅ Schema deployed |
+| **React SPA** | React 19.2, Vite 8, TS 6 | All UI, routing, forms, map | Static bundle on CDN | Implemented Skeleton |
+| **Pure Logic** | Plain TypeScript | Pricing, routing rank, listing rank, impact math, geo | Bundled into SPA and imported by Convex | Planned |
+| **Capacitor Shell** | Capacitor 8 | Android WebView host, native permissions | Play Store / APK | Implemented Configured |
+| **Service Worker** | Vanilla SW | Shell caching, PROD only | Served with the SPA | Implemented Registered |
+| **Convex Queries** | Convex 1.43 | Reactive reads | Convex cloud | Implemented 6 exist |
+| **Convex Mutations** | Convex 1.43 | Transactional writes + ledger | Convex cloud | Planned |
+| **Convex Actions** | Convex 1.43 | Midtrans Snap token creation | Convex cloud | Planned |
+| **httpAction** | Convex 1.43 | Midtrans notification endpoint | Convex cloud (public URL) | Planned |
+| **Crons** | Convex 1.43 | 10 scheduled jobs | Convex cloud | Planned |
+| **Document DB** | Convex storage | 12 tables | Convex cloud | Implemented Schema deployed |
 
 ### 4.3 Why the Backend Is a Single Container
 
@@ -290,23 +290,23 @@ graph LR
 
 | Path | Responsibility | Status |
 | --- | --- | --- |
-| `src/main.tsx` | Mounts `StrictMode → BrowserRouter → AppProviders → App`; registers `/sw.js` in PROD | ✅ |
-| `src/app/router.tsx` | Every route definition in one file | ✅ |
-| `src/app/providers.tsx` | Wraps `ConvexProvider` **conditionally** — falls back to a no-backend placeholder mode when `VITE_CONVEX_URL` is unset — plus the Sonner `Toaster` | ✅ |
-| `src/layouts/ConsumerLayout.tsx` | Header, nav hidden on mobile, fixed bottom nav with 3 items | ✅ |
-| `src/components/RoleShell.tsx` | Fixed 64-wide sidebar on `lg`, `Sheet` hamburger below | ✅ |
-| `src/layouts/{Merchant,Processor,Admin}Layout.tsx` | Thin wrappers over `RoleShell` | ✅ |
-| `src/components/ui/*` | 17 shadcn/ui primitives (new-york, neutral) | ✅ |
-| `src/components/common/{PageHeader,SummaryCard}.tsx` | Shared page furniture | ✅ |
-| `src/constants/mock-data.ts` | Placeholder data for the 9 screens | ✅ |
-| `src/types/domain.ts` | Mirrors the Convex schema for client typing | ✅ |
-| `src/types/navigation.ts` | `NavigationItem` | ✅ |
-| `src/lib/convex.ts` | Conditional client construction | ✅ |
-| `src/lib/utils.ts` | `cn` | ✅ |
-| `src/features/{auth,impact,orders,pricing,recovery,surplus}` | Feature slices | 📋 empty, `.gitkeep` |
-| `src/components/{admin,consumer,merchant,processor}` | Role-scoped components | 📋 empty, `.gitkeep` |
-| `src/hooks` | Shared hooks | 📋 empty, `.gitkeep` |
-| `src/pages/auth` | Auth screens | 📋 empty, `.gitkeep` |
+| `src/main.tsx` | Mounts `StrictMode → BrowserRouter → AppProviders → App`; registers `/sw.js` in PROD | Implemented |
+| `src/app/router.tsx` | Every route definition in one file | Implemented |
+| `src/app/providers.tsx` | Wraps `ConvexProvider` **conditionally** — falls back to a no-backend placeholder mode when `VITE_CONVEX_URL` is unset — plus the Sonner `Toaster` | Implemented |
+| `src/layouts/ConsumerLayout.tsx` | Header, nav hidden on mobile, fixed bottom nav with 3 items | Implemented |
+| `src/components/RoleShell.tsx` | Fixed 64-wide sidebar on `lg`, `Sheet` hamburger below | Implemented |
+| `src/layouts/{Merchant,Processor,Admin}Layout.tsx` | Thin wrappers over `RoleShell` | Implemented |
+| `src/components/ui/*` | 17 shadcn/ui primitives (new-york, neutral) | Implemented |
+| `src/components/common/{PageHeader,SummaryCard}.tsx` | Shared page furniture | Implemented |
+| `src/constants/mock-data.ts` | Placeholder data for the 9 screens | Implemented |
+| `src/types/domain.ts` | Mirrors the Convex schema for client typing | Implemented |
+| `src/types/navigation.ts` | `NavigationItem` | Implemented |
+| `src/lib/convex.ts` | Conditional client construction | Implemented |
+| `src/lib/utils.ts` | `cn` | Implemented |
+| `src/features/{auth,impact,orders,pricing,recovery,surplus}` | Feature slices | Planned empty, `.gitkeep` |
+| `src/components/{admin,consumer,merchant,processor}` | Role-scoped components | Planned empty, `.gitkeep` |
+| `src/hooks` | Shared hooks | Planned empty, `.gitkeep` |
+| `src/pages/auth` | Auth screens | Planned empty, `.gitkeep` |
 
 Detailed frontend structure is in [`FRONTEND.md`](./FRONTEND.md). Detailed backend module design is in [`BACKEND.md`](./BACKEND.md).
 
@@ -750,10 +750,10 @@ Cirquo uses **Midtrans Sandbox in every environment**, including the demo. Handl
 
 | Variable | Consumer | Present today | Notes |
 | --- | --- | --- | --- |
-| `VITE_CONVEX_URL` | Frontend | ✅ Yes — the only env var | When unset, `providers.tsx` falls back to **no-backend placeholder mode** so the UI is demoable without a backend |
-| `VITE_MAPBOX_TOKEN` | Frontend | 📋 Planned | Public token, URL-restricted |
-| `MIDTRANS_SERVER_KEY` | Convex action + webhook | 📋 Planned | **Server-side only**, never in the bundle |
-| `MIDTRANS_CLIENT_KEY` | Frontend (Snap) | 📋 Planned | Public by design |
+| `VITE_CONVEX_URL` | Frontend | Yes — the only env var | When unset, `providers.tsx` falls back to **no-backend placeholder mode** so the UI is demoable without a backend |
+| `VITE_MAPBOX_TOKEN` | Frontend | Planned | Public token, URL-restricted |
+| `MIDTRANS_SERVER_KEY` | Convex action + webhook | Planned | **Server-side only**, never in the bundle |
+| `MIDTRANS_CLIENT_KEY` | Frontend (Snap) | Planned | Public by design |
 
 The conditional-provider pattern is a deliberate resilience feature: a judge can run `bun dev` with no `.env` at all and still see every screen.
 
@@ -814,7 +814,7 @@ The conditional-provider pattern is a deliberate resilience feature: a judge can
 
 | Stage | Cities | Merchants | Ledger rows/year | Architecture change |
 | --- | --- | --- | --- | --- |
-| **Pilot** | 1 (Semarang) | 25 | 240k | None — current design ✅ |
+| **Pilot** | 1 (Semarang) | 25 | 240k | None — current design Implemented |
 | **City** | 1 | 200 | ~1.9M | Add `by_city_status` index (mitigation ladder step 1) |
 | **Multi-city** | 3–5 | 1,000 | ~9.6M | Add coarse geohash (step 2); cursor pagination on admin ledger views |
 | **National** | **10+** | 5,000+ | ~48M | **`impactSnapshots` pre-aggregation becomes necessary**; evaluate PostgreSQL + PostGIS |
@@ -840,11 +840,11 @@ The conditional-provider pattern is a deliberate resilience feature: a judge can
 
 | Aspect | Approach | Status |
 | --- | --- | --- |
-| Storage | `users` + `sessions` tables | ✅ Schema |
-| Mechanism | Session token, server-validated on every function call | 📋 Planned |
-| Client surface | `src/pages/auth` (empty), `src/features/auth` (empty) | 📋 Planned |
-| Roles | `consumer` / `merchant` / `processor` / `admin` on `users` | ✅ Schema |
-| Backend enforcement | `requireAuth` / `requireRole` / `requireOwnership` in `convex/lib/guards.ts` | 📋 Planned |
+| Storage | `users` + `sessions` tables | Implemented Schema |
+| Mechanism | Session token, server-validated on every function call | Planned |
+| Client surface | `src/pages/auth` (empty), `src/features/auth` (empty) | Planned |
+| Roles | `consumer` / `merchant` / `processor` / `admin` on `users` | Implemented Schema |
+| Backend enforcement | `requireAuth` / `requireRole` / `requireOwnership` in `convex/lib/guards.ts` | Planned |
 
 Detail: [`../security/AUTH.md`](../security/AUTH.md).
 
@@ -879,7 +879,7 @@ Error codes are catalogued in [`BACKEND.md`](./BACKEND.md).
 | **Domain audit trail** | `materialFlowLedger` | **Permanent, append-only** |
 | Admin actions | Ledger `MODERATED` + `actorId` | Permanent |
 | Cron outcomes | Convex logs + integrity-check alerts | Platform default |
-| Client errors | Console (📋 Sentry planned) | — |
+| Client errors | Console (Planned Sentry planned) | — |
 
 The ledger doubles as the audit log. Any question of the form "what happened to this kilogram and who caused it" is answerable from one table.
 

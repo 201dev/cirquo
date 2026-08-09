@@ -3,7 +3,7 @@
 **Document type:** Technical specification  
 **Status:** Draft v1.0  
 **Last updated:** 2026-08-06  
-**Implementation status:** 📋 Not yet built
+**Implementation status:** Planned Not yet built
 
 > Five algorithms drive Cirquo's behaviour. All are **deliberately rule-based and explainable**. None is machine learning. This is a design decision, not a limitation — see §7.
 
@@ -341,7 +341,7 @@ An `unroutable` batch is not silently discarded — it emits `ROUTING_FAILED` wi
 
 | Approach | Trade-off |
 |---|---|
-| **Sequential** ✅ | One processor at a time, ranked. Predictable, no double-acceptance race, fair load distribution. Slower worst case |
+| **Sequential** Implemented | One processor at a time, ranked. Predictable, no double-acceptance race, fair load distribution. Slower worst case |
 | Broadcast | Offer to all eligible simultaneously, first accept wins. Faster, but creates a race condition, and processors learn to ignore offers they will lose |
 
 Sequential is chosen. The 6-hour TTL is the tuning knob if latency becomes a problem; it can be shortened to 2h without changing the algorithm.

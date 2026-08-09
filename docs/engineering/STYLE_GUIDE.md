@@ -138,12 +138,12 @@ integrity of numeric records, silently accepting an unchecked value is how a
 compile time — parsed JSON, webhook bodies, caught errors.
 
 ```ts
-// ✗ Wrong
+// Invalid Wrong
 function handleWebhook(body: any) {
   return body.transaction_status;
 }
 
-// ✓ Right
+// Valid Right
 function handleWebhook(body: unknown): string {
   const parsed = midtransNotificationSchema.parse(body);
   return parsed.transaction_status;
@@ -153,12 +153,12 @@ function handleWebhook(body: unknown): string {
 **Use generics** when a function is polymorphic over its input.
 
 ```ts
-// ✗ Wrong
+// Invalid Wrong
 function first(items: any[]): any {
   return items[0];
 }
 
-// ✓ Right
+// Valid Right
 function first<T>(items: readonly T[]): T | undefined {
   return items[0];
 }
@@ -194,7 +194,7 @@ The `switch` above is exhaustive. If a new variant is added to `RoutingResult`,
 **Type caught errors properly.** `catch` binds `unknown` under `strict`.
 
 ```ts
-// ✓ Right
+// Valid Right
 try {
   await reserveItem(args);
 } catch (error: unknown) {
@@ -210,11 +210,11 @@ or lint suppression. The comment states *why* the suppression is necessary and
 *what would remove it*.
 
 ```ts
-// ✗ Wrong
+// Invalid Wrong
 // @ts-ignore
 mapRef.current.addControl(control);
 
-// ✓ Right
+// Valid Right
 // @ts-expect-error mapbox-gl v3 types omit `addControl` overload for custom
 // controls implementing IControl via a plain object. Remove once
 // @types/mapbox-gl ships the corrected overload (tracked upstream).
@@ -333,10 +333,10 @@ it is **never** 100%.
 require two or more `../` segments.
 
 ```ts
-// ✗ Wrong
+// Invalid Wrong
 import { cn } from '../../../lib/utils';
 
-// ✓ Right
+// Valid Right
 import { cn } from '@/lib/utils';
 ```
 
@@ -426,11 +426,11 @@ has no subunit in practice, so integer IDR is both exact and correct.
 ### 6.2 Mass
 
 ```ts
-// ✗ Wrong — float kilograms
+// Invalid Wrong — float kilograms
 const weight = 2.5;
 interface Item { weightKg: number }
 
-// ✓ Right — integer grams
+// Valid Right — integer grams
 const weightGrams = 2500;
 interface RescueItem { weightGrams: number }
 ```
@@ -461,11 +461,11 @@ representation artefact.
 ### 6.3 Money
 
 ```ts
-// ✗ Wrong
+// Invalid Wrong
 const price = 15000.0;
 const discounted = price * 0.7; // 10499.999999999998
 
-// ✓ Right
+// Valid Right
 const priceIdr = 15_000;
 const discountedIdr = Math.round(priceIdr * 0.7); // 10500
 ```
@@ -490,11 +490,11 @@ export function formatIdr(amount: number): string {
 ### 6.4 Time
 
 ```ts
-// ✗ Wrong
+// Invalid Wrong
 const created = new Date();
 const created = '2026-08-06T10:00:00+07:00';
 
-// ✓ Right
+// Valid Right
 const createdAt = Date.now();
 ```
 
@@ -579,13 +579,13 @@ export.
 top of the component, before any early return.
 
 ```tsx
-// ✗ Wrong
+// Invalid Wrong
 export function ItemDetail({ id }: Props) {
   if (!id) return null;
   const item = useQuery(api.surplusItems.getById, { id });
 }
 
-// ✓ Right
+// Valid Right
 export function ItemDetail({ id }: Props) {
   const item = useQuery(api.surplusItems.getById, id ? { id } : 'skip');
   if (!id) return null;
@@ -627,12 +627,12 @@ colour, on top of `radix-ui` and `@base-ui/react`.
 Base UI replaces Radix's `asChild` with a `render` prop:
 
 ```tsx
-// ✗ Wrong (Radix idiom, does not apply to Base UI components)
+// Invalid Wrong (Radix idiom, does not apply to Base UI components)
 <Button asChild>
   <Link to="/consumer/map">Open map</Link>
 </Button>
 
-// ✓ Right (Base UI idiom)
+// Valid Right (Base UI idiom)
 <Button render={<Link to="/consumer/map" />}>Open map</Button>
 ```
 
@@ -802,11 +802,11 @@ expiry, routing, and payment-webhook reconciliation are all internal.
 `.filter()` is a table scan and will not survive real data volume.
 
 ```ts
-// ✗ Wrong
+// Invalid Wrong
 const all = await ctx.db.query('surplusItems').collect();
 const active = all.filter((i) => i.status === 'active');
 
-// ✓ Right
+// Valid Right
 const active = await ctx.db
   .query('surplusItems')
   .withIndex('by_status', (q) => q.eq('status', 'active'))
@@ -851,7 +851,7 @@ function, and persist the result.
 **Before — algorithm entangled with the database:**
 
 ```ts
-// convex/pricing.ts — ✗ Wrong
+// convex/pricing.ts — Invalid Wrong
 export const getPrice = query({
   args: { itemId: v.id('surplusItems') },
   handler: async (ctx, { itemId }) => {
@@ -884,7 +884,7 @@ output is not reproducible.
 **After — pure function plus thin Convex wrapper:**
 
 ```ts
-// src/lib/pricing.ts — ✓ Right. No Convex imports anywhere in this file.
+// src/lib/pricing.ts — Valid Right. No Convex imports anywhere in this file.
 
 export const PRICING_CONFIG = {
   /** Discount applied at the very start of the pickup window. */
@@ -1055,12 +1055,12 @@ against the same background.
 hardcoded hex for product surfaces.
 
 ```tsx
-// ✗ Wrong
+// Invalid Wrong
 <div className="bg-green-500 text-white">
 <div className="bg-[#22c55e]">
 <div style={{ color: '#16a34a' }}>
 
-// ✓ Right
+// Valid Right
 <div className="bg-primary text-primary-foreground">
 <span className="text-recovered">
 ```
@@ -1132,10 +1132,10 @@ of the scale and produce a design that drifts. Acceptable only when:
 a token — the token handles it.
 
 ```tsx
-// ✗ Wrong — the token already flips
+// Invalid Wrong — the token already flips
 <div className="bg-white dark:bg-neutral-900">
 
-// ✓ Right
+// Valid Right
 <div className="bg-background">
 ```
 
@@ -1284,11 +1284,11 @@ convenience, and mock data **MUST NOT** be presented anywhere as if it were live
 Comments explain **why**, not **what**. The code says what it does.
 
 ```ts
-// ✗ Wrong — restates the code
+// Invalid Wrong — restates the code
 // Multiply the weight by the quantity
 const totalGrams = item.weightGrams * item.quantity;
 
-// ✓ Right — explains a decision
+// Valid Right — explains a decision
 // Ledger deltas are per-listing, not per-unit: a partially sold item emits
 // several negative RESERVED deltas that must sum against this one positive
 // LISTED delta for weight conservation to hold.

@@ -43,7 +43,7 @@ docs/
 
 ## Current Implementation Status
 
-**✅ Implemented (MVP foundation in place):**
+**Implemented (MVP foundation in place):**
 
 - Folder structure: `src/`, `convex/`, `public/`, `docs/`
 - Convex schema with 5 tables: `users`, `merchants`, `surplusItems`, `orders`, `recoveryBatches`
@@ -54,11 +54,11 @@ docs/
 - Tailwind CSS v4 with OKLCH color tokens
 - Mock data in `src/constants/mock-data.ts` for development
 
-**🚧 In Progress:**
+**In progress In Progress:**
 
 - Complete documentation system (you're reading part of it)
 
-**📋 Planned (MVP required, not yet started):**
+**Planned (MVP required, not yet started):**
 
 - Material Flow Ledger implementation (core differentiator)
 - Dynamic Rescue Pricing algorithm
@@ -73,7 +73,7 @@ docs/
 - QR code pickup verification
 - Admin moderation tools
 
-**❌ Explicitly out of MVP scope:**
+**Not implemented Explicitly out of MVP scope:**
 
 - Multi-payment gateways beyond Midtrans
 - POS/inventory integrations
@@ -87,7 +87,7 @@ docs/
 
 ## Key Terminology (Use Consistently)
 
-| Term | Meaning | ❌ Don't Say |
+| Term | Meaning | Don't Say |
 |---|---|---|
 | **Cirquo** | Platform name | CirQuo, CircQuo |
 | **Rescue Item** | Unit of surplus food listed by merchant | Listing, Product, Offer |
@@ -151,7 +151,7 @@ Target mid-range Android devices on 4G. Single React codebase → responsive web
 ### When Starting a New Feature
 
 1. **Read the spec first:** Check `docs/spec/FEATURES.md` and `docs/product/PRD.md` for acceptance criteria.
-2. **Check implementation status:** Look for ✅/🚧/📋 markers in this file and `docs/engineering/DEVELOPMENT.md`.
+2. **Check implementation status:** Look for Implemented/In progress/Planned markers in this file and `docs/engineering/DEVELOPMENT.md`.
 3. **Schema first, UI second:** If the feature needs new data, update `convex/schema.ts` and write Convex functions before touching React.
 4. **Verify before presenting:** Run `bun run dev` and test the flow end-to-end. Placeholder UI is fine, but broken flows are not.
 
@@ -169,7 +169,7 @@ export const createSurplus = mutation({
   args: { merchantId: v.id('merchants'), name: v.string(), /* ... */ },
   handler: async (ctx, args) => {
     const id = await ctx.db.insert('surplusItems', { /* ... */ })
-    // 🔴 CRITICAL: Also write to Material Flow Ledger here
+    //  CRITICAL: Also write to Material Flow Ledger here
     await ctx.db.insert('materialFlowLedger', { 
       rescueItemId: id,
       event: 'created',
@@ -232,27 +232,27 @@ Every mutation that changes a Rescue Item's lifecycle must write to the ledger. 
 
 ## Common Pitfalls to Avoid
 
-### ❌ Don't: Add features not in the PRD
+### Don't: Add features not in the PRD
 
 Stick to the MoSCoW priorities in `docs/product/PRD.md` Section 6. No loyalty systems, no gamification, no multi-currency in MVP.
 
-### ❌ Don't: Skip the Material Flow Ledger
+### Don't: Skip the Material Flow Ledger
 
 Every state change must log an event. If you implement consumer reservation but forget to write to the ledger, the impact dashboard will be wrong.
 
-### ❌ Don't: Hardcode business logic in the frontend
+### Don't: Hardcode business logic in the frontend
 
 Pricing calculations, routing decisions, eligibility checks — all belong in Convex functions, not React components.
 
-### ❌ Don't: Use "CirQuo" or "CircQuo"
+### Don't: Use "CirQuo" or "CircQuo"
 
 The platform name is **Cirquo** (capital C, lowercase rest, no camelCase Q).
 
-### ❌ Don't: Claim features are complete without backend
+### Don't: Claim features are complete without backend
 
 A form that validates client-side but doesn't save to Convex is not complete. A dashboard showing mock data from `src/constants/mock-data.ts` is not complete.
 
-### ❌ Don't: Ignore mobile layout
+### Don't: Ignore mobile layout
 
 Test every page at 375px width. Bottom nav for Consumer, hamburger menu for Merchant/Processor/Admin.
 
@@ -263,7 +263,7 @@ Test every page at 375px width. Bottom nav for Consumer, hamburger menu for Merc
 Based on PRD Section 6 (MoSCoW priorities), implement in this order:
 
 ### Phase 1: Core Infrastructure (Week 1-2)
-1. ✅ Schema + basic queries (done)
+1. Implemented Schema + basic queries (done)
 2. Material Flow Ledger table + insert helpers
 3. Authentication (session-based, role selection)
 4. Merchant onboarding flow
@@ -338,14 +338,14 @@ Not:
 
 When presenting work to the human developer:
 
-### ✅ Do:
+### Do:
 - State what you built and what changed
 - Mention any assumptions you made
 - Flag known limitations or placeholders
 - Provide the exact command to test (e.g., `bun run dev`, then visit `/merchant/surplus/new`)
 - Reference the PRD section or feature ID (e.g., "Implements MER-01, MER-02 from PRD Section 6.2")
 
-### ❌ Don't:
+### Don't:
 - Say "I can't do X because I'm an AI" (if you truly can't, explain the technical blocker)
 - Present half-finished work as complete
 - Add features the developer didn't ask for
@@ -411,16 +411,16 @@ bun run lint
 
 A feature is complete when:
 
-1. ✅ Convex schema includes necessary tables/fields
-2. ✅ Convex functions (queries/mutations) implement the logic
-3. ✅ Material Flow Ledger receives events for state changes
-4. ✅ UI components render the data reactively
-5. ✅ Form validation works (Zod schema + error messages)
-6. ✅ Mobile layout is usable (tested at 375px width)
-7. ✅ Happy path works end-to-end (manual test)
-8. ✅ Error states show helpful messages (not just console.error)
-9. ✅ Code follows conventions (TypeScript strict, no `any`, consistent naming)
-10. ✅ No `// @ts-ignore` or `eslint-disable` without explanation
+1. Implemented Convex schema includes necessary tables/fields
+2. Implemented Convex functions (queries/mutations) implement the logic
+3. Implemented Material Flow Ledger receives events for state changes
+4. Implemented UI components render the data reactively
+5. Implemented Form validation works (Zod schema + error messages)
+6. Implemented Mobile layout is usable (tested at 375px width)
+7. Implemented Happy path works end-to-end (manual test)
+8. Implemented Error states show helpful messages (not just console.error)
+9. Implemented Code follows conventions (TypeScript strict, no `any`, consistent naming)
+10. Implemented No `// @ts-ignore` or `eslint-disable` without explanation
 
 The MVP as a whole is complete when the full circular flow works:
 
@@ -445,4 +445,4 @@ All testable on both web and Capacitor Android build.
 **Ready to start?**  
 Read [`docs/product/PRD.md`](../product/PRD.md) → check [`docs/engineering/DEVELOPMENT.md`](../engineering/DEVELOPMENT.md) → pick a Phase 1 task from the priority list above → implement → test → present.
 
-Good luck building Cirquo. Let's close the loop. 🌱
+Good luck building Cirquo. Let's close the loop. 

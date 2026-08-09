@@ -8,8 +8,8 @@
 | **Backend** | Convex (`convex/discovery.ts`, `convex/orders.ts`, `convex/payments.ts`, `convex/impact.ts`, `convex/notifications.ts`, `convex/disputes.ts`) |
 | **Payments** | Midtrans Snap — Sandbox |
 | **Maps** | Mapbox GL JS (client rendering; distance computed server-side by Haversine) |
-| **Status legend** | ✅ implemented · 📋 planned |
-| **Implemented today** | `orders.listByUser` ✅ — everything else 📋 |
+| **Status legend** | implemented · Planned |
+| **Implemented today** | `orders.listByUser` Implemented — everything else Planned |
 | **Conventions** | [`API.md`](./API.md) §7 units · §9 errors · §10 reactivity |
 
 ---
@@ -31,7 +31,7 @@ If the consumer never shows up, the material does **not** become Residual. It re
 
 ## 2. Function reference
 
-### `discovery.listNearby` 📋
+### `discovery.listNearby` Planned
 **Type:** query · **Auth:** Public (enhanced when authenticated) · **PRD ref:** CON-01, CON-02
 
 Returns active Rescue Items near a coordinate, ranked for the map and the list view.
@@ -293,7 +293,7 @@ const listings = useQuery(api.discovery.listNearby, {
 
 ---
 
-### `discovery.getListing` 📋
+### `discovery.getListing` Planned
 **Type:** query · **Auth:** Public · **PRD ref:** CON-03
 
 Full detail for one Rescue Item, including merchant context and live availability.
@@ -364,7 +364,7 @@ type ListingDetail = {
 
 ---
 
-### `discovery.getFilters` 📋
+### `discovery.getFilters` Planned
 **Type:** query · **Auth:** Public · **PRD ref:** CON-04
 
 Returns the filter vocabulary with live counts, so the UI never offers a filter that would return zero results.
@@ -401,7 +401,7 @@ type FiltersResult = {
 
 ---
 
-### `orders.reserve` 📋
+### `orders.reserve` Planned
 **Type:** mutation · **Auth:** Consumer · **PRD ref:** CON-05, CON-06
 
 **The most important mutation in Cirquo.** Reserves a quantity of a Rescue Item, decrements availability atomically, locks the price, snapshots the weight, generates a pickup code, starts the 15-minute payment hold, and writes the `RESERVED` ledger event — all in one transaction.
@@ -667,7 +667,7 @@ sequenceDiagram
     TA->>DB: patch(remainingQuantity = 0, status = 'sold_out')
     TA->>DB: insert order A
     TA->>DB: insert ledger RESERVED (A)
-    CX->>TA: COMMIT ✅
+    CX->>TA: COMMIT Implemented
 
     TB->>DB: patch(remainingQuantity = 0)
     CX->>CX: read/write conflict detected —<br/>item was modified after TB read it
@@ -679,7 +679,7 @@ sequenceDiagram
     TB->>TB: status is 'sold_out' -> INVALID_TRANSITION
     CX-->>B: ConvexError { code: 'INVALID_TRANSITION' }
 
-    CX-->>A: { orderId, pickupCode, holdExpiresAt } ✅
+    CX-->>A: { orderId, pickupCode, holdExpiresAt } Implemented
     CX-->>B: toast "This item has already moved on."
     CX-->>B: discovery.getListing invalidated -> shows "Sold out"
 ```
@@ -741,7 +741,7 @@ The last row is the important one. If a merchant could read the code, they could
 
 ---
 
-### `payments.createTransaction` 📋
+### `payments.createTransaction` Planned
 **Type:** **action** · **Auth:** Consumer (order owner) · **PRD ref:** CON-07
 
 Creates a Midtrans Snap transaction and returns the token the client SDK needs to open the payment sheet.
@@ -1003,7 +1003,7 @@ sequenceDiagram
 
 ---
 
-### `orders.listMine` 📋
+### `orders.listMine` Planned
 **Type:** query · **Auth:** Consumer · **PRD ref:** CON-08
 
 Paginated list of the caller's orders, enriched with item and merchant context.
@@ -1055,11 +1055,11 @@ type OrderSummary = {
 
 **Note on `pickupCode`** — deliberately **absent** from this list view. Codes are fetched one at a time via `orders.getPickupCode`, so a screenshot of the orders list does not leak every code the consumer holds.
 
-**Relationship to `orders.listByUser` ✅** — the existing implemented query is a raw, unenriched read used for early scaffolding. `orders.listMine` supersedes it. `listByUser` will be marked `@deprecated` when `listMine` ships, per the deprecation policy in [`API.md`](./API.md) §16.
+**Relationship to `orders.listByUser` Implemented** — the existing implemented query is a raw, unenriched read used for early scaffolding. `orders.listMine` supersedes it. `listByUser` will be marked `@deprecated` when `listMine` ships, per the deprecation policy in [`API.md`](./API.md) §16.
 
 ---
 
-### `orders.get` 📋
+### `orders.get` Planned
 **Type:** query · **Auth:** Consumer (owner) · **PRD ref:** CON-09
 
 Full detail for one order, including the live countdown and pickup instructions.
@@ -1092,7 +1092,7 @@ The consumer-visible `timeline` is a small but genuine expression of the Materia
 
 ---
 
-### `orders.cancel` 📋
+### `orders.cancel` Planned
 **Type:** mutation · **Auth:** Consumer (owner) · **PRD ref:** CON-10
 
 Cancels an order before pickup and restores the quantity.
@@ -1148,7 +1148,7 @@ Delta is zero because cancellation returns material to the merchant's available 
 
 ---
 
-### `orders.getPickupCode` 📋
+### `orders.getPickupCode` Planned
 **Type:** query · **Auth:** Consumer (owner, paid) · **PRD ref:** CON-11
 
 Returns the pickup code plus everything needed at the counter.
@@ -1203,7 +1203,7 @@ type PickupCodeResult = {
 
 ---
 
-### `impact.getConsumerSummary` 📋
+### `impact.getConsumerSummary` Planned
 **Type:** query · **Auth:** Consumer · **PRD ref:** CON-12
 
 The consumer's personal impact, derived entirely from the Material Flow Ledger.
@@ -1267,7 +1267,7 @@ A `users.totalRescuedGrams` counter would be faster and would be wrong the first
 
 ---
 
-### `notifications.listMine` 📋
+### `notifications.listMine` Planned
 **Type:** query · **Auth:** Any authenticated user · **PRD ref:** CON-13
 
 **Arguments**
@@ -1292,7 +1292,7 @@ A `users.totalRescuedGrams` counter would be faster and would be wrong the first
 
 ---
 
-### `notifications.markRead` 📋
+### `notifications.markRead` Planned
 **Type:** mutation · **Auth:** Owner · **PRD ref:** CON-14
 
 **Arguments**
@@ -1321,7 +1321,7 @@ A `users.totalRescuedGrams` counter would be faster and would be wrong the first
 
 ---
 
-### `disputes.raise` 📋
+### `disputes.raise` Planned
 **Type:** mutation · **Auth:** Consumer or Merchant (party to the order) · **PRD ref:** CON-15
 
 Raises a dispute on an order for Admin resolution.
@@ -1375,7 +1375,7 @@ This is a deliberate and important choice. A dispute is a **claim about** materi
 
 ---
 
-### `ratings.submit` 📋 (priority C)
+### `ratings.submit` Planned (priority C)
 **Type:** mutation · **Auth:** Consumer (owner of a `picked_up` order) · **PRD ref:** CON-16
 
 Rates a completed pickup. Explicitly **priority C** — it is not required for the core Material Flow Orchestration demo and will only ship if time allows.
@@ -1415,21 +1415,21 @@ Rates a completed pickup. Explicitly **priority C** — it is not required for t
 
 | Function | Kind | Auth | Ledger event | Priority | Status |
 |---|---|---|---|---|---|
-| `discovery.listNearby` | query | Public | — | A | 📋 |
-| `discovery.getListing` | query | Public | — | A | 📋 |
-| `discovery.getFilters` | query | Public | — | B | 📋 |
-| `orders.reserve` | mutation | Consumer | `RESERVED` | **A** | 📋 |
-| `payments.createTransaction` | action | Consumer (owner) | — (webhook writes `PAID`) | **A** | 📋 |
-| `orders.listMine` | query | Consumer | — | A | 📋 |
-| `orders.listByUser` | query | Consumer | — | — | ✅ |
-| `orders.get` | query | Consumer (owner) | — | A | 📋 |
-| `orders.cancel` | mutation | Consumer (owner) | `CANCELLED` | B | 📋 |
-| `orders.getPickupCode` | query | Consumer (owner, paid) | — | **A** | 📋 |
-| `impact.getConsumerSummary` | query | Consumer | — | B | 📋 |
-| `notifications.listMine` | query | Any | — | B | 📋 |
-| `notifications.markRead` | mutation | Owner | — | C | 📋 |
-| `disputes.raise` | mutation | Party | — (deliberately) | C | 📋 |
-| `ratings.submit` | mutation | Consumer (owner) | — | C | 📋 |
+| `discovery.listNearby` | query | Public | — | A | Planned |
+| `discovery.getListing` | query | Public | — | A | Planned |
+| `discovery.getFilters` | query | Public | — | B | Planned |
+| `orders.reserve` | mutation | Consumer | `RESERVED` | **A** | Planned |
+| `payments.createTransaction` | action | Consumer (owner) | — (webhook writes `PAID`) | **A** | Planned |
+| `orders.listMine` | query | Consumer | — | A | Planned |
+| `orders.listByUser` | query | Consumer | — | — | Implemented |
+| `orders.get` | query | Consumer (owner) | — | A | Planned |
+| `orders.cancel` | mutation | Consumer (owner) | `CANCELLED` | B | Planned |
+| `orders.getPickupCode` | query | Consumer (owner, paid) | — | **A** | Planned |
+| `impact.getConsumerSummary` | query | Consumer | — | B | Planned |
+| `notifications.listMine` | query | Any | — | B | Planned |
+| `notifications.markRead` | mutation | Owner | — | C | Planned |
+| `disputes.raise` | mutation | Party | — (deliberately) | C | Planned |
+| `ratings.submit` | mutation | Consumer (owner) | — | C | Planned |
 
 Priority A is the minimum path for a credible demo: find → reserve → pay → show code. Everything else supports it.
 
@@ -1439,13 +1439,13 @@ Priority A is the minimum path for a credible demo: find → reserve → pay →
 
 | `orders.status` | Consumer sees | Can pay | Can cancel | Code visible | Next transition |
 |---|---|---|---|---|---|
-| `reserved` | "Pay within 15:00" | ✅ | ✅ | ❌ | `paid` · `expired` · `cancelled` |
-| `paid` | "Ready for pickup" + code | ❌ | ✅ before window opens | ✅ | `picked_up` · `disputed` · `refunded` |
-| `picked_up` | "Rescued ✓" + impact | ❌ | ❌ | ❌ (spent) | terminal (or `disputed`) |
-| `cancelled` | "Cancelled" | ❌ | ❌ | ❌ | terminal |
-| `expired` | "Reservation expired" | ❌ | ❌ | ❌ | terminal |
-| `disputed` | "Under review" | ❌ | ❌ | ❌ | resolved by Admin |
-| `refunded` | "Refunded" | ❌ | ❌ | ❌ | terminal |
+| `reserved` | "Pay within 15:00" | Implemented | Implemented | Not implemented | `paid` · `expired` · `cancelled` |
+| `paid` | "Ready for pickup" + code | Not implemented | Implemented before window opens | Implemented | `picked_up` · `disputed` · `refunded` |
+| `picked_up` | "Rescued Valid" + impact | Not implemented | Not implemented | Not implemented (spent) | terminal (or `disputed`) |
+| `cancelled` | "Cancelled" | Not implemented | Not implemented | Not implemented | terminal |
+| `expired` | "Reservation expired" | Not implemented | Not implemented | Not implemented | terminal |
+| `disputed` | "Under review" | Not implemented | Not implemented | Not implemented | resolved by Admin |
+| `refunded` | "Refunded" | Not implemented | Not implemented | Not implemented | terminal |
 
 Full transition rules, including the merchant and processor sides, are authoritative in [`../domain/STATE_MACHINE.md`](../domain/STATE_MACHINE.md).
 

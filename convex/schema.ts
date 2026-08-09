@@ -8,6 +8,27 @@ export const userRole = v.union(
   v.literal('admin'),
 )
 
+export const userStatus = v.union(
+  v.literal('active'),
+  v.literal('suspended'),
+)
+
+export const ledgerEventType = v.union(
+  v.literal('LISTED'),
+  v.literal('PRICE_ADJUSTED'),
+  v.literal('RESERVED'),
+  v.literal('PAID'),
+  v.literal('RESCUED'),
+  v.literal('CANCELLED'),
+  v.literal('EXPIRED'),
+  v.literal('ROUTED'),
+  v.literal('ROUTING_FAILED'),
+  v.literal('INTAKE_ACCEPTED'),
+  v.literal('INTAKE_DECLINED'),
+  v.literal('PROCESSED'),
+  v.literal('MODERATED'),
+)
+
 export const rescueItemStatus = v.union(
   v.literal('draft'),
   v.literal('active'),
@@ -36,9 +57,20 @@ export default defineSchema({
   users: defineTable({
     name: v.string(),
     email: v.string(),
+    passwordHash: v.string(),
     role: userRole,
+    // ponytail: optional only for users created before M1-04.
+    // Make required after those rows are backfilled to `active`.
+    status: v.optional(userStatus),
     createdAt: v.number(),
   }).index('by_email', ['email']),
+
+  sessions: defineTable({
+    userId: v.id('users'),
+    tokenHash: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+  }).index('by_token_hash', ['tokenHash']),
 
   merchants: defineTable({
     ownerId: v.id('users'),
@@ -99,4 +131,22 @@ export default defineSchema({
     .index('by_merchant', ['merchantId'])
     .index('by_processor', ['processorId'])
     .index('by_status', ['status']),
+
+  materialFlowLedger: defineTable({
+    surplusItemId: v.id('surplusItems'),
+    orderId: v.optional(v.id('orders')),
+    recoveryBatchId: v.optional(v.id('recoveryBatches')),
+    eventType: ledgerEventType,
+    weightDeltaGrams: v.number(),
+    actorId: v.optional(v.id('users')),
+    actorRole: v.optional(userRole),
+    metadata: v.optional(v.string()),
+    methodologyVersion: v.string(),
+    occurredAt: v.number(),
+  })
+    .index('by_rescue_item', ['surplusItemId'])
+    .index('by_occurred_at', ['occurredAt'])
+    .index('by_actor', ['actorId', 'occurredAt'])
+    .index('by_event_type', ['eventType', 'occurredAt'])
+    .index('by_order', ['orderId']),
 })

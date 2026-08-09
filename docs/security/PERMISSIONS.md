@@ -7,7 +7,7 @@
 | **Last updated** | 2026-08-06 |
 | **Applies to** | Every Convex function in `convex/`, the guard library `convex/lib/guards.ts`, the React 19 / Capacitor 8 client |
 | **Depends on** | [AUTH.md](AUTH.md) — this document consumes `requireAuth` and assumes session tokens exist |
-| **Implementation status** | 📋 **Planned — no guard exists in the codebase today.** See §1.1. |
+| **Implementation status** | M1 shared authentication, role, and ownership guards implemented. Resource-specific mutation guards remain milestone work. |
 
 ---
 
@@ -33,27 +33,27 @@ No amount of conditional rendering prevents that call. `{isVerifiedMerchant && <
 
 | Layer | Purpose | Trusted? |
 |---|---|---|
-| Conditional rendering | Reduce confusion, avoid pointless failed calls | 🔴 **No** |
-| Client-side route guards | UX — do not show a dashboard the user cannot use | 🔴 **No** |
-| Zod form validation | Immediate feedback, fewer round-trips | 🔴 **No** |
-| Convex argument validators (`v.*`) | Type and shape enforcement at the API boundary | 🟢 Yes — runs server-side |
-| **Guard functions in the handler** | Identity, role, ownership, verification, state legality | 🟢 **Yes — the only real control** |
-| `internal*` visibility | Removes the function from the public API entirely | 🟢 Yes |
+| Conditional rendering | Reduce confusion, avoid pointless failed calls | **No** |
+| Client-side route guards | UX — do not show a dashboard the user cannot use | **No** |
+| Zod form validation | Immediate feedback, fewer round-trips | **No** |
+| Convex argument validators (`v.*`) | Type and shape enforcement at the API boundary |  Yes — runs server-side |
+| **Guard functions in the handler** | Identity, role, ownership, verification, state legality | **Yes — the only real control** |
+| `internal*` visibility | Removes the function from the public API entirely |  Yes |
 
 ### 1.1 Where Cirquo stands today
 
-📋 **No authorization exists.** The six read-only queries in the repository have no guards at all:
+M1 authorization now protects the private read paths:
 
-| Function | Exposure today | Severity |
+| Function | Access today | Boundary |
 |---|---|---|
-| `orders.listByUser` | Accepts a `userId` and returns that user's orders — **anyone can read anyone's order history** | 🔴 Critical IDOR |
-| `users.getByEmail` | Confirms account existence and returns the user document | 🔴 Critical — enumeration, plus `passwordHash` exposure once that field exists |
-| `merchants.getByOwner` | Returns any merchant profile by owner id | 🟠 Moderate |
-| `recoveryBatches.listByStatus` | Returns operational batch data to anyone | 🟠 Moderate |
-| `surplusItems.listByStatus` | Public browse | 🟢 Acceptable for `active` only |
-| `impact.getPlaceholderSummary` | Aggregate, non-identifying | 🟢 Acceptable |
+| `orders.listMine` | Protected | Caller ID comes only from the authenticated session |
+| `users.getByEmail` | Internal | Authentication backend only |
+| `merchants.getByOwner` | Protected | Owner or Admin |
+| `recoveryBatches.listByStatus` | Protected | Processor or Admin; Processor results are self-scoped |
+| `surplusItems.listByStatus` | Public | Hard-restricted to `active` |
+| `impact.getPlaceholderSummary` | Public | Aggregate, non-identifying placeholder |
 
-Everything below is the M1 target. None of it is running.
+The shared guards below are implemented; later resource-specific guards remain target design.
 
 ---
 
@@ -127,7 +127,7 @@ All guards live in `convex/lib/guards.ts`. Application code never queries `sessi
 ### 3.1 `requireAuth`
 
 ```ts
-// convex/lib/guards.ts — 📋 planned
+// convex/lib/guards.ts — Planned
 import { ConvexError } from 'convex/values';
 import type { QueryCtx, MutationCtx } from '../_generated/server';
 import type { Doc, Id } from '../_generated/dataModel';
@@ -433,7 +433,7 @@ export async function requireOwnedBatch(
 ### 4.1 Incorrect
 
 ```ts
-// 🔴 WRONG
+//  WRONG
 export const updateRescueItem = mutation({
   args: {
     token: v.string(),
@@ -441,18 +441,18 @@ export const updateRescueItem = mutation({
     currentPrice: v.number(),
   },
   handler: async (ctx, args) => {
-    // 🔴 Reads the document before knowing who is asking.
+    //  Reads the document before knowing who is asking.
     const item = await ctx.db.get(args.itemId);
     if (!item) throw new ConvexError('NOT_FOUND');
 
-    // 🔴 Business logic before the guard. If this throws PRICE_BELOW_FLOOR,
+    //  Business logic before the guard. If this throws PRICE_BELOW_FLOOR,
     // an anonymous caller has just learned the item's floorPrice —
     // commercially sensitive data.
     if (args.currentPrice < item.floorPrice) {
       throw new ConvexError('PRICE_BELOW_FLOOR');
     }
 
-    // 🔴 Guard arrives far too late.
+    //  Guard arrives far too late.
     const user = await requireAuth(ctx, args.token);
     const merchant = await ctx.db
       .query('merchants')
@@ -470,7 +470,7 @@ export const updateRescueItem = mutation({
 ### 4.2 Correct
 
 ```ts
-// 🟢 CORRECT
+//  CORRECT
 export const updateRescueItem = mutation({
   args: {
     token: v.string(),
@@ -527,19 +527,19 @@ Every planned Convex function. `—` means not applicable. Functions marked `int
 
 | Function | Type | Required role | Ownership condition | Verification | Guard call |
 |---|---|---|---|---|---|
-| `auth.register` | `action` | 🌐 public | — | — | none — role validator excludes `admin` |
-| `auth.login` | `action` | 🌐 public | — | — | none — rate-limited internally |
+| `auth.register` | `action` | public | — | — | none — role validator excludes `admin` |
+| `auth.login` | `action` | public | — | — | none — rate-limited internally |
 | `auth.logout` | `mutation` | any | own session | — | token lookup only; never throws |
 | `auth.logoutAll` | `mutation` | any | own sessions | — | `requireAuth` |
 | `auth.me` | `query` | any | self | — | `requireAuth` |
 | `auth.changePassword` | `action` | any | self | — | `resolveSession` + current-password re-auth |
-| `auth.requestPasswordReset` | `action` | 🌐 public | — | — | none — enumeration-safe, rate-limited |
-| `auth.resetPassword` | `action` | 🌐 public | reset-token holder | — | single-use token validation |
-| `internal.auth.checkEmailAvailable` | `internalQuery` | 🔒 server | — | — | not client-callable |
-| `internal.auth.createUserAndSession` | `internalMutation` | 🔒 server | — | — | not client-callable — **exposing this is total account forgery** |
-| `internal.auth.resolveSession` | `internalQuery` | 🔒 server | — | — | not client-callable |
-| `internal.auth.recordFailedLogin` | `internalMutation` | 🔒 server | — | — | not client-callable |
-| `internal.auth.applyPasswordChange` | `internalMutation` | 🔒 server | — | — | not client-callable |
+| `auth.requestPasswordReset` | `action` | public | — | — | none — enumeration-safe, rate-limited |
+| `auth.resetPassword` | `action` | public | reset-token holder | — | single-use token validation |
+| `internal.auth.checkEmailAvailable` | `internalQuery` | server-only | — | — | not client-callable |
+| `internal.auth.createUserAndSession` | `internalMutation` | server-only | — | — | not client-callable — **exposing this is total account forgery** |
+| `internal.auth.resolveSession` | `internalQuery` | server-only | — | — | not client-callable |
+| `internal.auth.recordFailedLogin` | `internalMutation` | server-only | — | — | not client-callable |
+| `internal.auth.applyPasswordChange` | `internalMutation` | server-only | — | — | not client-callable |
 
 ### 5.2 `users.*`
 
@@ -548,8 +548,8 @@ Every planned Convex function. `—` means not applicable. Functions marked `int
 | `users.getMe` | `query` | any | self only | — | `requireAuth(ctx, args.token)` |
 | `users.updateProfile` | `mutation` | any | self only | — | `requireAuth` — `name` and `phone` only |
 | `users.getPublicProfile` | `query` | any | — | — | `requireAuth` — returns `{ name }` only |
-| ~~`users.getByEmail`~~ | `query` | 🔴 **public today** | — | — | 🔴 **Must become `internalQuery`** |
-| `internal.users.getByEmail` | `internalQuery` | 🔒 server | — | — | not client-callable |
+| ~~`users.getByEmail`~~ | `query` | **public today** | — | — | **Must become `internalQuery`** |
+| `internal.users.getByEmail` | `internalQuery` | server-only | — | — | not client-callable |
 
 ### 5.3 `merchants.*`
 
@@ -558,9 +558,9 @@ Every planned Convex function. `—` means not applicable. Functions marked `int
 | `merchants.createProfile` | `mutation` | merchant | `ownerId` set server-side from `user._id` | not required — creates `pending` | `requireRole(ctx, token, 'merchant')` |
 | `merchants.updateProfile` | `mutation` | merchant | own profile via `by_owner` | not required | `requireRole` + owner lookup — `verificationStatus` NOT patchable |
 | `merchants.getMine` | `query` | merchant | own profile | not required | `requireRole(ctx, token, 'merchant')` |
-| `merchants.getPublic` | `query` | 🌐 public | — | only `verified` returned | none — public fields only |
-| `merchants.listNearby` | `query` | 🌐 public | — | filtered to `verified` | none — public fields only |
-| ~~`merchants.getByOwner`~~ | `query` | 🔴 **public today** | — | — | 🟠 **Must become `requireRole('merchant','admin')` + self-scope** |
+| `merchants.getPublic` | `query` | public | — | only `verified` returned | none — public fields only |
+| `merchants.listNearby` | `query` | public | — | filtered to `verified` | none — public fields only |
+| `merchants.getByOwner` | `query` | merchant / admin | owner, unless explicitly Admin | — | `requireRole('merchant','admin')` + `requireOwnership` |
 
 ### 5.4 `processors.*`
 
@@ -571,7 +571,7 @@ Every planned Convex function. `—` means not applicable. Functions marked `int
 | `processors.updateCapacity` | `mutation` | processor | own profile | **required** | `requireVerifiedProcessor` |
 | `processors.getMine` | `query` | processor | own profile | not required | `requireRole(ctx, token, 'processor')` |
 | `processors.listForAdmin` | `query` | admin | — | — | `requireAdmin` |
-| `internal.processors.findEligible` | `internalQuery` | 🔒 server | — | filters to `verified` | routing engine only — **public would expose the whole processor network** |
+| `internal.processors.findEligible` | `internalQuery` | server-only | — | filters to `verified` | routing engine only — **public would expose the whole processor network** |
 
 ### 5.5 `surplusItems.*` (Rescue Items)
 
@@ -583,11 +583,11 @@ Every planned Convex function. `—` means not applicable. Functions marked `int
 | `surplusItems.adjustPrice` | `mutation` | merchant | own item | **required** | `requireOwnedRescueItem` + `≥ floorPrice`, `< originalPrice` |
 | `surplusItems.cancel` | `mutation` | merchant | own item | **required** | `requireOwnedRescueItem` + only while untouched |
 | `surplusItems.listMine` | `query` | merchant | own items | not required | `requireRole('merchant')` + `by_merchant` index |
-| `surplusItems.getPublic` | `query` | 🌐 public | — | merchant must be `verified` | none — `active` only, public fields |
-| `surplusItems.browse` | `query` | 🌐 public | — | filtered | none — `status === 'active'` at the index level |
-| ~~`surplusItems.listByStatus`~~ | `query` | 🌐 public | — | — | 🟢 Acceptable **only** if hard-restricted to `active` |
-| `internal.surplusItems.expireStale` | `internalMutation` | 🔒 server | — | — | cron only |
-| `internal.surplusItems.tickPrice` | `internalMutation` | 🔒 server | — | — | cron only — Dynamic Rescue Pricing |
+| `surplusItems.getPublic` | `query` | public | — | merchant must be `verified` | none — `active` only, public fields |
+| `surplusItems.browse` | `query` | public | — | filtered | none — `status === 'active'` at the index level |
+| `surplusItems.listByStatus` | `query` | public | — | — | none — hard-restricted to `active` |
+| `internal.surplusItems.expireStale` | `internalMutation` | server-only | — | — | cron only |
+| `internal.surplusItems.tickPrice` | `internalMutation` | server-only | — | — | cron only — Dynamic Rescue Pricing |
 
 ### 5.6 `orders.*`
 
@@ -600,8 +600,8 @@ Every planned Convex function. `—` means not applicable. Functions marked `int
 | `orders.cancel` | `mutation` | consumer | own order | — | `requireOwnedOrder`, `relation === 'consumer'` |
 | `orders.confirmPickup` | `mutation` | merchant | own merchant's order | **required** | `requireOwnedOrder`, `relation === 'merchant'` + pickup code + window |
 | `orders.adminOverridePickup` | `mutation` | admin | — | — | `requireAdmin` — bypasses the window only, never the code silently |
-| ~~`orders.listByUser`~~ | `query` | 🔴 **public IDOR today** | — | — | 🔴 **Delete; replace with `orders.listMine`** |
-| `internal.orders.expireUnpaid` | `internalMutation` | 🔒 server | — | — | cron — 15-minute payment-hold sweep |
+| ~~`orders.listByUser`~~ | removed | — | — | — | Replaced by self-scoped `orders.listMine` |
+| `internal.orders.expireUnpaid` | `internalMutation` | server-only | — | — | cron — 15-minute payment-hold sweep |
 
 ### 5.7 `payments.*`
 
@@ -609,8 +609,8 @@ Every planned Convex function. `—` means not applicable. Functions marked `int
 |---|---|---|---|---|---|
 | `payments.createTransaction` | `action` | consumer | own order | — | `requireOwnedOrder` via `runQuery`; amount computed server-side |
 | `payments.getStatus` | `query` | consumer / admin | own order | — | `requireOwnedOrder` |
-| `payments.midtransWebhook` | `httpAction` | 🌐 unauthenticated | — | — | **signature verification only** — §5.7.1 |
-| `internal.payments.applyWebhookResult` | `internalMutation` | 🔒 server | — | — | webhook only |
+| `payments.midtransWebhook` | `httpAction` | Public unauthenticated | — | — | **signature verification only** — §5.7.1 |
+| `internal.payments.applyWebhookResult` | `internalMutation` | server-only | — | — | webhook only |
 
 #### 5.7.1 Webhook authorization
 
@@ -636,23 +636,23 @@ Every planned Convex function. `—` means not applicable. Functions marked `int
 | `recoveryBatches.logIntake` | `mutation` | processor | assigned to them | **required** | `requireOwnedBatch` — **only the Processor may set `acceptedWeightGrams`** |
 | `recoveryBatches.logOutcome` | `mutation` | processor | assigned to them | **required** | `requireOwnedBatch` + `residualWeightGrams ≤ acceptedWeightGrams` |
 | `recoveryBatches.listForMerchant` | `query` | merchant | own batches | **required** | `requireVerifiedMerchant` + `by_merchant` index |
-| ~~`recoveryBatches.listByStatus`~~ | `query` | 🔴 **public today** | — | — | 🟠 **Must become `requireAdmin`** |
-| `internal.recoveryBatches.route` | `internalMutation` | 🔒 server | — | — | Circular Routing engine — max 3 attempts, 6 h TTL |
-| `internal.recoveryBatches.expireOffers` | `internalMutation` | 🔒 server | — | — | cron — `offered → pending` or `unroutable` |
+| `recoveryBatches.listByStatus` | `query` | processor / admin | Processor sees assigned batches only | — | `requireRole('processor','admin')` |
+| `internal.recoveryBatches.route` | `internalMutation` | server-only | — | — | Circular Routing engine — max 3 attempts, 6 h TTL |
+| `internal.recoveryBatches.expireOffers` | `internalMutation` | server-only | — | — | cron — `offered → pending` or `unroutable` |
 
 ### 5.9 `impact.*` and ledger reads
 
 | Function | Type | Required role | Ownership condition | Verification | Guard call |
 |---|---|---|---|---|---|
-| `impact.getPlatformSummary` | `query` | 🌐 public | — | — | none — aggregate only, no identifiable rows |
+| `impact.getPlatformSummary` | `query` | public | — | — | none — aggregate only, no identifiable rows |
 | `impact.getMerchantSummary` | `query` | merchant / admin | own merchant | — | `requireRole('merchant','admin')` + owner scope |
 | `impact.getProcessorSummary` | `query` | processor / admin | own processor | — | `requireRole('processor','admin')` + owner scope |
 | `impact.getMyImpact` | `query` | consumer | own orders | — | `requireRole('consumer')` |
 | `ledger.listForItem` | `query` | merchant / processor / admin | party to the item | — | `requireOwnedRescueItem` then `by_surplus_item` |
 | `ledger.listMine` | `query` | any | `actorId === user._id` | — | `requireAuth` + `by_actor` index |
 | `ledger.listAll` | `query` | admin | — | — | `requireAdmin` |
-| `internal.ledger.record` | `internalMutation` | 🔒 server | — | — | **the only writer to `materialFlowLedger`** |
-| `internal.impact.snapshot` | `internalMutation` | 🔒 server | — | — | cron — writes `impactSnapshots` |
+| `internal.ledger.record` | `internalMutation` | server-only | — | — | **the only writer to `materialFlowLedger`** |
+| `internal.impact.snapshot` | `internalMutation` | server-only | — | — | cron — writes `impactSnapshots` |
 
 ### 5.10 `notifications.*`
 
@@ -661,8 +661,8 @@ Every planned Convex function. `—` means not applicable. Functions marked `int
 | `notifications.listMine` | `query` | any | `userId === user._id` | — | `requireAuth` + `by_user` index |
 | `notifications.markRead` | `mutation` | any | own notification | — | `requireAuth` + `NOT_FOUND` on mismatch |
 | `notifications.markAllRead` | `mutation` | any | own notifications | — | `requireAuth` + `by_user` index |
-| `internal.notifications.create` | `internalMutation` | 🔒 server | — | — | **public would let anyone phish any user inside a trusted UI** |
-| `internal.notifications.fanOut` | `internalAction` | 🔒 server | — | — | scheduled fan-out |
+| `internal.notifications.create` | `internalMutation` | server-only | — | — | **public would let anyone phish any user inside a trusted UI** |
+| `internal.notifications.fanOut` | `internalAction` | server-only | — | — | scheduled fan-out |
 
 ### 5.11 `disputes.*`
 
@@ -681,24 +681,24 @@ Every function below calls `requireAdmin` as its first statement, without except
 
 | Function | Type | Guard | Audited |
 |---|---|---|---|
-| `admin.listUsers` | `query` | `requireAdmin` | ✅ |
-| `admin.suspendUser` | `mutation` | `requireAdmin` | ✅ — deletes all sessions |
-| `admin.reinstateUser` | `mutation` | `requireAdmin` | ✅ |
-| `admin.listPendingMerchants` | `query` | `requireAdmin` | ✅ |
-| `admin.verifyMerchant` | `mutation` | `requireAdmin` | ✅ |
-| `admin.rejectMerchant` | `mutation` | `requireAdmin` | ✅ — reason required |
-| `admin.listPendingProcessors` | `query` | `requireAdmin` | ✅ |
-| `admin.verifyProcessor` | `mutation` | `requireAdmin` | ✅ |
-| `admin.rejectProcessor` | `mutation` | `requireAdmin` | ✅ — reason required |
-| `admin.moderateRescueItem` | `mutation` | `requireAdmin` | ✅ — writes `MODERATED` to the ledger |
-| `admin.overridePickup` | `mutation` | `requireAdmin` | ✅ — the only pickup-window bypass |
-| `admin.forceRouteBatch` | `mutation` | `requireAdmin` | ✅ |
-| `admin.markBatchUnroutable` | `mutation` | `requireAdmin` | ✅ |
-| `admin.resolveDispute` | `mutation` | `requireAdmin` | ✅ |
-| `admin.listAuthEvents` | `query` | `requireAdmin` | ✅ — reads are audited too |
-| `admin.listLedger` | `query` | `requireAdmin` | ✅ |
-| `admin.recordCompensatingEntry` | `mutation` | `requireAdmin` | ✅ — the **only** ledger correction path |
-| `internal.admin.provisionAdmin` | `internalMutation` | 🔒 dashboard only | ✅ — the sole route to `role: 'admin'` |
+| `admin.listUsers` | `query` | `requireAdmin` | Implemented |
+| `admin.suspendUser` | `mutation` | `requireAdmin` | Implemented — deletes all sessions |
+| `admin.reinstateUser` | `mutation` | `requireAdmin` | Implemented |
+| `admin.listPendingMerchants` | `query` | `requireAdmin` | Implemented |
+| `admin.verifyMerchant` | `mutation` | `requireAdmin` | Implemented |
+| `admin.rejectMerchant` | `mutation` | `requireAdmin` | Implemented — reason required |
+| `admin.listPendingProcessors` | `query` | `requireAdmin` | Implemented |
+| `admin.verifyProcessor` | `mutation` | `requireAdmin` | Implemented |
+| `admin.rejectProcessor` | `mutation` | `requireAdmin` | Implemented — reason required |
+| `admin.moderateRescueItem` | `mutation` | `requireAdmin` | Implemented — writes `MODERATED` to the ledger |
+| `admin.overridePickup` | `mutation` | `requireAdmin` | Implemented — the only pickup-window bypass |
+| `admin.forceRouteBatch` | `mutation` | `requireAdmin` | Implemented |
+| `admin.markBatchUnroutable` | `mutation` | `requireAdmin` | Implemented |
+| `admin.resolveDispute` | `mutation` | `requireAdmin` | Implemented |
+| `admin.listAuthEvents` | `query` | `requireAdmin` | Implemented — reads are audited too |
+| `admin.listLedger` | `query` | `requireAdmin` | Implemented |
+| `admin.recordCompensatingEntry` | `mutation` | `requireAdmin` | Implemented — the **only** ledger correction path |
+| `internal.admin.provisionAdmin` | `internalMutation` | Restricted dashboard only | Implemented — the sole route to `role: 'admin'` |
 
 ### 5.13 Cron and internal functions
 
@@ -730,31 +730,31 @@ Scoping must happen **at the index level**, not by `.collect()` followed by a Ja
 | `users` | self only | self only | self only | all |
 | `sessions` | own (`by_user`) | own | own | all — revocation only |
 | `merchants` | `verificationStatus === 'verified'`, public fields | self (`by_owner`) + all verified public | all verified public | all |
-| `processors` | ❌ none | ❌ none | self (`by_owner`) | all |
-| `surplusItems` | `status === 'active'` + merchant verified; own reserved items via `orders` | `by_merchant` = own | ❌ direct; only via `recoveryBatches` | all |
-| `orders` | `by_user` = self | `by_merchant` = own merchant | ❌ none | all |
-| `payments` | via own orders | ❌ **none** — merchants never see payment instrument data | ❌ none | all |
-| `recoveryBatches` | ❌ none | `by_merchant` = own | `by_processor` = self, plus live offers to self | all |
+| `processors` | Not implemented none | Not implemented none | self (`by_owner`) | all |
+| `surplusItems` | `status === 'active'` + merchant verified; own reserved items via `orders` | `by_merchant` = own | Not implemented direct; only via `recoveryBatches` | all |
+| `orders` | `by_user` = self | `by_merchant` = own merchant | Not implemented none | all |
+| `payments` | via own orders | Not implemented **none** — merchants never see payment instrument data | Not implemented none | all |
+| `recoveryBatches` | Not implemented none | `by_merchant` = own | `by_processor` = self, plus live offers to self | all |
 | `materialFlowLedger` | entries where `actorId === self` | entries on own items | entries on assigned batches | all |
 | `notifications` | `by_user` = self | self | self | all |
 | `disputes` | raised by or against self | raised by or against self | raised by or against self | all |
 | `impactSnapshots` | aggregate read | aggregate read | aggregate read | all |
-| `authEvents` | ❌ none | ❌ none | ❌ none | all |
+| `authEvents` | Not implemented none | Not implemented none | Not implemented none | all |
 
 ### 6.2 Correct vs incorrect scoping
 
 ```ts
-// 🔴 WRONG — loads every order in the database, then filters in JS.
+//  WRONG — loads every order in the database, then filters in JS.
 export const listMine = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx, args.token);
-    const all = await ctx.db.query('orders').collect(); // 🔴 full scan
+    const all = await ctx.db.query('orders').collect(); //  full scan
     return all.filter((o) => o.userId === user._id);
   },
 });
 
-// 🟢 CORRECT — the index enforces the scope. Unauthorized rows are never
+//  CORRECT — the index enforces the scope. Unauthorized rows are never
 // read, never in memory, and cannot leak through a later refactor.
 export const listMine = query({
   args: { token: v.string() },
@@ -797,15 +797,15 @@ Convex document IDs are opaque strings — not sequential integers, not guessabl
 ### 7.1 Vulnerable
 
 ```ts
-// 🔴 VULNERABLE — classic IDOR. Essentially the shape of the
-// orders.listByUser query that exists in the repository today.
+//  VULNERABLE — classic IDOR. Essentially the shape of the
+// The former orders.listByUser query, retained here as an example of the flaw.
 export const get = query({
   args: { token: v.string(), orderId: v.id('orders') },
   handler: async (ctx, args) => {
     // Authenticated — but authentication is not authorization.
     await requireAuth(ctx, args.token);
 
-    // 🔴 No relationship check. Any logged-in user reads ANY order:
+    //  No relationship check. Any logged-in user reads ANY order:
     // consumer identity, pickup code, total price, merchant, timestamps.
     return ctx.db.get(args.orderId);
   },
@@ -817,7 +817,7 @@ export const get = query({
 ### 7.2 Fixed
 
 ```ts
-// 🟢 FIXED
+//  FIXED
 export const get = query({
   args: { token: v.string(), orderId: v.id('orders') },
   handler: async (ctx, args) => {
@@ -859,10 +859,10 @@ For every function, ask: **"If I replace this ID argument with an ID belonging t
 
 | Answer | Verdict |
 |---|---|
-| `NOT_FOUND` is thrown | 🟢 Correct |
-| `FORBIDDEN` is thrown | 🟠 Works, but confirms existence — prefer `NOT_FOUND` |
-| Data is returned | 🔴 **IDOR vulnerability** |
-| A write succeeds | 🔴 **Critical IDOR vulnerability** |
+| `NOT_FOUND` is thrown |  Correct |
+| `FORBIDDEN` is thrown |  Works, but confirms existence — prefer `NOT_FOUND` |
+| Data is returned | **IDOR vulnerability** |
+| A write succeeds | **Critical IDOR vulnerability** |
 
 Every one of the ~30 planned functions taking an ID must be walked through this question before M1 ships.
 
@@ -877,17 +877,17 @@ Every one of the ~30 planned functions taking an ID must be walked through this 
 ### 8.1 Vulnerable — `role` at registration
 
 ```ts
-// 🔴 CATASTROPHIC
+//  CATASTROPHIC
 export const register = mutation({
   args: {
     name: v.string(),
     email: v.string(),
     passwordHash: v.string(),
-    role: v.string(),            // 🔴 unconstrained string
+    role: v.string(),            //  unconstrained string
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // 🔴 Spread — every client-supplied field lands in the row.
+    //  Spread — every client-supplied field lands in the row.
     return ctx.db.insert('users', { ...args, createdAt: Date.now() });
   },
 });
@@ -898,7 +898,7 @@ Exploit — one line in a browser console:
 ```js
 await convex.mutation('auth:register', {
   name: 'x', email: 'x@x.com', passwordHash: '...',
-  role: 'admin',        // 🔴 full platform control
+  role: 'admin',        //  full platform control
   status: 'active',
 });
 ```
@@ -908,7 +908,7 @@ The attacker now passes `requireAdmin` everywhere: verifying fraudulent merchant
 ### 8.2 Fixed — `role` at registration
 
 ```ts
-// 🟢 FIXED — see AUTH.md §8.2 for the full three-layer defence.
+//  FIXED — see AUTH.md §8.2 for the full three-layer defence.
 export const createUserAndSession = internalMutation({
   args: {
     name: v.string(),
@@ -946,15 +946,15 @@ export const createUserAndSession = internalMutation({
 ### 8.3 Vulnerable — `verificationStatus` on profile update
 
 ```ts
-// 🔴 VULNERABLE — self-verification
+//  VULNERABLE — self-verification
 export const updateProfile = mutation({
   args: {
     token: v.string(),
-    patch: v.any(),          // 🔴 arbitrary object from the client
+    patch: v.any(),          //  arbitrary object from the client
   },
   handler: async (ctx, args) => {
     const { merchant } = await requireVerifiedMerchant(ctx, args.token);
-    await ctx.db.patch(merchant._id, args.patch); // 🔴
+    await ctx.db.patch(merchant._id, args.patch); // 
   },
 });
 ```
@@ -964,7 +964,7 @@ Exploit:
 ```js
 await convex.mutation('merchants:updateProfile', {
   token: myToken,
-  patch: { verificationStatus: 'verified' },   // 🔴 AUTH-04 bypassed
+  patch: { verificationStatus: 'verified' },   //  AUTH-04 bypassed
 });
 ```
 
@@ -973,7 +973,7 @@ An unvetted merchant self-verifies and begins publishing Rescue Items, defeating
 ### 8.4 Fixed — `verificationStatus` on profile update
 
 ```ts
-// 🟢 FIXED — an explicit allowlist of mutable fields.
+//  FIXED — an explicit allowlist of mutable fields.
 export const updateProfile = mutation({
   args: {
     token: v.string(),
@@ -1047,14 +1047,14 @@ Legality is two questions, both mandatory: **is the transition legal from the cu
 | — | `draft` | Merchant (owner) | `requireVerifiedMerchant` | — | `LISTED` |
 | `draft` | `active` | Merchant (owner) | `requireOwnedRescueItem` | `pickupEndAt > now` | `LISTED` |
 | `draft` | `closed` | Merchant (owner) | `requireOwnedRescueItem` | untouched only | — |
-| `active` | `active` (price) | Merchant (owner) or 🔒 cron | `requireOwnedRescueItem` / internal | `≥ floorPrice`, `< originalPrice` | `PRICE_ADJUSTED` |
-| `active` | `reserved_partial` | 🔒 system via `orders.reserve` | `requireRole('consumer')` | quantity available | `RESERVED` |
-| `reserved_partial` | `sold_out` | 🔒 system | — | `remainingQuantity === 0` | `RESERVED` |
-| `active` / `reserved_partial` | `expired` | 🔒 cron | internal | `now > pickupEndAt` | `EXPIRED` |
-| `expired` / `sold_out` | `recovery_pending` | 🔒 cron | internal | unclaimed weight > 0 | `ROUTED` on offer |
-| `recovery_pending` | `recovered` | 🔒 system via `recoveryBatches.logOutcome` | `requireVerifiedProcessor` | outcome logged | `PROCESSED` |
-| `recovery_pending` | `residual` | 🔒 system | internal | remainder after recovery | `PROCESSED` |
-| `recovery_pending` | `closed` | 🔒 cron | internal | `unroutable` after 3 attempts | `ROUTING_FAILED` |
+| `active` | `active` (price) | Merchant (owner) or Restricted cron | `requireOwnedRescueItem` / internal | `≥ floorPrice`, `< originalPrice` | `PRICE_ADJUSTED` |
+| `active` | `reserved_partial` | system-only via `orders.reserve` | `requireRole('consumer')` | quantity available | `RESERVED` |
+| `reserved_partial` | `sold_out` | system-only | — | `remainingQuantity === 0` | `RESERVED` |
+| `active` / `reserved_partial` | `expired` | Restricted cron | internal | `now > pickupEndAt` | `EXPIRED` |
+| `expired` / `sold_out` | `recovery_pending` | Restricted cron | internal | unclaimed weight > 0 | `ROUTED` on offer |
+| `recovery_pending` | `recovered` | system-only via `recoveryBatches.logOutcome` | `requireVerifiedProcessor` | outcome logged | `PROCESSED` |
+| `recovery_pending` | `residual` | system-only | internal | remainder after recovery | `PROCESSED` |
+| `recovery_pending` | `closed` | Restricted cron | internal | `unroutable` after 3 attempts | `ROUTING_FAILED` |
 | any | `moderated` | **Admin only** | `requireAdmin` | reason required | `MODERATED` |
 
 ### 9.2 Order transitions
@@ -1062,12 +1062,12 @@ Legality is two questions, both mandatory: **is the transition legal from the cu
 | From | To | Permitted actor | Guard | Additional conditions | Ledger event |
 |---|---|---|---|---|---|
 | — | `reserved` | Consumer | `requireRole('consumer')` | quantity available → else `INSUFFICIENT_QUANTITY`; sets `paymentHoldExpiresAt = now + 15 min` | `RESERVED` |
-| `reserved` | `paid` | 🔒 Midtrans webhook | signature verification | amount matches; hold live → else `PAYMENT_HOLD_EXPIRED` | `PAID` |
-| `reserved` | `expired` | 🔒 cron | internal | hold elapsed; quantity restored | `EXPIRED` |
+| `reserved` | `paid` | Restricted Midtrans webhook | signature verification | amount matches; hold live → else `PAYMENT_HOLD_EXPIRED` | `PAID` |
+| `reserved` | `expired` | Restricted cron | internal | hold elapsed; quantity restored | `EXPIRED` |
 | `reserved` / `paid` | `cancelled` | Consumer (owner) | `requireOwnedOrder` (`consumer`) | before the pickup window closes | `CANCELLED` |
 | `paid` | `picked_up` | **Merchant (owner) only** | `requireOwnedOrder` (`merchant`) | code matches → else `INVALID_PICKUP_CODE`; inside window → else `PICKUP_WINDOW_CLOSED` | **`RESCUED`** |
 | `paid` | `picked_up` | **Admin override** | `requireAdmin` | window bypassed; override recorded in metadata | `RESCUED` |
-| `paid` | `expired` | 🔒 cron | internal | no-show → **material re-enters Circular Routing; does NOT become residual** | `EXPIRED` |
+| `paid` | `expired` | Restricted cron | internal | no-show → **material re-enters Circular Routing; does NOT become residual** | `EXPIRED` |
 | `paid` / `picked_up` | `disputed` | Consumer or Merchant (party) | `requireOwnedOrder` | reason required | — |
 | `disputed` | `refunded` | **Admin only** | `requireAdmin` | resolution note required | `CANCELLED` (compensating) |
 
@@ -1077,12 +1077,12 @@ The no-show rule bears restating because it is the most misunderstood in the sys
 
 | From | To | Permitted actor | Guard | Additional conditions | Ledger event |
 |---|---|---|---|---|---|
-| — | `pending` | 🔒 system | internal | unclaimed weight exists | — |
-| `pending` | `offered` | 🔒 routing engine | internal | eligible processor found; `offerExpiresAt = now + 6 h` | `ROUTED` |
+| — | `pending` | system-only | internal | unclaimed weight exists | — |
+| `pending` | `offered` | Restricted routing engine | internal | eligible processor found; `offerExpiresAt = now + 6 h` | `ROUTED` |
 | `offered` | `accepted` | **Processor (offeree) only** | `requireOwnedBatch` | offer live → else `OFFER_EXPIRED`; material accepted → else `MATERIAL_TYPE_REJECTED`; headroom → else `CAPACITY_EXCEEDED` | `INTAKE_ACCEPTED` |
 | `offered` | `pending` | Processor (offeree) declines | `requireOwnedBatch` | appended to `declinedByProcessorIds`; re-queued | `INTAKE_DECLINED` |
-| `offered` | `pending` | 🔒 cron | internal | TTL elapsed; `routingAttempts += 1` | `INTAKE_DECLINED` |
-| `pending` | `unroutable` | 🔒 cron | internal | `routingAttempts >= 3` | `ROUTING_FAILED` |
+| `offered` | `pending` | Restricted cron | internal | TTL elapsed; `routingAttempts += 1` | `INTAKE_DECLINED` |
+| `pending` | `unroutable` | Restricted cron | internal | `routingAttempts >= 3` | `ROUTING_FAILED` |
 | `accepted` | `collected` | **Processor only** | `requireOwnedBatch` | sets `acceptedWeightGrams` (measured) | `INTAKE_ACCEPTED` |
 | `collected` | `processed` | **Processor only** | `requireOwnedBatch` | `outputType`, `outputWeightGrams`, `residualWeightGrams ≤ acceptedWeightGrams` | **`PROCESSED`** |
 | `unroutable` | `offered` | **Admin only** | `requireAdmin` | manual re-route | `ROUTED` |
@@ -1100,16 +1100,16 @@ Two invariants carry the integrity of every impact metric Cirquo publishes:
 
 | Function group | Must be internal | Consequence if public |
 |---|---|---|
-| **Ledger writes** (`internal.ledger.record`) | ✅ | Anyone forges `RESCUED` / `PROCESSED` events. Every impact metric derives from the ledger, so the entire impact claim becomes unfalsifiable — and Material Flow Orchestration is Cirquo's core innovation. The single most important internal function in the system |
-| **Routing engine** (`internal.recoveryBatches.route`) | ✅ | Anyone assigns batches to arbitrary processors, bypasses eligibility (verification, material type, distance, capacity), or floods a competitor's facility |
-| **Cron sweeps** (`expireUnpaidOrders`, `expireListings`, `expireOffers`, `sweepExpiredSessions`) | ✅ | Anyone force-expires another user's reservation, releasing quantity they intended to buy — a trivial denial of service against both consumer and merchant |
-| **Notification fan-out** (`internal.notifications.create`) | ✅ | Anyone sends a notification to any user with arbitrary `title`, `body`, and `link` — a first-class phishing primitive inside a trusted UI |
-| **Price ticks** (`internal.surplusItems.tickPrice`) | ✅ | Anyone drives Dynamic Rescue Pricing straight to `floorPrice`, then buys at the floor. Direct financial harm to merchants |
-| **Auth internals** (`createUserAndSession`, `applyPasswordChange`) | ✅ | Account forgery and password overwrite — total compromise |
-| **Processor eligibility** (`internal.processors.findEligible`) | ✅ | Exposes the full processor network with capacities and radii — a competitor's market map |
-| **Webhook application** (`internal.payments.applyWebhookResult`) | ✅ | Anyone marks any order `paid` without paying |
-| **Impact snapshots** (`internal.impact.snapshot`) | ✅ | Anyone writes arbitrary aggregate figures |
-| **Admin provisioning** (`internal.admin.provisionAdmin`) | ✅ | Self-service admin — AUTH-02 destroyed |
+| **Ledger writes** (`internal.ledger.record`) | Implemented | Anyone forges `RESCUED` / `PROCESSED` events. Every impact metric derives from the ledger, so the entire impact claim becomes unfalsifiable — and Material Flow Orchestration is Cirquo's core innovation. The single most important internal function in the system |
+| **Routing engine** (`internal.recoveryBatches.route`) | Implemented | Anyone assigns batches to arbitrary processors, bypasses eligibility (verification, material type, distance, capacity), or floods a competitor's facility |
+| **Cron sweeps** (`expireUnpaidOrders`, `expireListings`, `expireOffers`, `sweepExpiredSessions`) | Implemented | Anyone force-expires another user's reservation, releasing quantity they intended to buy — a trivial denial of service against both consumer and merchant |
+| **Notification fan-out** (`internal.notifications.create`) | Implemented | Anyone sends a notification to any user with arbitrary `title`, `body`, and `link` — a first-class phishing primitive inside a trusted UI |
+| **Price ticks** (`internal.surplusItems.tickPrice`) | Implemented | Anyone drives Dynamic Rescue Pricing straight to `floorPrice`, then buys at the floor. Direct financial harm to merchants |
+| **Auth internals** (`createUserAndSession`, `applyPasswordChange`) | Implemented | Account forgery and password overwrite — total compromise |
+| **Processor eligibility** (`internal.processors.findEligible`) | Implemented | Exposes the full processor network with capacities and radii — a competitor's market map |
+| **Webhook application** (`internal.payments.applyWebhookResult`) | Implemented | Anyone marks any order `paid` without paying |
+| **Impact snapshots** (`internal.impact.snapshot`) | Implemented | Anyone writes arbitrary aggregate figures |
+| **Admin provisioning** (`internal.admin.provisionAdmin`) | Implemented | Self-service admin — AUTH-02 destroyed |
 
 ```mermaid
 flowchart LR
@@ -1176,19 +1176,19 @@ The Material Flow Ledger is the substrate of Cirquo's impact claims. Every kilog
 ### 11.3 Scope at the index, not after collection
 
 ```ts
-// 🔴 WRONG — reads the entire ledger into memory, then filters.
+//  WRONG — reads the entire ledger into memory, then filters.
 // Every unauthorized event has already been loaded; one refactor that
 // drops the filter dumps the whole table.
 export const listMine = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx, args.token);
-    const all = await ctx.db.query('materialFlowLedger').collect(); // 🔴
+    const all = await ctx.db.query('materialFlowLedger').collect(); // 
     return all.filter((e) => e.actorId === user._id);
   },
 });
 
-// 🟢 CORRECT — the index IS the authorization boundary.
+//  CORRECT — the index IS the authorization boundary.
 export const listMine = query({
   args: { token: v.string(), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
@@ -1201,7 +1201,7 @@ export const listMine = query({
   },
 });
 
-// 🟢 CORRECT — item-scoped read; ownership proven before any ledger read.
+//  CORRECT — item-scoped read; ownership proven before any ledger read.
 export const listForItem = query({
   args: { token: v.string(), itemId: v.id('surplusItems') },
   handler: async (ctx, args) => {
@@ -1234,7 +1234,7 @@ Admin functions bypass ownership checks by design. That power requires a record.
 | Admin ledger actions are compensating entries only | See §11.1 |
 
 ```ts
-// 📋 planned
+// Planned
 adminAuditLog: defineTable({
   adminId: v.id('users'),
   action: v.string(),              // e.g. 'admin.suspendUser'
@@ -1252,22 +1252,22 @@ adminAuditLog: defineTable({
 
 | Admin action | Reason required | `before` / `after` captured | Ledger event |
 |---|---|---|---|
-| `admin.suspendUser` | ✅ | `users.status` | — |
-| `admin.reinstateUser` | ✅ | `users.status` | — |
-| `admin.verifyMerchant` | ❌ | `verificationStatus` | — |
-| `admin.rejectMerchant` | ✅ | `verificationStatus` | — |
-| `admin.verifyProcessor` | ❌ | `verificationStatus` | — |
-| `admin.rejectProcessor` | ✅ | `verificationStatus` | — |
-| `admin.moderateRescueItem` | ✅ | `surplusItems.status` | `MODERATED` |
-| `admin.overridePickup` | ✅ | `orders.status` | `RESCUED` — metadata flags the override |
-| `admin.forceRouteBatch` | ✅ | `recoveryBatches.processorId`, `status` | `ROUTED` |
-| `admin.markBatchUnroutable` | ✅ | `recoveryBatches.status` | `ROUTING_FAILED` |
-| `admin.resolveDispute` | ✅ | `disputes.status` | `CANCELLED` if refunded |
-| `admin.recordCompensatingEntry` | ✅ | — | compensating entry |
-| `admin.listAuthEvents` | ❌ | — | read logged |
-| `admin.listUsers` | ❌ | — | read logged |
+| `admin.suspendUser` | Implemented | `users.status` | — |
+| `admin.reinstateUser` | Implemented | `users.status` | — |
+| `admin.verifyMerchant` | Not implemented | `verificationStatus` | — |
+| `admin.rejectMerchant` | Implemented | `verificationStatus` | — |
+| `admin.verifyProcessor` | Not implemented | `verificationStatus` | — |
+| `admin.rejectProcessor` | Implemented | `verificationStatus` | — |
+| `admin.moderateRescueItem` | Implemented | `surplusItems.status` | `MODERATED` |
+| `admin.overridePickup` | Implemented | `orders.status` | `RESCUED` — metadata flags the override |
+| `admin.forceRouteBatch` | Implemented | `recoveryBatches.processorId`, `status` | `ROUTED` |
+| `admin.markBatchUnroutable` | Implemented | `recoveryBatches.status` | `ROUTING_FAILED` |
+| `admin.resolveDispute` | Implemented | `disputes.status` | `CANCELLED` if refunded |
+| `admin.recordCompensatingEntry` | Implemented | — | compensating entry |
+| `admin.listAuthEvents` | Not implemented | — | read logged |
+| `admin.listUsers` | Not implemented | — | read logged |
 
-📋 **M1 limitation, stated honestly:** there is one admin tier. There is no separation between a support admin resolving disputes and a platform admin who can suspend accounts and read the full ledger. A least-privilege split (`support` / `operations` / `platform`) is planned for M4. Until then the audit log is the compensating control — every admin action is attributable to a named account.
+Planned **M1 limitation, stated honestly:** there is one admin tier. There is no separation between a support admin resolving disputes and a platform admin who can suspend accounts and read the full ledger. A least-privilege split (`support` / `operations` / `platform`) is planned for M4. Until then the audit log is the compensating control — every admin action is attributable to a named account.
 
 ---
 
@@ -1275,21 +1275,21 @@ adminAuditLog: defineTable({
 
 | # | Risk | Vector | Likelihood | Impact | Mitigation | Status |
 |---|---|---|---|---|---|---|
-| P-01 | **Self-registration as admin** | `role: 'admin'` in `auth.register` | Medium — the first thing an attacker tries | 🔴 Critical — full platform control | Validator union excludes `admin`; no spreading; server re-assertion; provisioning via internal mutation only | 🟢 Triple-layered (§8.2) |
-| P-02 | **Self-verification** | `verificationStatus: 'verified'` in a profile update | Medium | 🔴 Critical — unvetted merchants sell to consumers; AUTH-04 defeated | Field absent from every non-admin validator; explicit patch construction | 🟢 Mitigated (§8.4) |
-| P-03 | **IDOR on orders** | Passing another user's `orderId` | 🔴 **High — the flaw exists in the repository today** | 🔴 Critical — pickup codes leak, enabling physical theft of rescued food | `requireOwnedOrder` on every order-accepting function | 🔴 **OPEN — `orders.listByUser` is unguarded** |
-| P-04 | **Missing guard on a new function** | A developer ships a mutation without `requireAuth` | 🔴 High — argument-based auth fails **open** | Varies; potentially critical | Function matrix (§5), review checklist (§14), negative tests (§15) | 🟠 Process control only |
-| P-05 | **Client-supplied price** | `totalPrice` sent from the client | Medium | High — buy at IDR 1 | Prices computed server-side from `surplusItems.currentPrice`; the webhook re-checks `gross_amount` | 🟢 Designed |
-| P-06 | **Ledger forgery** | Calling a public ledger-write mutation | Low if internal | 🔴 Critical — every impact claim becomes unfalsifiable | `internal.ledger.record` is the only writer; append-only | 🟢 Designed |
-| P-07 | **Processor self-assigns a batch** | Calling `accept` on a batch offered to someone else | Medium | High — steals recovery volume and inflates its own circularity figures | `requireOwnedBatch` checks `processorId` and live offer TTL | 🟢 Designed |
-| P-08 | **Merchant inflates recovered weight** | Setting `acceptedWeightGrams` | Medium | High — corrupts the circularity rate, the headline metric | Only `recoveryBatches.logIntake` writes it, guarded by `requireVerifiedProcessor` | 🟢 Designed |
-| P-09 | **Suspended user keeps operating** | Using a token issued before suspension | Medium | High | `admin.suspendUser` deletes all sessions **and** `requireAuth` checks `users.status` every request | 🟢 Double control |
-| P-10 | **Cron function called by a user** | Invoking `expireUnpaidOrders` directly | Low if internal | Medium — DoS on reservations | All sweeps are `internalMutation` | 🟢 Designed |
-| P-11 | **Notification spoofing** | Public notification creator used for phishing | Low if internal | Medium — phishing inside a trusted UI | `internal.notifications.create` | 🟢 Designed |
-| P-12 | **Pickup code brute force** | Guessing codes against `orders.confirmPickup` | Medium | High — collect food not paid for | The code is checked only after `requireOwnedOrder` proves the merchant owns the order, so the search space is one merchant's live orders; 📋 M2: per-merchant attempt throttling with `RATE_LIMITED` | 🟠 Partial |
-| P-13 | **Admin tier confusion** | A support admin performing platform actions | Low (small team) | Medium | Single tier in M1; `adminAuditLog` is the compensating control; tiering in M4 | 🟠 Accepted MVP risk |
-| P-14 | **Webhook forgery** | Posting a fake Midtrans callback | Medium — the URL is discoverable | 🔴 Critical — free orders | SHA-512 signature verification against a Convex-env server key; amount re-check; idempotency on `providerTransactionId` | 🟢 Designed |
-| P-15 | **Processor network enumeration** | Calling a public eligibility query | Low if internal | Medium — competitive intelligence | `internal.processors.findEligible`; capacity and radius field-scoped out of public projections | 🟢 Designed |
+| P-01 | **Self-registration as admin** | `role: 'admin'` in `auth.register` | Medium — the first thing an attacker tries | Critical — full platform control | Validator union excludes `admin`; no spreading; server re-assertion; provisioning via internal mutation only |  Triple-layered (§8.2) |
+| P-02 | **Self-verification** | `verificationStatus: 'verified'` in a profile update | Medium | Critical — unvetted merchants sell to consumers; AUTH-04 defeated | Field absent from every non-admin validator; explicit patch construction |  Mitigated (§8.4) |
+| P-03 | **IDOR on orders** | Passing another user's `orderId` | High if unguarded | Critical — pickup codes leak, enabling physical theft of rescued food | Self-scoped `orders.listMine`; `requireOwnedOrder` on future order-ID functions | Mitigated for current queries |
+| P-04 | **Missing guard on a new function** | A developer ships a mutation without `requireAuth` |  High — argument-based auth fails **open** | Varies; potentially critical | Function matrix (§5), review checklist (§14), negative tests (§15) |  Process control only |
+| P-05 | **Client-supplied price** | `totalPrice` sent from the client | Medium | High — buy at IDR 1 | Prices computed server-side from `surplusItems.currentPrice`; the webhook re-checks `gross_amount` |  Designed |
+| P-06 | **Ledger forgery** | Calling a public ledger-write mutation | Low if internal | Critical — every impact claim becomes unfalsifiable | `internal.ledger.record` is the only writer; append-only |  Designed |
+| P-07 | **Processor self-assigns a batch** | Calling `accept` on a batch offered to someone else | Medium | High — steals recovery volume and inflates its own circularity figures | `requireOwnedBatch` checks `processorId` and live offer TTL |  Designed |
+| P-08 | **Merchant inflates recovered weight** | Setting `acceptedWeightGrams` | Medium | High — corrupts the circularity rate, the headline metric | Only `recoveryBatches.logIntake` writes it, guarded by `requireVerifiedProcessor` |  Designed |
+| P-09 | **Suspended user keeps operating** | Using a token issued before suspension | Medium | High | `admin.suspendUser` deletes all sessions **and** `requireAuth` checks `users.status` every request |  Double control |
+| P-10 | **Cron function called by a user** | Invoking `expireUnpaidOrders` directly | Low if internal | Medium — DoS on reservations | All sweeps are `internalMutation` |  Designed |
+| P-11 | **Notification spoofing** | Public notification creator used for phishing | Low if internal | Medium — phishing inside a trusted UI | `internal.notifications.create` |  Designed |
+| P-12 | **Pickup code brute force** | Guessing codes against `orders.confirmPickup` | Medium | High — collect food not paid for | The code is checked only after `requireOwnedOrder` proves the merchant owns the order, so the search space is one merchant's live orders; Planned M2: per-merchant attempt throttling with `RATE_LIMITED` |  Partial |
+| P-13 | **Admin tier confusion** | A support admin performing platform actions | Low (small team) | Medium | Single tier in M1; `adminAuditLog` is the compensating control; tiering in M4 |  Accepted MVP risk |
+| P-14 | **Webhook forgery** | Posting a fake Midtrans callback | Medium — the URL is discoverable | Critical — free orders | SHA-512 signature verification against a Convex-env server key; amount re-check; idempotency on `providerTransactionId` |  Designed |
+| P-15 | **Processor network enumeration** | Calling a public eligibility query | Low if internal | Medium — competitive intelligence | `internal.processors.findEligible`; capacity and radius field-scoped out of public projections |  Designed |
 
 ---
 

@@ -114,9 +114,9 @@ separate deploys:
 
 | Step | Action | Rollback safety |
 | --- | --- | --- |
-| 1 | Add the field as `v.optional(...)` | ✅ Trivially safe both directions |
-| 2 | Backfill existing rows with a migration mutation | ✅ Safe; data only |
-| 3 | Tighten to required | ⚠️ Rolling back makes it optional again — safe |
+| 1 | Add the field as `v.optional(...)` | Implemented Trivially safe both directions |
+| 2 | Backfill existing rows with a migration mutation | Implemented Safe; data only |
+| 3 | Tighten to required | Warning Rolling back makes it optional again — safe |
 
 **Never combine the three into one deploy.** Convex validates the schema against
 existing data at deploy time and will reject a required field that existing rows
@@ -466,16 +466,16 @@ deadline of **31 August 2026**. Dates after `0.1.0` are planned, not achieved.
 
 | Version | Target date | Milestone | Summary |
 | --- | --- | --- | --- |
-| **0.1.0** | 2026-08-06 | — | ✅ **Released.** Scaffold, design system, 5-table schema, 6 read-only queries, 9 placeholder pages, Capacitor Android, documentation system |
-| **0.2.0** | 2026-08-10 | M1 | 📋 Material Flow Ledger and authentication. `materialFlowLedger` table, `recordLedgerEvent`, integrity invariants, four roles, server-side guards, `ConvexError` catalogue, CI ledger guard |
-| **0.3.0** | 2026-08-13 | M2 | 📋 Merchant listing and Dynamic Rescue Pricing. Rescue Item creation, `suggestRescuePrice` with floor and max-discount clamps, merchant dashboard on live data |
-| **0.4.0** | 2026-08-17 | M3 | 📋 Consumer discovery and Midtrans payment. Mapbox map, `haversineMeters`, `rankListings`, geolocation with denial fallback, reservation with a 15-minute hold, Midtrans Sandbox QRIS, webhook with signature verification |
-| **0.5.0** | 2026-08-20 | M4 | 📋 Pickup, scheduler, and Circular Routing. Pickup code confirmation with live consumer updates, cron jobs, `rankEligibleProcessors`, 3-attempt limit with 6-hour offer TTL |
-| **0.6.0** | 2026-08-23 | M5 | 📋 Organic Processor intake and outcome. `processors` table, offer inbox, measured intake logging, outcome by method with recorded residual |
-| **0.7.0** | 2026-08-26 | M6 | 📋 Impact dashboards. `summariseLedger`, `estimateCo2e`, `impact-v1` methodology, all four dashboards ledger-derived, hardcoded figures removed, `mock-data.ts` deleted |
-| **0.8.0** | 2026-08-28 | M7 | 📋 Admin and polish. Verification queue, moderation, read-only ledger audit trail, disputes, accessibility pass, empty and error states |
-| **0.9.0** | 2026-08-30 | M8 | 📋 Mobile build and demo readiness. Signed APK, geolocation paths verified on hardware, offline shell, performance tuning, demo seed at ~0.93 circularity. **48-hour code freeze begins.** |
-| **1.0.0** | Post-competition | — | 📋 Hardening after a real pilot. Playwright E2E for the four critical journeys, production Midtrans, stable public API, proven ledger integrity over real data |
+| **0.1.0** | 2026-08-06 | — | Implemented **Released.** Scaffold, design system, 5-table schema, 6 read-only queries, 9 placeholder pages, Capacitor Android, documentation system |
+| **0.2.0** | 2026-08-10 | M1 | Planned Material Flow Ledger and authentication. `materialFlowLedger` table, `recordLedgerEvent`, integrity invariants, four roles, server-side guards, `ConvexError` catalogue, CI ledger guard |
+| **0.3.0** | 2026-08-13 | M2 | Planned Merchant listing and Dynamic Rescue Pricing. Rescue Item creation, `suggestRescuePrice` with floor and max-discount clamps, merchant dashboard on live data |
+| **0.4.0** | 2026-08-17 | M3 | Planned Consumer discovery and Midtrans payment. Mapbox map, `haversineMeters`, `rankListings`, geolocation with denial fallback, reservation with a 15-minute hold, Midtrans Sandbox QRIS, webhook with signature verification |
+| **0.5.0** | 2026-08-20 | M4 | Planned Pickup, scheduler, and Circular Routing. Pickup code confirmation with live consumer updates, cron jobs, `rankEligibleProcessors`, 3-attempt limit with 6-hour offer TTL |
+| **0.6.0** | 2026-08-23 | M5 | Planned Organic Processor intake and outcome. `processors` table, offer inbox, measured intake logging, outcome by method with recorded residual |
+| **0.7.0** | 2026-08-26 | M6 | Planned Impact dashboards. `summariseLedger`, `estimateCo2e`, `impact-v1` methodology, all four dashboards ledger-derived, hardcoded figures removed, `mock-data.ts` deleted |
+| **0.8.0** | 2026-08-28 | M7 | Planned Admin and polish. Verification queue, moderation, read-only ledger audit trail, disputes, accessibility pass, empty and error states |
+| **0.9.0** | 2026-08-30 | M8 | Planned Mobile build and demo readiness. Signed APK, geolocation paths verified on hardware, offline shell, performance tuning, demo seed at ~0.93 circularity. **48-hour code freeze begins.** |
+| **1.0.0** | Post-competition | — | Planned Hardening after a real pilot. Playwright E2E for the four critical journeys, production Midtrans, stable public API, proven ledger integrity over real data |
 
 **On 1.0.0.** It is deliberately not scheduled before the deadline. A `1.0.0`
 tag is a promise of API stability and production readiness, and Cirquo will not

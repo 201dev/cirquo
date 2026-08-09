@@ -69,10 +69,10 @@ stateDiagram-v2
 | `sold_out` | All quantity reserved, awaiting pickup | Yes (greyed) | No |
 | `expired` | Pickup window closed with stock unclaimed | No | No |
 | `recovery_pending` | Routed or awaiting routing to a Processor | No | No |
-| `recovered` | Processor logged a processing outcome | No | ✅ |
-| `residual` | No recovery path succeeded | No | ✅ |
-| `closed` | Fully rescued by Consumers | No | ✅ |
-| `moderated` | Removed by Admin | No | ✅ |
+| `recovered` | Processor logged a processing outcome | No | Implemented |
+| `residual` | No recovery path succeeded | No | Implemented |
+| `closed` | Fully rescued by Consumers | No | Implemented |
+| `moderated` | Removed by Admin | No | Implemented |
 
 > **Schema gap:** The current `SurplusStatus` type is `draft | active | sold_out | expired | recovery_pending | closed`. Three states are missing: `reserved_partial`, `recovered`, `residual`. Without `recovered` and `residual` there is no way to distinguish a successful circular outcome from a failure, which makes circularity rate uncomputable. See [DATABASE.md](DATABASE.md).
 
@@ -142,11 +142,11 @@ stateDiagram-v2
 |---|---|:-:|---|:-:|
 | `reserved` | Claimed, payment not confirmed | Yes | Pending | No |
 | `paid` | Payment confirmed, awaiting collection | Yes | Captured | No |
-| `picked_up` | Collected and verified | No (consumed) | Captured | ✅ |
+| `picked_up` | Collected and verified | No (consumed) | Captured | Implemented |
 | `cancelled` | Cancelled before pickup | No (released) | Refund due | No |
 | `expired` | Window closed without collection | No (released) | Refund due | No |
 | `disputed` | Conflicting accounts, Admin adjudicating | Yes | Held | No |
-| `refunded` | Money returned | No | Refunded | ✅ |
+| `refunded` | Money returned | No | Refunded | Implemented |
 
 > **Schema gap:** Current `OrderStatus` is `reserved | paid | picked_up | cancelled | expired`. Missing `disputed` and `refunded`. Without them, ADM-05 (dispute resolution) and PAY-03 (automatic refund) have nowhere to record their outcome.
 
@@ -209,8 +209,8 @@ stateDiagram-v2
 | `offered` | Offered to a specific Processor, awaiting response | Yes | No |
 | `accepted` | Processor committed to taking it | Yes | No |
 | `collected` | Physically received, intake weight measured | Yes | No |
-| `processed` | Outcome logged: output type, output qty, residual qty | Yes | ✅ |
-| `unroutable` | No Processor could take it | No | ✅ (becomes residual) |
+| `processed` | Outcome logged: output type, output qty, residual qty | Yes | Implemented |
+| `unroutable` | No Processor could take it | No | Implemented (becomes residual) |
 
 > **Schema gap:** Current `RecoveryStatus` is `pending | accepted | collected | processed | rejected`. The target model replaces `rejected` with `offered` + `unroutable`. `rejected` conflates "this Processor said no" (recoverable — try another) with "nobody can take it" (terminal residual). That conflation makes the diversion-rate KPI meaningless.
 

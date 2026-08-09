@@ -57,7 +57,7 @@ means `bg-primary` compiles to `background-color: var(--primary)`. The `.dark` c
 
 > **Components consume semantic tokens. Components never consume raw palette utilities.**
 
-| ✅ Correct | ❌ Incorrect | Why |
+| Implemented Correct | Not implemented Incorrect | Why |
 | --- | --- | --- |
 | `bg-primary text-primary-foreground` | `bg-emerald-700 text-white` | Emerald is not themeable and breaks in dark mode |
 | `text-muted-foreground` | `text-neutral-500` | Muted foreground is contrast-tuned per theme |
@@ -132,7 +132,7 @@ Chroma peaks in the mid-range (500–600) and tapers at both ends — the standa
 | `--brand-900` | `oklch(0.390 0.079 162)` | 0.390 | 0.079 | 162 | `#064e3b` | Dense text on brand tints |
 | `--brand-950` | `oklch(0.272 0.055 162)` | 0.272 | 0.055 | 162 | `#022c22` | Dark-theme brand surface |
 
-**Contrast checkpoints** (design targets; formal measurement is 📋 pending):
+**Contrast checkpoints** (design targets; formal measurement is Planned pending):
 
 | Pair | Ratio target | Use |
 | --- | --- | --- |
@@ -476,12 +476,12 @@ Amber says "attention, this is the fraction we could not close" without saying "
 But `body` still declares an Inter-first fallback stack. Inter is never loaded, so the browser falls through to a system font — meaning **the app does not currently render in Geist**, and every spacing and line-height decision was made against metrics that are not in use.
 
 ```css
-/* ❌ current */
+/* Not implemented current */
 body {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
 
-/* ✅ fix */
+/* Implemented fix */
 body {
   font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
@@ -800,7 +800,7 @@ Storage and display differ deliberately. Formatting helpers live in `@/lib/forma
 
 Non-negotiable: `id-ID` uses `.` for thousands and `,` for decimals — the inverse of English.
 
-| Value | ✅ Correct (`id-ID`) | ❌ Wrong (`en-US`) |
+| Value | Implemented Correct (`id-ID`) | Not implemented Wrong (`en-US`) |
 | --- | --- | --- |
 | 22000 IDR | `Rp22.000` | `Rp22,000` |
 | 2.4 kg | `2,4 kg` | `2.4 kg` |

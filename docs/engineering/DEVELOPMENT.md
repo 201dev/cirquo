@@ -32,21 +32,21 @@ never written.
 
 | Area | Status | Detail |
 | --- | --- | --- |
-| Convex schema | ✅ Partial | 5 tables: `users`, `merchants`, `surplusItems`, `orders`, `recoveryBatches` |
-| Convex queries | ✅ 6 exist | All internal and read-only until M1 auth guards land (listed below) |
-| Convex mutations | 📋 None | **Zero mutations exist today** |
-| Authentication | 📋 Planned | No auth of any kind |
-| Material Flow Ledger | 📋 Planned | Table not yet in schema |
-| Mapbox | 📋 Planned | Not integrated |
-| Midtrans | 📋 Planned | Not integrated |
-| Scheduler / cron | 📋 Planned | No `convex/crons.ts` |
-| Impact calculation | 📋 Planned | Dashboards show hardcoded figures |
-| Tests | 📋 None | **No tests of any kind** |
-| Pages | ✅ 9 placeholders | Read from `src/constants/mock-data.ts` |
-| Routing | ✅ Works | React Router v7, 4 role layouts |
-| Design system | ✅ Works | Tailwind v4 OKLCH tokens, 17 shadcn primitives |
-| Capacitor Android | ✅ Configured | `com.cirquo.app`, `webDir: dist` |
-| PWA | ✅ Basic | `manifest.webmanifest` + `sw.js`, registered in PROD only |
+| Convex schema | Implemented Partial | 5 tables: `users`, `merchants`, `surplusItems`, `orders`, `recoveryBatches` |
+| Convex queries | Implemented 6 exist | All internal and read-only until M1 auth guards land (listed below) |
+| Convex mutations | Planned None | **Zero mutations exist today** |
+| Authentication | Planned | No auth of any kind |
+| Material Flow Ledger | Planned | Table not yet in schema |
+| Mapbox | Planned | Not integrated |
+| Midtrans | Planned | Not integrated |
+| Scheduler / cron | Planned | No `convex/crons.ts` |
+| Impact calculation | Planned | Dashboards show hardcoded figures |
+| Tests | Planned None | **No tests of any kind** |
+| Pages | Implemented 9 placeholders | Read from `src/constants/mock-data.ts` |
+| Routing | Implemented Works | React Router v7, 4 role layouts |
+| Design system | Implemented Works | Tailwind v4 OKLCH tokens, 17 shadcn primitives |
+| Capacitor Android | Implemented Configured | `com.cirquo.app`, `webDir: dist` |
+| PWA | Implemented Basic | `manifest.webmanifest` + `sw.js`, registered in PROD only |
 
 The six existing internal queries:
 
@@ -276,12 +276,12 @@ Two rules follow:
 
 | Variable | Scope | Required | Public? | Purpose | Where to set |
 | --- | --- | --- | --- | --- | --- |
-| `VITE_CONVEX_URL` | Client | ✅ Yes (backend mode) | 🔓 **Public** | Convex deployment URL the client connects to | `.env.local` — written automatically by `bunx convex dev`; set in the host's env for production |
-| `CONVEX_DEPLOYMENT` | CLI | ✅ Yes | 🔓 Public | Tells the Convex CLI which deployment to target | `.env.local` — written by `bunx convex dev` |
-| `VITE_MAPBOX_TOKEN` | Client | 📋 From M3 | 🔓 **Public** | Mapbox GL access token for the discovery map | `.env.local`; must be a **scoped, URL-restricted** public token (`pk.*`) |
-| `MIDTRANS_SERVER_KEY` | **Convex server** | 📋 From M3 | 🔒 **SECRET** | Signs Snap transaction requests, verifies webhook signatures | `bunx convex env set MIDTRANS_SERVER_KEY <key>` |
-| `MIDTRANS_CLIENT_KEY` | **Convex server** | 📋 From M3 | 🔓 Public value, server-held | Returned to the client by a Convex query to initialise Snap | `bunx convex env set MIDTRANS_CLIENT_KEY <key>` |
-| `MIDTRANS_IS_PRODUCTION` | **Convex server** | 📋 From M3 | 🔓 Public value | `"false"` for Sandbox, `"true"` for production; selects the API base URL | `bunx convex env set MIDTRANS_IS_PRODUCTION false` |
+| `VITE_CONVEX_URL` | Client | Yes (backend mode) | **Public** | Convex deployment URL the client connects to | `.env.local` — written automatically by `bunx convex dev`; set in the host's env for production |
+| `CONVEX_DEPLOYMENT` | CLI | Yes | Public | Tells the Convex CLI which deployment to target | `.env.local` — written by `bunx convex dev` |
+| `VITE_MAPBOX_TOKEN` | Client | From M3 | **Public** | Mapbox GL access token for the discovery map | `.env.local`; must be a **scoped, URL-restricted** public token (`pk.*`) |
+| `MIDTRANS_SERVER_KEY` | **Convex server** | From M3 | **SECRET** | Signs Snap transaction requests, verifies webhook signatures | `bunx convex env set MIDTRANS_SERVER_KEY <key>` |
+| `MIDTRANS_CLIENT_KEY` | **Convex server** | From M3 | Public value, server-held | Returned to the client by a Convex query to initialise Snap | `bunx convex env set MIDTRANS_CLIENT_KEY <key>` |
+| `MIDTRANS_IS_PRODUCTION` | **Convex server** | From M3 | Public value | `"false"` for Sandbox, `"true"` for production; selects the API base URL | `bunx convex env set MIDTRANS_IS_PRODUCTION false` |
 
 `MIDTRANS_CLIENT_KEY` is technically a public value but is **still held
 server-side**. It is handed to the browser by a Convex query rather than baked
@@ -359,72 +359,72 @@ Useful commands not in `package.json`:
 
 ```
 cirquo/
-├── android/                       ✅ Capacitor 8 native project (com.cirquo.app)
-├── convex/                        ✅ Backend — Convex 1.43
-│   ├── _generated/                🔧 Generated by `convex dev`, gitignored
-│   ├── schema.ts                  ✅ 5 tables; 7 more planned
-│   ├── users.ts                   ✅ getByEmail (query only)
-│   ├── merchants.ts               ✅ getByOwner (query only)
-│   ├── surplusItems.ts            ✅ listByStatus (query only)
-│   ├── orders.ts                  ✅ listByUser (query only)
-│   ├── recoveryBatches.ts         ✅ listByStatus (query only)
-│   └── impact.ts                  ✅ getPlaceholderSummary (NOT ledger-derived)
-├── docs/                          ✅ This documentation system
+├── android/                       Implemented Capacitor 8 native project (com.cirquo.app)
+├── convex/                        Implemented Backend — Convex 1.43
+│   ├── _generated/                 Generated by `convex dev`, gitignored
+│   ├── schema.ts                  Implemented 5 tables; 7 more planned
+│   ├── users.ts                   Implemented getByEmail (query only)
+│   ├── merchants.ts               Implemented getByOwner (query only)
+│   ├── surplusItems.ts            Implemented listByStatus (query only)
+│   ├── orders.ts                  Implemented listByUser (query only)
+│   ├── recoveryBatches.ts         Implemented listByStatus (query only)
+│   └── impact.ts                  Implemented getPlaceholderSummary (NOT ledger-derived)
+├── docs/                          Implemented This documentation system
 ├── public/
-│   ├── manifest.webmanifest       ✅ PWA manifest
-│   ├── sw.js                      ✅ Service worker (registered in PROD only)
-│   ├── favicon.svg                ✅
-│   └── icons/                     ✅ PWA icons
+│   ├── manifest.webmanifest       Implemented PWA manifest
+│   ├── sw.js                      Implemented Service worker (registered in PROD only)
+│   ├── favicon.svg                Implemented
+│   └── icons/                     Implemented PWA icons
 ├── src/
 │   ├── app/
-│   │   ├── router.tsx             ✅ React Router v7 route tree
-│   │   └── providers.tsx          ✅ Convex, theme, Sonner providers
-│   ├── assets/                    ✅ Static imports
+│   │   ├── router.tsx             Implemented React Router v7 route tree
+│   │   └── providers.tsx          Implemented Convex, theme, Sonner providers
+│   ├── assets/                    Implemented Static imports
 │   ├── components/
-│   │   ├── ui/                    ✅ 17 shadcn/ui primitives (new-york/neutral)
-│   │   ├── common/                ✅ 3 shared components
-│   │   ├── consumer/              📋 Role-specific components
-│   │   ├── merchant/              📋
-│   │   ├── processor/             📋
-│   │   └── admin/                 📋
+│   │   ├── ui/                    Implemented 17 shadcn/ui primitives (new-york/neutral)
+│   │   ├── common/                Implemented 3 shared components
+│   │   ├── consumer/              Planned Role-specific components
+│   │   ├── merchant/              Planned
+│   │   ├── processor/             Planned
+│   │   └── admin/                 Planned
 │   ├── constants/
-│   │   └── mock-data.ts           ✅ Placeholder data — to be deleted by M6
+│   │   └── mock-data.ts           Implemented Placeholder data — to be deleted by M6
 │   ├── features/
-│   │   ├── auth/                  📋 M1
-│   │   ├── impact/                📋 M6
-│   │   ├── orders/                📋 M3
-│   │   ├── pricing/               📋 M2
-│   │   ├── recovery/              📋 M4–M5
-│   │   └── surplus/               📋 M2
-│   ├── hooks/                     ✅ Shared hooks
-│   ├── layouts/                   ✅ 4 role layouts + auth layout
+│   │   ├── auth/                  Planned M1
+│   │   ├── impact/                Planned M6
+│   │   ├── orders/                Planned M3
+│   │   ├── pricing/               Planned M2
+│   │   ├── recovery/              Planned M4–M5
+│   │   └── surplus/               Planned M2
+│   ├── hooks/                     Implemented Shared hooks
+│   ├── layouts/                   Implemented 4 role layouts + auth layout
 │   ├── lib/
-│   │   ├── convex.ts              ✅ Client factory; null when URL unset
-│   │   ├── utils.ts               ✅ cn()
-│   │   ├── pricing.ts             📋 suggestRescuePrice
-│   │   ├── routing.ts             📋 rankEligibleProcessors
-│   │   ├── ranking.ts             📋 rankListings
-│   │   ├── impact.ts              📋 summariseLedger, estimateCo2e
-│   │   └── geo.ts                 📋 haversineMeters
+│   │   ├── convex.ts              Implemented Client factory; null when URL unset
+│   │   ├── utils.ts               Implemented cn()
+│   │   ├── pricing.ts             Planned suggestRescuePrice
+│   │   ├── routing.ts             Planned rankEligibleProcessors
+│   │   ├── ranking.ts             Planned rankListings
+│   │   ├── impact.ts              Planned summariseLedger, estimateCo2e
+│   │   └── geo.ts                 Planned haversineMeters
 │   ├── pages/
-│   │   ├── consumer/              ✅ Placeholder pages
-│   │   ├── merchant/              ✅ Placeholder pages
-│   │   ├── processor/             ✅ Placeholder pages
-│   │   ├── admin/                 ✅ Placeholder pages
-│   │   └── auth/                  ✅ Placeholder pages
+│   │   ├── consumer/              Implemented Placeholder pages
+│   │   ├── merchant/              Implemented Placeholder pages
+│   │   ├── processor/             Implemented Placeholder pages
+│   │   ├── admin/                 Implemented Placeholder pages
+│   │   └── auth/                  Implemented Placeholder pages
 │   ├── types/
-│   │   ├── domain.ts              ✅ Domain types
-│   │   └── navigation.ts          ✅ Route/nav types
-│   ├── index.css                  ✅ Tailwind v4 @theme, OKLCH tokens
-│   ├── main.tsx                   ✅ Entry; #root guard, SW in PROD
-│   └── App.tsx                    ✅ Root component
-├── .env.example                   ✅ Only VITE_CONVEX_URL today
-├── .oxlintrc.json                 ✅ react/typescript/oxc plugins
-├── capacitor.config.ts            ✅ com.cirquo.app, webDir: dist
-├── components.json                ✅ shadcn config (new-york, neutral)
-├── package.json                   ✅
-├── tsconfig.json                  ✅ @ → ./src
-└── vite.config.ts                 ✅ @tailwindcss/vite, @ alias
+│   │   ├── domain.ts              Implemented Domain types
+│   │   └── navigation.ts          Implemented Route/nav types
+│   ├── index.css                  Implemented Tailwind v4 @theme, OKLCH tokens
+│   ├── main.tsx                   Implemented Entry; #root guard, SW in PROD
+│   └── App.tsx                    Implemented Root component
+├── .env.example                   Implemented Only VITE_CONVEX_URL today
+├── .oxlintrc.json                 Implemented react/typescript/oxc plugins
+├── capacitor.config.ts            Implemented com.cirquo.app, webDir: dist
+├── components.json                Implemented shadcn config (new-york, neutral)
+├── package.json                   Implemented
+├── tsconfig.json                  Implemented @ → ./src
+└── vite.config.ts                 Implemented @tailwindcss/vite, @ alias
 ```
 
 **Notably absent:** `tailwind.config.js` (Tailwind v4 is CSS-first — do not add

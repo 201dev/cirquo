@@ -124,7 +124,7 @@ Consistent naming is what makes a file searchable and a handoff unambiguous.
 
 ### 2.3 Naming Anti-Patterns
 
-| ❌ Never | ✅ Instead |
+| Never | Implemented Instead |
 | --- | --- |
 | `Frame 247` | `Consumer / Listing Detail` |
 | `Rectangle 12` | `ImageSlot` |
@@ -699,98 +699,98 @@ Icon chip 36×36, `radius/md`, fill = the variant's `-muted` token, icon = the v
 
 ## 8. Frame Inventory
 
-Every screen that must exist. `✅` = a codebase placeholder already exists; `📋` = to be designed from scratch.
+Every screen that must exist. `Implemented` = a codebase placeholder already exists; `Planned` = to be designed from scratch.
 
 ### 8.1 Consumer — `03 Consumer`
 
 | # | Frame name | Route | Status | Purpose | Composed of |
 | --- | --- | --- | --- | --- | --- |
-| C-01 | `Consumer / Splash` | — | 📋 | Brand moment while auth resolves | Logo, `Impact/BreakdownBar` teaser |
-| C-02 | `Consumer / Onboarding — Value` | — | 📋 | Explain the circular loop in 3 slides | Illustration-free, `Impact/BreakdownBar` |
-| C-03 | `Consumer / Role Select` | `/register` | 📋 | Choose Consumer / Mitra Usaha / Pengolah Organik | 3 `Card` options |
-| C-04 | `Consumer / Register` | `/register/consumer` | 📋 | Email, password, name, city | `Base/Input`, `Base/Button` |
-| C-05 | `Consumer / Login` | `/login` | 📋 | Sign in | `Base/Input`, `Base/Button` |
-| C-06 | `Consumer / Home` | `/` | ✅ | Nearby items + personal impact snapshot | `Nav/Header`, `Impact/StatCard`, `Card/RescueItemCard` ×3, `Nav/BottomBar` |
-| C-07 | `Consumer / Home — Empty` | `/` | 📋 | No items nearby | `State/Empty` |
-| C-08 | `Consumer / Home — Loading` | `/` | 📋 | Skeletons | `Base/Skeleton` stat + card |
-| C-09 | `Consumer / Explore — Map` | `/explore` | ✅ | Map-first discovery | `Map/MerchantMarker`, map controls, filter FAB |
-| C-10 | `Consumer / Explore — List` | `/explore` | 📋 | List view of the same results | `Card/RescueItemCard` compact ×6 |
-| C-11 | `Consumer / Explore — Split @ 1440` | `/explore` | 📋 | 384px list + map | Split layout |
-| C-12 | `Consumer / Explore — Location Denied` | `/explore` | 📋 | Semarang fallback + banner | `LocationPermissionPrompt` |
-| C-13 | `Consumer / Filter Sheet` | `/explore` | 📋 | Category, dietary, distance, price, sort | `Overlay/FilterSheet` |
-| C-14 | `Consumer / Listing Detail` | `/item/:id` | 📋 | Full item view | Hero image, `PriceDisplay lg`, `PickupWindowBadge`, `DietaryTagList`, sticky action bar |
-| C-15 | `Consumer / Listing Detail — Sold Out` | `/item/:id` | 📋 | Disabled reserve + reason | `StatusBadge item=sold-out` |
-| C-16 | `Consumer / Reservation Sheet` | `/item/:id` | 📋 | Quantity + total + terms | `Input/QuantityStepper`, `PriceDisplay` |
-| C-17 | `Consumer / Checkout` | `/checkout/:orderId` | 📋 | Midtrans handoff | Order summary, payment method |
-| C-18 | `Consumer / Payment — Pending` | `/checkout/:orderId` | 📋 | Awaiting settlement | `PaymentStatusPanel`, `CountdownTimer` |
-| C-19 | `Consumer / Payment — Success` | `/checkout/:orderId` | 📋 | Settled | `PaymentStatusPanel`, CTA to code |
-| C-20 | `Consumer / Payment — Failed` | `/checkout/:orderId` | 📋 | Failure + retry within grace | `PaymentStatusPanel`, retry/cancel |
-| C-21 | `Consumer / Pickup Code` | `/orders/:id/code` | 📋 | **Demo-critical.** Large code + QR | `Display/PickupCodeCard` |
-| C-22 | `Consumer / Order History` | `/orders` | ✅ | Active + past | `Base/Tabs`, `Card/OrderCard` ×5 |
-| C-23 | `Consumer / Order History — Empty` | `/orders` | 📋 | No orders yet | `State/Empty` |
-| C-24 | `Consumer / Order Detail` | `/orders/:id` | 📋 | Timeline + code + ledger link | `OrderTimeline`, `PickupCodeCard compact` |
-| C-25 | `Consumer / Impact Dashboard` | `/impact` | 📋 | Personal impact | `Impact/BreakdownBar`, `Impact/StatCard` ×4, `EstimatedBadge` |
-| C-26 | `Consumer / Impact — Estimate Info Sheet` | `/impact` | 📋 | CO2e methodology disclosure | Formula + `impact-v1` |
-| C-27 | `Consumer / Profile` | `/profile` | 📋 | Dietary prefs, location, theme, language | Toggle chips, `Base/Select` |
-| C-28 | `Consumer / Not Found` | `*` | ✅ | 404 | `State/Error page` |
+| C-01 | `Consumer / Splash` | — | Planned | Brand moment while auth resolves | Logo, `Impact/BreakdownBar` teaser |
+| C-02 | `Consumer / Onboarding — Value` | — | Planned | Explain the circular loop in 3 slides | Illustration-free, `Impact/BreakdownBar` |
+| C-03 | `Consumer / Role Select` | `/register` | Planned | Choose Consumer / Mitra Usaha / Pengolah Organik | 3 `Card` options |
+| C-04 | `Consumer / Register` | `/register/consumer` | Planned | Email, password, name, city | `Base/Input`, `Base/Button` |
+| C-05 | `Consumer / Login` | `/login` | Planned | Sign in | `Base/Input`, `Base/Button` |
+| C-06 | `Consumer / Home` | `/` | Implemented | Nearby items + personal impact snapshot | `Nav/Header`, `Impact/StatCard`, `Card/RescueItemCard` ×3, `Nav/BottomBar` |
+| C-07 | `Consumer / Home — Empty` | `/` | Planned | No items nearby | `State/Empty` |
+| C-08 | `Consumer / Home — Loading` | `/` | Planned | Skeletons | `Base/Skeleton` stat + card |
+| C-09 | `Consumer / Explore — Map` | `/explore` | Implemented | Map-first discovery | `Map/MerchantMarker`, map controls, filter FAB |
+| C-10 | `Consumer / Explore — List` | `/explore` | Planned | List view of the same results | `Card/RescueItemCard` compact ×6 |
+| C-11 | `Consumer / Explore — Split @ 1440` | `/explore` | Planned | 384px list + map | Split layout |
+| C-12 | `Consumer / Explore — Location Denied` | `/explore` | Planned | Semarang fallback + banner | `LocationPermissionPrompt` |
+| C-13 | `Consumer / Filter Sheet` | `/explore` | Planned | Category, dietary, distance, price, sort | `Overlay/FilterSheet` |
+| C-14 | `Consumer / Listing Detail` | `/item/:id` | Planned | Full item view | Hero image, `PriceDisplay lg`, `PickupWindowBadge`, `DietaryTagList`, sticky action bar |
+| C-15 | `Consumer / Listing Detail — Sold Out` | `/item/:id` | Planned | Disabled reserve + reason | `StatusBadge item=sold-out` |
+| C-16 | `Consumer / Reservation Sheet` | `/item/:id` | Planned | Quantity + total + terms | `Input/QuantityStepper`, `PriceDisplay` |
+| C-17 | `Consumer / Checkout` | `/checkout/:orderId` | Planned | Midtrans handoff | Order summary, payment method |
+| C-18 | `Consumer / Payment — Pending` | `/checkout/:orderId` | Planned | Awaiting settlement | `PaymentStatusPanel`, `CountdownTimer` |
+| C-19 | `Consumer / Payment — Success` | `/checkout/:orderId` | Planned | Settled | `PaymentStatusPanel`, CTA to code |
+| C-20 | `Consumer / Payment — Failed` | `/checkout/:orderId` | Planned | Failure + retry within grace | `PaymentStatusPanel`, retry/cancel |
+| C-21 | `Consumer / Pickup Code` | `/orders/:id/code` | Planned | **Demo-critical.** Large code + QR | `Display/PickupCodeCard` |
+| C-22 | `Consumer / Order History` | `/orders` | Implemented | Active + past | `Base/Tabs`, `Card/OrderCard` ×5 |
+| C-23 | `Consumer / Order History — Empty` | `/orders` | Planned | No orders yet | `State/Empty` |
+| C-24 | `Consumer / Order Detail` | `/orders/:id` | Planned | Timeline + code + ledger link | `OrderTimeline`, `PickupCodeCard compact` |
+| C-25 | `Consumer / Impact Dashboard` | `/impact` | Planned | Personal impact | `Impact/BreakdownBar`, `Impact/StatCard` ×4, `EstimatedBadge` |
+| C-26 | `Consumer / Impact — Estimate Info Sheet` | `/impact` | Planned | CO2e methodology disclosure | Formula + `impact-v1` |
+| C-27 | `Consumer / Profile` | `/profile` | Planned | Dietary prefs, location, theme, language | Toggle chips, `Base/Select` |
+| C-28 | `Consumer / Not Found` | `*` | Implemented | 404 | `State/Error page` |
 
 ### 8.2 Merchant — `04 Merchant`
 
 | # | Frame name | Route | Status | Purpose | Composed of |
 | --- | --- | --- | --- | --- | --- |
-| M-01 | `Merchant / Register` | `/register/merchant` | 📋 | Business account creation | `Base/Input` |
-| M-02 | `Merchant / Business Profile` | `/merchant/profile` | 📋 | Name, address, category, hours, map pin | Form + mini-map |
-| M-03 | `Merchant / Verification Pending` | `/merchant/pending` | 📋 | Awaiting admin approval | `VerificationBadge pending`, `disclaimer/verification` |
-| M-04 | `Merchant / Dashboard` | `/merchant` | ✅ | Today's operations | `Card/SummaryCard` ×4, today's pickups, `Impact/BreakdownBar` |
-| M-05 | `Merchant / Dashboard — Empty` | `/merchant` | 📋 | New merchant, zero data | `State/Empty` with CTA to create a listing |
-| M-06 | `Merchant / Listing List` | `/merchant/surplus` | ✅ | All Rescue Items | `Base/Table` (7 cols), `StatusBadge item` |
-| M-07 | `Merchant / Listing List @ 390` | `/merchant/surplus` | 📋 | Stacked rows | Collapsed table |
-| M-08 | `Merchant / Create Listing` | `/merchant/surplus/new` | ✅ | **The 120-second form** | Photo, title, category, qty, weight (g), price, window, dietary |
-| M-09 | `Merchant / Create Listing — Price Suggestion` | `/merchant/surplus/new` | 📋 | Dynamic Rescue Pricing chip | Tappable suggestion, labelled `Harga Penyelamatan Dinamis` |
-| M-10 | `Merchant / Create Listing — Validation` | `/merchant/surplus/new` | 📋 | Zod errors shown | `FormMessage` states |
-| M-11 | `Merchant / Listing Detail` | `/merchant/surplus/:id` | 📋 | Item + orders + ledger | `StatusBadge`, `LedgerTimeline` |
-| M-12 | `Merchant / Pending Pickups` | `/merchant/pickup` | 📋 | Today's expected collections | `Card/OrderCard` ×4 with countdowns |
-| M-13 | `Merchant / Verify Pickup Code` | `/merchant/pickup` | 📋 | **Demo-critical.** 6-box entry | `Input/PickupCodeInput`, scan button |
-| M-14 | `Merchant / Verify — Error` | `/merchant/pickup` | 📋 | 4 failure reasons | Error copy per reason |
-| M-15 | `Merchant / Pickup Success` | `/merchant/pickup` | 📋 | Confirm before writing RESCUED | Order summary + `Selesaikan pengambilan` |
-| M-16 | `Merchant / No-Show Report` | `/merchant/pickup/:id/noshow` | 📋 | Report uncollected → routes to recovery | Neutral copy: `Tidak Diambil` |
-| M-17 | `Merchant / Impact Dashboard` | `/merchant/impact` | 📋 | Business circularity + revenue recovered | `Impact/BreakdownBar`, `CircularityGauge`, `Impact/StatCard` |
+| M-01 | `Merchant / Register` | `/register/merchant` | Planned | Business account creation | `Base/Input` |
+| M-02 | `Merchant / Business Profile` | `/merchant/profile` | Planned | Name, address, category, hours, map pin | Form + mini-map |
+| M-03 | `Merchant / Verification Pending` | `/merchant/pending` | Planned | Awaiting admin approval | `VerificationBadge pending`, `disclaimer/verification` |
+| M-04 | `Merchant / Dashboard` | `/merchant` | Implemented | Today's operations | `Card/SummaryCard` ×4, today's pickups, `Impact/BreakdownBar` |
+| M-05 | `Merchant / Dashboard — Empty` | `/merchant` | Planned | New merchant, zero data | `State/Empty` with CTA to create a listing |
+| M-06 | `Merchant / Listing List` | `/merchant/surplus` | Implemented | All Rescue Items | `Base/Table` (7 cols), `StatusBadge item` |
+| M-07 | `Merchant / Listing List @ 390` | `/merchant/surplus` | Planned | Stacked rows | Collapsed table |
+| M-08 | `Merchant / Create Listing` | `/merchant/surplus/new` | Implemented | **The 120-second form** | Photo, title, category, qty, weight (g), price, window, dietary |
+| M-09 | `Merchant / Create Listing — Price Suggestion` | `/merchant/surplus/new` | Planned | Dynamic Rescue Pricing chip | Tappable suggestion, labelled `Harga Penyelamatan Dinamis` |
+| M-10 | `Merchant / Create Listing — Validation` | `/merchant/surplus/new` | Planned | Zod errors shown | `FormMessage` states |
+| M-11 | `Merchant / Listing Detail` | `/merchant/surplus/:id` | Planned | Item + orders + ledger | `StatusBadge`, `LedgerTimeline` |
+| M-12 | `Merchant / Pending Pickups` | `/merchant/pickup` | Planned | Today's expected collections | `Card/OrderCard` ×4 with countdowns |
+| M-13 | `Merchant / Verify Pickup Code` | `/merchant/pickup` | Planned | **Demo-critical.** 6-box entry | `Input/PickupCodeInput`, scan button |
+| M-14 | `Merchant / Verify — Error` | `/merchant/pickup` | Planned | 4 failure reasons | Error copy per reason |
+| M-15 | `Merchant / Pickup Success` | `/merchant/pickup` | Planned | Confirm before writing RESCUED | Order summary + `Selesaikan pengambilan` |
+| M-16 | `Merchant / No-Show Report` | `/merchant/pickup/:id/noshow` | Planned | Report uncollected → routes to recovery | Neutral copy: `Tidak Diambil` |
+| M-17 | `Merchant / Impact Dashboard` | `/merchant/impact` | Planned | Business circularity + revenue recovered | `Impact/BreakdownBar`, `CircularityGauge`, `Impact/StatCard` |
 
 ### 8.3 Organic Processor — `05 Processor`
 
 | # | Frame name | Route | Status | Purpose | Composed of |
 | --- | --- | --- | --- | --- | --- |
-| P-01 | `Processor / Register` | `/register/processor` | 📋 | Facility account | `Base/Input` |
-| P-02 | `Processor / Facility Profile` | `/processor/profile` | 📋 | Capacity (kg/week), material types, service radius, location | Form + `CapacityMeter` preview |
-| P-03 | `Processor / Verification Pending` | `/processor/pending` | 📋 | Awaiting approval | `VerificationBadge pending` |
-| P-04 | `Processor / Dashboard` | `/processor` | ✅ | Capacity + intake + outcome mix | `Impact/CapacityMeter`, `Card/SummaryCard` ×4, outcome breakdown |
-| P-05 | `Processor / Dashboard — Over Capacity` | `/processor` | 📋 | >100% utilisation | `CapacityMeter over`, warning banner |
-| P-06 | `Processor / Routed Queue` | `/processor/recovery` | ✅ | Offered / accepted / collected batches | `Base/Tabs`, `Card/RecoveryBatchCard` ×4 |
-| P-07 | `Processor / Routed Queue — Empty` | `/processor/recovery` | 📋 | No batches routed | `State/Empty` |
-| P-08 | `Processor / Batch Detail` | `/processor/recovery/:id` | 📋 | Items, weights, merchants, ledger | `SummaryCard` ×4, `LedgerTimeline` |
-| P-09 | `Processor / Batch — Accept / Decline` | `/processor/recovery/:id` | 📋 | Respond to an offer | Response countdown, `ConfirmDialog` on decline |
-| P-10 | `Processor / Intake Form` | `/processor/recovery/:id/intake` | 📋 | **Demo-critical.** Measured weight | Weight (g), contamination note, photo, collected-at |
-| P-11 | `Processor / Intake — Variance Warning` | `/processor/recovery/:id/intake` | 📋 | >25% deviation from estimate | Warning, **not** a block |
-| P-12 | `Processor / Outcome Form` | `/processor/recovery/:id/outcome` | 📋 | **Demo-critical.** Output + residual | Output type (4), output weight, residual weight, live summary strip |
-| P-13 | `Processor / Outcome — Validation Error` | `/processor/recovery/:id/outcome` | 📋 | `residual ≤ accepted` violated | `Residu tidak boleh melebihi berat yang diterima` |
-| P-14 | `Processor / History` | `/processor/history` | 📋 | Processed batches | `Base/Table`, `StatusBadge batch` |
-| P-15 | `Processor / Impact Dashboard` | `/processor/impact` | 📋 | Facility conversion performance | `Impact/BreakdownBar` (no Rescued segment), output-type mix |
+| P-01 | `Processor / Register` | `/register/processor` | Planned | Facility account | `Base/Input` |
+| P-02 | `Processor / Facility Profile` | `/processor/profile` | Planned | Capacity (kg/week), material types, service radius, location | Form + `CapacityMeter` preview |
+| P-03 | `Processor / Verification Pending` | `/processor/pending` | Planned | Awaiting approval | `VerificationBadge pending` |
+| P-04 | `Processor / Dashboard` | `/processor` | Implemented | Capacity + intake + outcome mix | `Impact/CapacityMeter`, `Card/SummaryCard` ×4, outcome breakdown |
+| P-05 | `Processor / Dashboard — Over Capacity` | `/processor` | Planned | >100% utilisation | `CapacityMeter over`, warning banner |
+| P-06 | `Processor / Routed Queue` | `/processor/recovery` | Implemented | Offered / accepted / collected batches | `Base/Tabs`, `Card/RecoveryBatchCard` ×4 |
+| P-07 | `Processor / Routed Queue — Empty` | `/processor/recovery` | Planned | No batches routed | `State/Empty` |
+| P-08 | `Processor / Batch Detail` | `/processor/recovery/:id` | Planned | Items, weights, merchants, ledger | `SummaryCard` ×4, `LedgerTimeline` |
+| P-09 | `Processor / Batch — Accept / Decline` | `/processor/recovery/:id` | Planned | Respond to an offer | Response countdown, `ConfirmDialog` on decline |
+| P-10 | `Processor / Intake Form` | `/processor/recovery/:id/intake` | Planned | **Demo-critical.** Measured weight | Weight (g), contamination note, photo, collected-at |
+| P-11 | `Processor / Intake — Variance Warning` | `/processor/recovery/:id/intake` | Planned | >25% deviation from estimate | Warning, **not** a block |
+| P-12 | `Processor / Outcome Form` | `/processor/recovery/:id/outcome` | Planned | **Demo-critical.** Output + residual | Output type (4), output weight, residual weight, live summary strip |
+| P-13 | `Processor / Outcome — Validation Error` | `/processor/recovery/:id/outcome` | Planned | `residual ≤ accepted` violated | `Residu tidak boleh melebihi berat yang diterima` |
+| P-14 | `Processor / History` | `/processor/history` | Planned | Processed batches | `Base/Table`, `StatusBadge batch` |
+| P-15 | `Processor / Impact Dashboard` | `/processor/impact` | Planned | Facility conversion performance | `Impact/BreakdownBar` (no Rescued segment), output-type mix |
 
 ### 8.4 Admin — `06 Admin`
 
 | # | Frame name | Route | Status | Purpose | Composed of |
 | --- | --- | --- | --- | --- | --- |
-| A-01 | `Admin / Login` | `/admin/login` | 📋 | Restricted sign-in | `Base/Input` |
-| A-02 | `Admin / Dashboard` | `/admin` | ✅ | Platform health | `CircularityGauge`, `Impact/BreakdownBar`, `SummaryCard` ×4, queue depths |
-| A-03 | `Admin / Pending Verifications` | `/admin/verifications` | 📋 | Merchant + processor queue | `Base/Table`, `VerificationBadge` |
-| A-04 | `Admin / Verification Detail` | `/admin/verifications/:id` | 📋 | Documents + approve/reject | Doc viewer, `ConfirmDialog destructive` |
-| A-05 | `Admin / Listing Moderation` | `/admin/moderation` | 📋 | Reported / suspect items | `Base/Table`, `StatusBadge item=moderated` |
-| A-06 | `Admin / Ledger Search` | `/admin/ledger` | 📋 | Query by item, merchant, date, event type | Filters + results table |
-| A-07 | `Admin / Item Ledger Audit` | `/admin/ledger/:itemId` | 📋 | **Demo-critical.** Full audit trail | `LedgerTimeline` with all 17 event types |
-| A-08 | `Admin / Disputes List` | `/admin/disputes` | 📋 | Open disputes | `Base/Table`, `StatusBadge order=disputed` |
-| A-09 | `Admin / Dispute Detail` | `/admin/disputes/:id` | 📋 | Evidence + resolve/refund | Order timeline, refund action |
-| A-10 | `Admin / Integrity Checks` | `/admin/integrity` | 📋 | Ledger anomalies | Circularity ≥99.95% flags, residual>intake, orphaned batches |
-| A-11 | `Admin / Platform Impact` | `/admin/impact` | 📋 | Aggregate reporting | `CircularityGauge`, `BreakdownBar`, `EstimatedBadge` on CO2e |
+| A-01 | `Admin / Login` | `/admin/login` | Planned | Restricted sign-in | `Base/Input` |
+| A-02 | `Admin / Dashboard` | `/admin` | Implemented | Platform health | `CircularityGauge`, `Impact/BreakdownBar`, `SummaryCard` ×4, queue depths |
+| A-03 | `Admin / Pending Verifications` | `/admin/verifications` | Planned | Merchant + processor queue | `Base/Table`, `VerificationBadge` |
+| A-04 | `Admin / Verification Detail` | `/admin/verifications/:id` | Planned | Documents + approve/reject | Doc viewer, `ConfirmDialog destructive` |
+| A-05 | `Admin / Listing Moderation` | `/admin/moderation` | Planned | Reported / suspect items | `Base/Table`, `StatusBadge item=moderated` |
+| A-06 | `Admin / Ledger Search` | `/admin/ledger` | Planned | Query by item, merchant, date, event type | Filters + results table |
+| A-07 | `Admin / Item Ledger Audit` | `/admin/ledger/:itemId` | Planned | **Demo-critical.** Full audit trail | `LedgerTimeline` with all 17 event types |
+| A-08 | `Admin / Disputes List` | `/admin/disputes` | Planned | Open disputes | `Base/Table`, `StatusBadge order=disputed` |
+| A-09 | `Admin / Dispute Detail` | `/admin/disputes/:id` | Planned | Evidence + resolve/refund | Order timeline, refund action |
+| A-10 | `Admin / Integrity Checks` | `/admin/integrity` | Planned | Ledger anomalies | Circularity ≥99.95% flags, residual>intake, orphaned batches |
+| A-11 | `Admin / Platform Impact` | `/admin/impact` | Planned | Aggregate reporting | `CircularityGauge`, `BreakdownBar`, `EstimatedBadge` on CO2e |
 
 ### 8.5 Cross-Cutting State Frames
 

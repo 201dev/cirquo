@@ -19,7 +19,7 @@ Scheduled jobs are what make the platform's central promise true: **every kilogr
 
 This document specifies every job, its schedule, its idempotency guarantee, its ledger emissions, its failure behaviour, and the ordering dependencies between jobs.
 
-**Current state.** `convex/crons.ts` **does not exist**. There are no scheduled jobs, no `ctx.scheduler` calls, and no sweeps. Everything below is specification (📋).
+**Current state.** `convex/crons.ts` **does not exist**. There are no scheduled jobs, no `ctx.scheduler` calls, and no sweeps. Everything below is specification (Planned).
 
 ---
 
@@ -36,7 +36,7 @@ This document specifies every job, its schedule, its idempotency guarantee, its 
 ### 2.2 Cron Registration
 
 ```ts
-// convex/crons.ts — 📋 planned
+// convex/crons.ts — Planned
 import { cronJobs } from "convex/server";
 import { internal } from "./_generated/api";
 
@@ -128,7 +128,7 @@ crons.interval("price tick", { minutes: 15 }, internal.surplusItems.applyPriceTi
 ### 4.3 Handler
 
 ```ts
-// convex/surplusItems.ts — 📋 planned
+// convex/surplusItems.ts — Planned
 import { internalMutation } from "./_generated/server";
 import { suggestRescuePrice } from "../src/lib/pricing";
 import { recordLedgerEvent } from "./lib/ledger";
@@ -226,7 +226,7 @@ crons.interval("payment hold sweep", { minutes: 1 }, internal.orders.sweepExpire
 ### 5.3 Handler
 
 ```ts
-// convex/orders.ts — 📋 planned
+// convex/orders.ts — Planned
 const HOLD_SWEEP_BATCH = 100;
 
 export const sweepExpiredHolds = internalMutation({
@@ -343,7 +343,7 @@ Five minutes is chosen because expiry is not time-critical to a user standing in
 ### 6.3 Handler
 
 ```ts
-// convex/surplusItems.ts — 📋 planned
+// convex/surplusItems.ts — Planned
 const EXPIRY_BATCH = 100;
 const EXPIRABLE = ["active", "reserved_partial", "sold_out"] as const;
 
@@ -507,7 +507,7 @@ score = 0.40·proximity + 0.25·capacityHeadroom + 0.25·reliability + 0.10·mat
 ### 7.4 Handler
 
 ```ts
-// convex/recoveryBatches.ts — 📋 planned
+// convex/recoveryBatches.ts — Planned
 import { rankEligibleProcessors } from "../src/lib/routing";
 import { haversineMeters } from "../src/lib/geo";
 
@@ -649,7 +649,7 @@ crons.interval("offer ttl sweep", { minutes: 15 }, internal.recoveryBatches.swee
 ### 8.3 Handler
 
 ```ts
-// convex/recoveryBatches.ts — 📋 planned
+// convex/recoveryBatches.ts — Planned
 const TTL_SWEEP_BATCH = 100;
 
 export const sweepOfferTtl = internalMutation({
@@ -786,7 +786,7 @@ crons.interval("pickup reminder", { minutes: 15 }, internal.notifications.sendPi
 ### 9.3 Handler
 
 ```ts
-// convex/notifications.ts — 📋 planned
+// convex/notifications.ts — Planned
 const REMINDER_LEAD_MS = 30 * 60 * 1000;
 const REMINDER_BATCH = 200;
 
@@ -859,7 +859,7 @@ crons.interval("expiry warning", { minutes: 30 }, internal.notifications.sendExp
 ### 10.3 Handler
 
 ```ts
-// convex/notifications.ts — 📋 planned
+// convex/notifications.ts — Planned
 const WARNING_LEAD_MS = 60 * 60 * 1000;
 
 export const sendExpiryWarnings = internalMutation({
@@ -932,7 +932,7 @@ crons.interval("notification fan-out", { minutes: 1 }, internal.notifications.dr
 ### 11.3 Handler
 
 ```ts
-// convex/notifications.ts — 📋 planned
+// convex/notifications.ts — Planned
 const FANOUT_BATCH = 20;
 const RECIPIENTS_PER_RUN = 500;
 
@@ -994,9 +994,9 @@ Impact figures are computed at read time by `summariseLedger` over `materialFlow
 
 | Scale | Ledger rows/year | Read-time aggregation | Verdict |
 | --- | --- | --- | --- |
-| Pilot (1 city, 25 merchants) | 240k | Milliseconds | ✅ No snapshot |
-| 3 cities | 720k | Tens of ms | ✅ Still fine |
-| **10 cities** | **2.4M** | Hundreds of ms per invalidation | 📋 **Snapshot becomes worthwhile** |
+| Pilot (1 city, 25 merchants) | 240k | Milliseconds | Implemented No snapshot |
+| 3 cities | 720k | Tens of ms | Implemented Still fine |
+| **10 cities** | **2.4M** | Hundreds of ms per invalidation | Planned **Snapshot becomes worthwhile** |
 
 Building it now would add a cache with no cache pressure: more code, more staleness risk, zero benefit.
 
@@ -1007,7 +1007,7 @@ crons.cron("impact snapshot", "0 20 * * *", internal.impact.rollupDaily, {});
 ```
 
 ```ts
-// convex/impact.ts — 📋 Phase 2
+// convex/impact.ts — Planned Phase 2
 export const rollupDaily = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -1094,7 +1094,7 @@ crons.cron("integrity check", "30 20 * * *", internal.admin.runIntegrityCheck, {
 ### 13.4 Handler
 
 ```ts
-// convex/admin.ts — 📋 planned
+// convex/admin.ts — Planned
 export const runIntegrityCheck = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -1318,7 +1318,7 @@ Every `crons.cron` line carries a comment with its WIB equivalent. Interval cron
 "Today's capacity" for a processor and "yesterday's snapshot" both need a day boundary, and the correct boundary for an Indonesian operator is a **WIB** day, not a UTC day.
 
 ```ts
-// convex/lib/time.ts — 📋 planned
+// convex/lib/time.ts — Planned
 const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
 
 /** Start of the WIB calendar day containing `epochMs`, returned as epoch ms UTC. */
@@ -1380,16 +1380,16 @@ At pilot volume no sweep will ever reach its cap. The caps exist so that a traff
 ### 16.4 Avoiding Unbounded Reads
 
 ```ts
-// ❌ Unbounded — will eventually exceed the memory budget
+// Not implemented Unbounded — will eventually exceed the memory budget
 const all = await ctx.db.query("materialFlowLedger").collect();
 
-// ✅ Bounded by an index range
+// Implemented Bounded by an index range
 const window = await ctx.db
   .query("materialFlowLedger")
   .withIndex("by_occurred_at", (q) => q.gte("occurredAt", start).lt("occurredAt", end))
   .collect();
 
-// ✅ Bounded by count
+// Implemented Bounded by count
 const page = await ctx.db.query("recoveryBatches")
   .withIndex("by_status", (q) => q.eq("status", "pending"))
   .take(50);
@@ -1419,7 +1419,7 @@ The worst outcome of overlap is a small amount of wasted compute — never dupli
 Should a job ever become long-running, an explicit lock is available:
 
 ```ts
-// convex/lib/joblock.ts — 📋 if ever needed
+// convex/lib/joblock.ts — Planned if ever needed
 const LOCK_TTL_MS = 5 * 60 * 1000;
 
 export async function withJobLock<T>(
@@ -1496,7 +1496,7 @@ Job 3 is the most consequential: it is the sole producer for job 4, so its failu
 The current handlers process a batch in one transaction, so one bad row rolls back the whole tick. For most jobs that is correct — the tick simply retries. For job 4, where one malformed processor document could block every batch in the run, per-item isolation is warranted:
 
 ```ts
-// 📋 hardening for job 4
+// Planned hardening for job 4
 for (const batch of pending) {
   try {
     await ctx.runMutation(internal.recoveryBatches.routeOne, { batchId: batch._id });
@@ -1596,7 +1596,7 @@ Each prints its return value, so a run is immediately legible:
 Some transitions require the clock to have moved. Rather than mocking time, dev-only helpers move the *documents*:
 
 ```ts
-// convex/devtools.ts — 📋 dev deployment only
+// convex/devtools.ts — Planned dev deployment only
 export const ageOrderHold = internalMutation({
   args: { orderId: v.id("orders"), minutes: v.number() },
   handler: async (ctx, args) => {
@@ -1633,7 +1633,7 @@ Moving `offerExpiresAt` backwards is more honest than faking `Date.now()`: the h
 ### 20.4 Automated Tests
 
 ```ts
-// convex/scheduler.test.ts — 📋 planned
+// convex/scheduler.test.ts — Planned
 test("hold sweep restores quantity and writes exactly one CANCELLED", async () => {
   const t = convexTest(schema);
   const { itemId, orderId } = await seedReservedOrder(t, {
