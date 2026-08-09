@@ -1,6 +1,46 @@
-import { v } from 'convex/values'
-import { query } from './_generated/server'
+import { ConvexError, v } from 'convex/values'
+import { mutation, query } from './_generated/server'
 import { requireOwnership, requireRole } from './lib/guards'
+import { validateMerchantProfile } from './lib/profiles'
+import { businessType } from './schema'
+
+export const createProfile = mutation({
+  args: {
+    sessionToken: v.optional(v.string()),
+    name: v.string(),
+    businessType,
+    address: v.string(),
+    city: v.string(),
+    latitude: v.number(),
+    longitude: v.number(),
+    phone: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireRole(ctx, args.sessionToken, ['merchant'])
+    const profile = validateMerchantProfile(args)
+    const existing = await ctx.db
+      .query('merchants')
+      .withIndex('by_owner', (index) => index.eq('ownerId', user._id))
+      .unique()
+
+    if (existing) throw new ConvexError('VALIDATION_FAILED')
+
+    const merchantId = await ctx.db.insert('merchants', {
+      ownerId: user._id,
+      name: profile.name,
+      businessType: args.businessType,
+      address: profile.address,
+      city: profile.city,
+      latitude: args.latitude,
+      longitude: args.longitude,
+      phone: profile.phone,
+      verificationStatus: 'pending',
+      createdAt: Date.now(),
+    })
+
+    return { merchantId, verificationStatus: 'pending' as const }
+  },
+})
 
 export const getByOwner = query({
   args: {

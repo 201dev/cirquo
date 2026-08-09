@@ -773,7 +773,7 @@ Changes the password for a signed-in user, requiring the current password as pro
 
 ---
 
-### `merchants.createProfile` Planned
+### `merchants.createProfile` Implemented
 **Type:** mutation · **Auth:** Merchant (no profile yet) · **PRD ref:** MER-00
 
 Creates the business profile for a Merchant account and places it in the verification queue.
@@ -784,7 +784,6 @@ Creates the business profile for a Merchant account and places it in the verific
 |---|---|---|---|
 | `sessionToken` | `v.string()` | Yes | |
 | `name` | `v.string()` | Yes | Business name, 2–120 chars |
-| `description` | `v.optional(v.string())` | No | ≤ 500 chars |
 | `businessType` | `v.string()` | Yes | e.g. `bakery`, `restaurant`, `cafe`, `grocery`, `catering`, `warung` |
 | `address` | `v.string()` | Yes | Street address, 5–250 chars |
 | `city` | `v.string()` | Yes | `Semarang` for the pilot |
@@ -809,8 +808,6 @@ Coordinates matter more than they look: they feed the Haversine distance in `dis
 **Side effects**
 
 - Insert `merchants` with `verificationStatus: 'pending'`
-- Insert `notifications` for the merchant — "Profile submitted for verification"
-- Insert `notifications` for all Admins — "New merchant awaiting verification"
 - No ledger event — no material yet exists
 
 **Ledger events** — none.
@@ -829,7 +826,6 @@ Coordinates matter more than they look: they feed the Haversine distance in `dis
 const merchant = await createProfile({
   sessionToken,
   name: 'Warung Bu Sari',
-  description: 'Home-style Javanese cooking near Simpang Lima.',
   businessType: 'warung',
   address: 'Jl. Pandanaran No. 42, Semarang',
   city: 'Semarang',
@@ -842,7 +838,7 @@ const merchant = await createProfile({
 
 ---
 
-### `processors.createProfile` Planned
+### `processors.createProfile` Implemented
 **Type:** mutation · **Auth:** Processor (no profile yet) · **PRD ref:** PRO-00
 
 Creates the facility profile for an Organic Processor, declaring the material types accepted, capacity, service radius, and output types. These fields **are** the Circular Routing eligibility contract.
@@ -853,9 +849,7 @@ Creates the facility profile for an Organic Processor, declaring the material ty
 |---|---|---|---|
 | `sessionToken` | `v.string()` | Yes | |
 | `name` | `v.string()` | Yes | Facility name |
-| `description` | `v.optional(v.string())` | No | ≤ 500 chars |
 | `facilityType` | `v.string()` | Yes | `bsf_farm`, `composting`, `biogas`, `animal_feed` |
-| `address` | `v.string()` | Yes | |
 | `city` | `v.string()` | Yes | |
 | `latitude` | `v.number()` | Yes | Routing distance origin |
 | `longitude` | `v.number()` | Yes | |
@@ -884,7 +878,6 @@ Creates the facility profile for an Organic Processor, declaring the material ty
 **Side effects**
 
 - Insert `processors` with `verificationStatus: 'pending'`
-- Notifications to the processor and to Admins
 - No ledger event
 
 **Ledger events** — none.
@@ -898,7 +891,6 @@ await createProcessorProfile({
   sessionToken,
   name: 'Semarang BSF Farm',
   facilityType: 'bsf_farm',
-  address: 'Jl. Raya Mangkang KM 16, Semarang',
   city: 'Semarang',
   latitude: -6.9591,
   longitude: 110.3210,
@@ -1127,16 +1119,16 @@ sequenceDiagram
 | `auth.register` | Implemented | Public action; transactional uniqueness in internal mutation |
 | `auth.login` | Implemented | Public action; generic invalid-credential response |
 | `auth.logout` | Implemented | Deletes the matching hashed-token session |
-| `auth.getCurrentUser` | Implemented | Returns a safe user projection or `null` |
+| `auth.getCurrentUser` | Implemented | Returns a safe user projection plus the role-relevant profile summary |
 | `auth.refreshSession` | — | Deliberately absent; sessions expire absolutely after 30 days |
 | `auth.requestPasswordReset` | Planned | Priority B — needs an email provider key |
 | `auth.resetPassword` | Planned | Priority B |
 | `auth.changePassword` | Planned | Priority B |
-| `auth.getVerificationStatus` | Planned | Priority A — gates the merchant/processor demo |
-| `merchants.createProfile` | Planned | Priority A |
-| `processors.createProfile` | Planned | Priority A |
+| `auth.getVerificationStatus` | — | Covered by `auth.getCurrentUser.profile.verificationStatus` |
+| `merchants.createProfile` | Implemented | Owner and verification status are server-controlled |
+| `processors.createProfile` | Implemented | Owner and verification status are server-controlled |
 | `profiles.update` | Planned | Priority C |
-| `lib/guards.ts` | Planned | **Highest priority** — every other mutation depends on it |
+| `lib/guards.ts` | Implemented | Shared authentication, role, and ownership guards |
 | `lib/password.ts` | Implemented | Node scrypt with per-password salt and timing-safe verification |
 | `passwordResets` table | Planned | Schema addition needed beyond the current `DATABASE.md` set |
 | `rateLimits` table | Planned | Schema addition needed |

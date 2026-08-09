@@ -21,6 +21,7 @@ Cirquo now has custom email/password authentication, hashed sessions, and shared
 | Password hashing | Implemented | Maintained Node `crypto.scrypt` in an internal Node action |
 | `requireAuth` guard | Implemented | Resolves hashed sessions and rejects invalid, expired, or suspended access |
 | Login / register | Implemented | Public actions delegate transactional writes to internal mutations |
+| Business profile onboarding | Implemented | Merchant and Processor profiles start as `pending` |
 | Client token storage | Planned | No client auth code |
 | Password reset | Planned | No email transport chosen |
 

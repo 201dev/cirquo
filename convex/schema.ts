@@ -13,6 +13,47 @@ export const userStatus = v.union(
   v.literal('suspended'),
 )
 
+export const verificationStatus = v.union(
+  v.literal('pending'),
+  v.literal('verified'),
+  v.literal('rejected'),
+  v.literal('suspended'),
+)
+
+export const businessType = v.union(
+  v.literal('bakery'),
+  v.literal('restaurant'),
+  v.literal('cafe'),
+  v.literal('grocery'),
+  v.literal('catering'),
+  v.literal('warung'),
+  v.literal('other'),
+)
+
+export const facilityType = v.union(
+  v.literal('bsf_farm'),
+  v.literal('composting'),
+  v.literal('biogas'),
+  v.literal('animal_feed'),
+)
+
+export const materialType = v.union(
+  v.literal('prepared_food'),
+  v.literal('bakery'),
+  v.literal('produce'),
+  v.literal('dairy'),
+  v.literal('protein'),
+  v.literal('dry_goods'),
+  v.literal('mixed'),
+)
+
+export const outputType = v.union(
+  v.literal('compost'),
+  v.literal('bsf_larvae'),
+  v.literal('animal_feed'),
+  v.literal('biogas'),
+)
+
 export const ledgerEventType = v.union(
   v.literal('LISTED'),
   v.literal('PRICE_ADJUSTED'),
@@ -75,11 +116,30 @@ export default defineSchema({
   merchants: defineTable({
     ownerId: v.id('users'),
     name: v.string(),
-    description: v.optional(v.string()),
+    businessType,
     address: v.string(),
-    latitude: v.optional(v.number()),
-    longitude: v.optional(v.number()),
-    isVerified: v.boolean(),
+    city: v.string(),
+    latitude: v.number(),
+    longitude: v.number(),
+    phone: v.optional(v.string()),
+    verificationStatus,
+    createdAt: v.number(),
+  }).index('by_owner', ['ownerId']),
+
+  processors: defineTable({
+    ownerId: v.id('users'),
+    name: v.string(),
+    facilityType,
+    city: v.string(),
+    latitude: v.number(),
+    longitude: v.number(),
+    acceptedMaterialTypes: v.array(materialType),
+    dailyCapacityGrams: v.number(),
+    maxPickupRadiusMeters: v.number(),
+    outputTypes: v.array(outputType),
+    operatingHoursStart: v.number(),
+    operatingHoursEnd: v.number(),
+    verificationStatus,
     createdAt: v.number(),
   }).index('by_owner', ['ownerId']),
 

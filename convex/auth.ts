@@ -25,6 +25,13 @@ type AuthResult = {
   name: string
 }
 
+type ProfileSummary = {
+  id: Id<'merchants'> | Id<'processors'>
+  type: 'merchant' | 'processor'
+  name: string
+  verificationStatus: Doc<'merchants'>['verificationStatus']
+}
+
 export const register = action({
   args: {
     name: v.string(),
@@ -129,12 +136,45 @@ export const getCurrentUser = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
     const user = await requireAuth(ctx, sessionToken)
+    let profile: ProfileSummary | null = null
+
+    if (user.role === 'merchant') {
+      const merchant = await ctx.db
+        .query('merchants')
+        .withIndex('by_owner', (index) => index.eq('ownerId', user._id))
+        .unique()
+
+      if (merchant) {
+        profile = {
+          id: merchant._id,
+          type: 'merchant',
+          name: merchant.name,
+          verificationStatus: merchant.verificationStatus,
+        }
+      }
+    } else if (user.role === 'processor') {
+      const processor = await ctx.db
+        .query('processors')
+        .withIndex('by_owner', (index) => index.eq('ownerId', user._id))
+        .unique()
+
+      if (processor) {
+        profile = {
+          id: processor._id,
+          type: 'processor',
+          name: processor.name,
+          verificationStatus: processor.verificationStatus,
+        }
+      }
+    }
+
     return {
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
       createdAt: user.createdAt,
+      profile,
     }
   },
 })

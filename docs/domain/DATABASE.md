@@ -168,13 +168,13 @@ export default defineSchema({
   merchants: defineTable({
     ownerId: v.id('users'),
     name: v.string(),
-    description: v.optional(v.string()),
     businessType: v.union(
       v.literal('bakery'),
       v.literal('restaurant'),
       v.literal('cafe'),
       v.literal('catering'),
       v.literal('grocery'),
+      v.literal('warung'),
       v.literal('other'),
     ),
     address: v.string(),
@@ -185,20 +185,17 @@ export default defineSchema({
     verificationStatus,
     createdAt: v.number(),
   })
-    .index('by_owner', ['ownerId'])
-    .index('by_city_verification', ['city', 'verificationStatus']),
+    .index('by_owner', ['ownerId']),
 
   processors: defineTable({
     ownerId: v.id('users'),
     name: v.string(),
-    description: v.optional(v.string()),
     facilityType: v.union(
-      v.literal('bsf'),
+      v.literal('bsf_farm'),
       v.literal('composting'),
       v.literal('biogas'),
       v.literal('animal_feed'),
     ),
-    address: v.string(),
     city: v.string(),
     latitude: v.number(),
     longitude: v.number(),
@@ -211,8 +208,7 @@ export default defineSchema({
     verificationStatus,
     createdAt: v.number(),
   })
-    .index('by_owner', ['ownerId'])
-    .index('by_city_verification', ['city', 'verificationStatus']),
+    .index('by_owner', ['ownerId']),
 
   surplusItems: defineTable({          // domain name: Rescue Item
     merchantId: v.id('merchants'),
