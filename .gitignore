@@ -35,3 +35,13 @@ android/local.properties
 
 # OpenCode dependencies
 .opencode/
+
+# AI Agent Configs
+.agents/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.claude/
+.gemini/
+.codex/
+skills-lock.json
