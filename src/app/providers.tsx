@@ -1,16 +1,20 @@
-import type { ReactNode } from 'react'
-import { ConvexProvider } from 'convex/react'
-import { ThemeProvider } from 'next-themes'
-import { Toaster } from '@/components/ui/sonner'
-import { convexClient } from '@/lib/convex'
+import type { ReactNode } from "react";
+import { ConvexProvider } from "convex/react";
+import { ThemeProvider } from "next-themes";
+import { Toaster } from "@/components/ui/sonner";
+import { convexClient } from "@/lib/convex";
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const content = (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       {children}
       <Toaster richColors closeButton />
     </ThemeProvider>
-  )
+  );
 
-  return convexClient ? <ConvexProvider client={convexClient}>{content}</ConvexProvider> : content
+  return convexClient ? (
+    <ConvexProvider client={convexClient}>{content}</ConvexProvider>
+  ) : (
+    content
+  );
 }

@@ -1,36 +1,128 @@
-import { createBrowserRouter } from 'react-router-dom'
-import { AdminLayout } from '@/layouts/admin-layout'
-import { ConsumerLayout } from '@/layouts/consumer-layout'
-import { MerchantLayout } from '@/layouts/merchant-layout'
-import { ProcessorLayout } from '@/layouts/processor-layout'
-import AdminDashboardPage from '@/pages/admin/dashboard-page'
-import ExplorePage from '@/pages/consumer/explore-page'
-import ConsumerHomePage from '@/pages/consumer/home-page'
-import OrdersPage from '@/pages/consumer/orders-page'
-import CreateSurplusPage from '@/pages/merchant/create-surplus-page'
-import MerchantDashboardPage from '@/pages/merchant/dashboard-page'
-import MerchantSurplusPage from '@/pages/merchant/surplus-page'
-import NotFoundPage from '@/pages/not-found-page'
-import ProcessorDashboardPage from '@/pages/processor/dashboard-page'
-import RecoveryPage from '@/pages/processor/recovery-page'
+/* eslint-disable react/only-export-components -- the router intentionally owns lazy route components. */
+import { lazy } from "react";
+import { createBrowserRouter } from "react-router-dom";
+import { AdminLayout } from "@/layouts/admin-layout";
+import { AuthLayout } from "@/layouts/auth-layout";
+import { ConsumerLayout } from "@/layouts/consumer-layout";
+import { MerchantLayout } from "@/layouts/merchant-layout";
+import { ProcessorLayout } from "@/layouts/processor-layout";
+import NotFoundPage from "@/pages/not-found-page";
+
+const AdminDashboardPage = lazy(() => import("@/pages/admin/dashboard-page"));
+const LoginPage = lazy(() => import("@/pages/auth/login-page"));
+const OnboardingPage = lazy(() => import("@/pages/auth/onboarding-page"));
+const RegisterFormPage = lazy(() => import("@/pages/auth/register-form-page"));
+const RegisterPage = lazy(() => import("@/pages/auth/register-page"));
+const LedgerPage = lazy(() => import("@/pages/admin/ledger-page"));
+const ReviewQueuePage = lazy(() => import("@/pages/admin/review-queue-page"));
+const ExplorePage = lazy(() => import("@/pages/consumer/explore-page"));
+const ConsumerHomePage = lazy(() => import("@/pages/consumer/home-page"));
+const ImpactPage = lazy(() => import("@/pages/consumer/impact-page"));
+const ItemDetailPage = lazy(() => import("@/pages/consumer/item-detail-page"));
+const OrderDetailPage = lazy(
+  () => import("@/pages/consumer/order-detail-page"),
+);
+const OrdersPage = lazy(() => import("@/pages/consumer/orders-page"));
+const ProfilePage = lazy(() => import("@/pages/consumer/profile-page"));
+const CreateSurplusPage = lazy(
+  () => import("@/pages/merchant/create-surplus-page"),
+);
+const MerchantDashboardPage = lazy(
+  () => import("@/pages/merchant/dashboard-page"),
+);
+const MerchantImpactPage = lazy(() => import("@/pages/merchant/impact-page"));
+const PickupPage = lazy(() => import("@/pages/merchant/pickup-page"));
+const SurplusDetailPage = lazy(
+  () => import("@/pages/merchant/surplus-detail-page"),
+);
+const MerchantSurplusPage = lazy(() => import("@/pages/merchant/surplus-page"));
+const ProcessorDashboardPage = lazy(
+  () => import("@/pages/processor/dashboard-page"),
+);
+const ProcessorHistoryPage = lazy(
+  () => import("@/pages/processor/history-page"),
+);
+const RecoveryDetailPage = lazy(
+  () => import("@/pages/processor/recovery-detail-page"),
+);
+const RecoveryPage = lazy(() => import("@/pages/processor/recovery-page"));
 
 export const router = createBrowserRouter([
-  { element: <ConsumerLayout />, children: [
-    { index: true, element: <ConsumerHomePage /> },
-    { path: 'explore', element: <ExplorePage /> },
-    { path: 'orders', element: <OrdersPage /> },
-  ] },
-  { path: 'merchant', element: <MerchantLayout />, children: [
-    { index: true, element: <MerchantDashboardPage /> },
-    { path: 'surplus', element: <MerchantSurplusPage /> },
-    { path: 'surplus/new', element: <CreateSurplusPage /> },
-  ] },
-  { path: 'processor', element: <ProcessorLayout />, children: [
-    { index: true, element: <ProcessorDashboardPage /> },
-    { path: 'recovery', element: <RecoveryPage /> },
-  ] },
-  { path: 'admin', element: <AdminLayout />, children: [
-    { index: true, element: <AdminDashboardPage /> },
-  ] },
-  { path: '*', element: <NotFoundPage /> },
-])
+  {
+    element: <AuthLayout />,
+    children: [
+      { path: "login", element: <LoginPage /> },
+      { path: "admin/login", element: <LoginPage /> },
+      { path: "register", element: <RegisterPage /> },
+      {
+        path: "register/consumer",
+        element: <RegisterFormPage role="consumer" />,
+      },
+      {
+        path: "register/merchant",
+        element: <RegisterFormPage role="merchant" />,
+      },
+      {
+        path: "register/processor",
+        element: <RegisterFormPage role="processor" />,
+      },
+      {
+        path: "merchant/onboarding",
+        element: <OnboardingPage role="merchant" />,
+      },
+      {
+        path: "processor/onboarding",
+        element: <OnboardingPage role="processor" />,
+      },
+    ],
+  },
+  {
+    element: <ConsumerLayout />,
+    children: [
+      { index: true, element: <ConsumerHomePage /> },
+      { path: "explore", element: <ExplorePage /> },
+      { path: "orders", element: <OrdersPage /> },
+      { path: "orders/:id", element: <OrderDetailPage /> },
+      { path: "item/:id", element: <ItemDetailPage /> },
+      { path: "impact", element: <ImpactPage /> },
+      { path: "profile", element: <ProfilePage /> },
+    ],
+  },
+  {
+    path: "merchant",
+    element: <MerchantLayout />,
+    children: [
+      { index: true, element: <MerchantDashboardPage /> },
+      { path: "surplus", element: <MerchantSurplusPage /> },
+      { path: "surplus/new", element: <CreateSurplusPage /> },
+      { path: "surplus/:id", element: <SurplusDetailPage /> },
+      { path: "pickup", element: <PickupPage /> },
+      { path: "impact", element: <MerchantImpactPage /> },
+    ],
+  },
+  {
+    path: "processor",
+    element: <ProcessorLayout />,
+    children: [
+      { index: true, element: <ProcessorDashboardPage /> },
+      { path: "recovery", element: <RecoveryPage /> },
+      { path: "recovery/:id", element: <RecoveryDetailPage /> },
+      { path: "history", element: <ProcessorHistoryPage /> },
+    ],
+  },
+  {
+    path: "admin",
+    element: <AdminLayout />,
+    children: [
+      { index: true, element: <AdminDashboardPage /> },
+      {
+        path: "verifications",
+        element: <ReviewQueuePage type="verifications" />,
+      },
+      { path: "moderation", element: <ReviewQueuePage type="moderation" /> },
+      { path: "ledger", element: <LedgerPage /> },
+      { path: "disputes", element: <ReviewQueuePage type="disputes" /> },
+    ],
+  },
+  { path: "*", element: <NotFoundPage /> },
+]);
