@@ -8,6 +8,13 @@ export const userRole = v.union(
   v.literal('admin'),
 )
 
+export const verificationStatus = v.union(
+  v.literal('pending'),
+  v.literal('verified'),
+  v.literal('rejected'),
+  v.literal('suspended'),
+)
+
 export const rescueItemStatus = v.union(
   v.literal('draft'),
   v.literal('active'),
@@ -36,18 +43,56 @@ export default defineSchema({
   users: defineTable({
     name: v.string(),
     email: v.string(),
+    passwordHash: v.string(),
     role: userRole,
+    phone: v.optional(v.string()),
+    status: v.union(v.literal('active'), v.literal('suspended')),
     createdAt: v.number(),
   }).index('by_email', ['email']),
+
+  sessions: defineTable({
+    userId: v.id('users'),
+    tokenHash: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    userAgent: v.optional(v.string()),
+    platform: v.optional(v.union(v.literal('web'), v.literal('android'))),
+  })
+    .index('by_token_hash', ['tokenHash'])
+    .index('by_user', ['userId'])
+    .index('by_expires_at', ['expiresAt']),
+
+  authEvents: defineTable({
+    userId: v.optional(v.id('users')),
+    email: v.string(),
+    type: v.string(),
+    success: v.boolean(),
+    occurredAt: v.number(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_email', ['email']),
 
   merchants: defineTable({
     ownerId: v.id('users'),
     name: v.string(),
+    legalName: v.string(),
+    registrationNumber: v.string(),
     description: v.optional(v.string()),
     address: v.string(),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
-    isVerified: v.boolean(),
+    verificationStatus: verificationStatus,
+    createdAt: v.number(),
+  }).index('by_owner', ['ownerId']),
+
+  processors: defineTable({
+    ownerId: v.id('users'),
+    name: v.string(),
+    legalName: v.string(),
+    registrationNumber: v.string(),
+    address: v.string(),
+    capacityGrams: v.number(),
+    verificationStatus: verificationStatus,
     createdAt: v.number(),
   }).index('by_owner', ['ownerId']),
 

@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from "react";
-import { CircleUserRound, Menu } from "lucide-react";
-import { NavLink, Outlet } from "react-router-dom";
+import { LogOut, Menu } from "lucide-react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AppLogo } from "@/components/common/app-logo";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { NavigationItem } from "@/types/navigation";
+import { useAuth } from "@/contexts/auth-context";
 
 interface RoleShellProps {
   roleLabel: string;
@@ -50,6 +51,13 @@ function RoleNavigation({ navigation }: { navigation: NavigationItem[] }) {
 }
 
 export function RoleShell({ roleLabel, navigation, children }: RoleShellProps) {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
   return (
     <div className="min-h-svh bg-muted/35">
       <RouteFocus />
@@ -64,17 +72,27 @@ export function RoleShell({ roleLabel, navigation, children }: RoleShellProps) {
         <div className="mt-8">
           <RoleNavigation navigation={navigation} />
         </div>
-        <div className="mt-auto rounded-xl bg-background/70 p-4">
-          <p className="text-sm font-semibold">Akun demo</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Semarang · Indonesia
-          </p>
-          <NavLink
-            to="/"
-            className="mt-3 inline-flex min-h-10 items-center text-xs font-semibold text-primary"
+        <div className="mt-auto space-y-3">
+          <div className="rounded-xl bg-background/70 p-4">
+            <p className="text-sm font-semibold">{user?.name ?? 'Akun'}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {user?.email ?? 'Semarang · Indonesia'}
+            </p>
+            <NavLink
+              to="/"
+              className="mt-3 inline-flex min-h-10 items-center text-xs font-semibold text-primary"
+            >
+              Lihat sisi consumer →
+            </NavLink>
+          </div>
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive"
+            onClick={handleLogout}
           >
-            Lihat sisi consumer →
-          </NavLink>
+            <LogOut className="size-4" />
+            Keluar
+          </Button>
         </div>
       </aside>
 
@@ -108,8 +126,8 @@ export function RoleShell({ roleLabel, navigation, children }: RoleShellProps) {
           <p className="font-medium">{roleLabel}</p>
           <DemoNotice className="ml-auto hidden sm:flex" />
           <ThemeToggle />
-          <Button variant="ghost" size="icon" aria-label="Buka menu akun">
-            <CircleUserRound aria-hidden="true" />
+          <Button variant="ghost" size="icon" aria-label="Keluar" onClick={handleLogout}>
+            <LogOut aria-hidden="true" />
           </Button>
         </header>
         <main

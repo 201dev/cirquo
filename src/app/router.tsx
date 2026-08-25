@@ -6,6 +6,7 @@ import { AuthLayout } from "@/layouts/auth-layout";
 import { ConsumerLayout } from "@/layouts/consumer-layout";
 import { MerchantLayout } from "@/layouts/merchant-layout";
 import { ProcessorLayout } from "@/layouts/processor-layout";
+import { GuestRoute, ProtectedRoute } from "@/components/common/route-guards";
 import NotFoundPage from "@/pages/not-found-page";
 
 const AdminDashboardPage = lazy(() => import("@/pages/admin/dashboard-page"));
@@ -46,36 +47,63 @@ const RecoveryDetailPage = lazy(
   () => import("@/pages/processor/recovery-detail-page"),
 );
 const RecoveryPage = lazy(() => import("@/pages/processor/recovery-page"));
+const PendingVerificationPage = lazy(
+  () => import("@/pages/auth/pending-verification-page"),
+);
 
 export const router = createBrowserRouter([
+  // --- Guest-only routes (login, register) ---
   {
-    element: <AuthLayout />,
+    element: <GuestRoute />,
     children: [
-      { path: "login", element: <LoginPage /> },
-      { path: "admin/login", element: <LoginPage /> },
-      { path: "register", element: <RegisterPage /> },
       {
-        path: "register/consumer",
-        element: <RegisterFormPage role="consumer" />,
-      },
-      {
-        path: "register/merchant",
-        element: <RegisterFormPage role="merchant" />,
-      },
-      {
-        path: "register/processor",
-        element: <RegisterFormPage role="processor" />,
-      },
-      {
-        path: "merchant/onboarding",
-        element: <OnboardingPage role="merchant" />,
-      },
-      {
-        path: "processor/onboarding",
-        element: <OnboardingPage role="processor" />,
+        element: <AuthLayout />,
+        children: [
+          { path: "login", element: <LoginPage /> },
+          { path: "admin/login", element: <LoginPage /> },
+          { path: "register", element: <RegisterPage /> },
+          {
+            path: "register/consumer",
+            element: <RegisterFormPage role="consumer" />,
+          },
+          {
+            path: "register/merchant",
+            element: <RegisterFormPage role="merchant" />,
+          },
+          {
+            path: "register/processor",
+            element: <RegisterFormPage role="processor" />,
+          },
+        ],
       },
     ],
   },
+
+  // --- Authenticated-only: onboarding (inside AuthLayout) ---
+  {
+    element: <ProtectedRoute />,
+    children: [
+      {
+        element: <AuthLayout />,
+        children: [
+          {
+            path: "merchant/onboarding",
+            element: <OnboardingPage role="merchant" />,
+          },
+          {
+            path: "processor/onboarding",
+            element: <OnboardingPage role="processor" />,
+          },
+          {
+            path: "pending-verification",
+            element: <PendingVerificationPage />,
+          },
+        ],
+      },
+    ],
+  },
+
+  // --- Consumer routes ---
   {
     element: <ConsumerLayout />,
     children: [
@@ -88,41 +116,66 @@ export const router = createBrowserRouter([
       { path: "profile", element: <ProfilePage /> },
     ],
   },
+
+  // --- Merchant routes ---
   {
     path: "merchant",
-    element: <MerchantLayout />,
+    element: <ProtectedRoute allowedRoles={["merchant", "admin"]} />,
     children: [
-      { index: true, element: <MerchantDashboardPage /> },
-      { path: "surplus", element: <MerchantSurplusPage /> },
-      { path: "surplus/new", element: <CreateSurplusPage /> },
-      { path: "surplus/:id", element: <SurplusDetailPage /> },
-      { path: "pickup", element: <PickupPage /> },
-      { path: "impact", element: <MerchantImpactPage /> },
+      {
+        element: <MerchantLayout />,
+        children: [
+          { index: true, element: <MerchantDashboardPage /> },
+          { path: "surplus", element: <MerchantSurplusPage /> },
+          { path: "surplus/new", element: <CreateSurplusPage /> },
+          { path: "surplus/:id", element: <SurplusDetailPage /> },
+          { path: "pickup", element: <PickupPage /> },
+          { path: "impact", element: <MerchantImpactPage /> },
+        ],
+      },
     ],
   },
+
+  // --- Processor routes ---
   {
     path: "processor",
-    element: <ProcessorLayout />,
+    element: <ProtectedRoute allowedRoles={["processor", "admin"]} />,
     children: [
-      { index: true, element: <ProcessorDashboardPage /> },
-      { path: "recovery", element: <RecoveryPage /> },
-      { path: "recovery/:id", element: <RecoveryDetailPage /> },
-      { path: "history", element: <ProcessorHistoryPage /> },
+      {
+        element: <ProcessorLayout />,
+        children: [
+          { index: true, element: <ProcessorDashboardPage /> },
+          { path: "recovery", element: <RecoveryPage /> },
+          { path: "recovery/:id", element: <RecoveryDetailPage /> },
+          { path: "history", element: <ProcessorHistoryPage /> },
+        ],
+      },
     ],
   },
+
+  // --- Admin routes ---
   {
     path: "admin",
-    element: <AdminLayout />,
+    element: <ProtectedRoute allowedRoles={["admin"]} />,
     children: [
-      { index: true, element: <AdminDashboardPage /> },
       {
-        path: "verifications",
-        element: <ReviewQueuePage type="verifications" />,
+        element: <AdminLayout />,
+        children: [
+          { index: true, element: <AdminDashboardPage /> },
+          {
+            path: "verifications",
+            element: <ReviewQueuePage type="verifications" />,
+          },
+          {
+            path: "moderation",
+            element: <ReviewQueuePage type="moderation" />,
+          },
+          { path: "ledger", element: <LedgerPage /> },
+          { path: "disputes", element: <ReviewQueuePage type="disputes" /> },
+        ],
       },
-      { path: "moderation", element: <ReviewQueuePage type="moderation" /> },
-      { path: "ledger", element: <LedgerPage /> },
-      { path: "disputes", element: <ReviewQueuePage type="disputes" /> },
     ],
   },
+
   { path: "*", element: <NotFoundPage /> },
 ]);
