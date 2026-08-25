@@ -32,18 +32,10 @@ export function ConsumerLayout() {
         Lewati ke konten utama
       </a>
       <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-[4.5rem] max-w-6xl items-center px-4 sm:px-6">
+        <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center px-4 sm:px-6">
           <AppLogo />
-          <Button
-            variant="ghost"
-            className="ml-2 hidden max-w-48 justify-start gap-2 lg:flex"
-            aria-label="Lokasi saat ini: Tembalang, Semarang"
-          >
-            <MapPin className="text-primary" aria-hidden="true" />
-            <span className="truncate">Tembalang, Semarang</span>
-          </Button>
           <nav
-            className="ml-auto hidden items-center gap-1 sm:flex"
+            className="ml-5 hidden h-full items-center gap-1 md:flex"
             aria-label="Navigasi konsumen"
           >
             {navigation.map(({ href, label, icon: Icon, end }) => (
@@ -53,10 +45,10 @@ export function ConsumerLayout() {
                 to={href}
                 className={({ isActive }) =>
                   cn(
-                    "flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors",
+                    "relative flex h-full items-center gap-2 px-3 text-sm font-medium transition-colors after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors",
                     isActive
-                      ? "bg-secondary text-secondary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      ? "text-foreground after:bg-primary"
+                      : "text-muted-foreground after:bg-transparent hover:text-foreground",
                   )
                 }
               >
@@ -65,13 +57,21 @@ export function ConsumerLayout() {
               </NavLink>
             ))}
           </nav>
+          <Button
+            variant="outline"
+            className="ml-auto hidden max-w-56 justify-start gap-2 rounded-full bg-background lg:flex"
+            aria-label="Lokasi saat ini: Tembalang, Semarang"
+          >
+            <MapPin className="text-primary" aria-hidden="true" />
+            <span className="truncate">Tembalang, Semarang</span>
+          </Button>
           <ThemeToggle />
         </div>
       </header>
       <main
         id="main-content"
         tabIndex={-1}
-        className="mx-auto max-w-6xl px-4 py-6 pb-28 focus:outline-none sm:px-6 sm:py-8 sm:pb-12"
+        className="mx-auto max-w-7xl px-4 py-6 pb-28 focus:outline-none sm:px-6 sm:py-8 sm:pb-12"
       >
         <DemoNotice className="mb-5 flex w-full justify-center sm:w-fit" />
         <Suspense fallback={<PageLoader />}>

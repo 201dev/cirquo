@@ -26,7 +26,12 @@ const sortLabels: Record<SortMode, string> = {
 export default function ExplorePage() {
   const [params] = useSearchParams();
   const [query, setQuery] = useState(params.get("q") ?? "");
-  const [category, setCategory] = useState("all");
+  const [category, setCategory] = useState(() => {
+    const requestedCategory = params.get("category");
+    return categories.some((item) => item.value === requestedCategory)
+      ? (requestedCategory ?? "all")
+      : "all";
+  });
   const [availableOnly, setAvailableOnly] = useState(true);
   const [sortMode, setSortMode] = useState<SortMode>("ranked");
   const [maxDistance, setMaxDistance] = useState("all");
@@ -289,7 +294,7 @@ function FilterSelect({
 
 function pickupStart(window: string) {
   const [hours = 0, minutes = 0] = window
-    .split(/[.–]/)[0]
+    .split(/[.\-–]/)[0]
     .split(".")
     .map(Number);
   return hours * 60 + minutes;

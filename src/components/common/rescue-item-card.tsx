@@ -21,7 +21,7 @@ export function RescueItemCard({
     <Link
       to={`/item/${item.id}`}
       className={cn(
-        "group grid overflow-hidden rounded-xl bg-card shadow-[0_10px_30px_-24px_color-mix(in_oklab,var(--foreground)_55%,transparent)] transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_16px_35px_-22px_color-mix(in_oklab,var(--foreground)_50%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "group grid overflow-hidden rounded-2xl border bg-card transition-[transform,border-color] hover:-translate-y-0.5 hover:border-primary/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         horizontal ? "grid-cols-[7.5rem_1fr] sm:grid-cols-[9rem_1fr]" : "",
       )}
     >
@@ -38,13 +38,20 @@ export function RescueItemCard({
           height="900"
           loading="lazy"
           className={cn(
-            "size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]",
+            "size-full object-cover transition-transform duration-300 group-hover:scale-[1.025]",
             unavailable && "grayscale",
           )}
         />
-        <Badge className="absolute left-3 top-3 border-0 bg-foreground/90 text-background shadow-none hover:bg-foreground">
+        <Badge className="absolute left-3 top-3 border-0 bg-primary text-primary-foreground shadow-none hover:bg-primary">
           Hemat {discount}%
         </Badge>
+        <span className="absolute bottom-3 right-3 inline-flex min-h-7 items-center gap-1 rounded-full bg-background px-2 text-xs font-semibold text-foreground shadow-sm">
+          <Star
+            className="size-3.5 fill-recovered text-recovered"
+            aria-hidden="true"
+          />
+          {item.rating}
+        </span>
         {unavailable ? (
           <span className="absolute inset-0 grid place-items-center bg-foreground/50 text-sm font-semibold text-background">
             Sudah habis
@@ -58,14 +65,6 @@ export function RescueItemCard({
         <h3 className="mt-1 line-clamp-2 font-semibold leading-snug tracking-[-0.01em]">
           {item.name}
         </h3>
-        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Star className="size-3.5 fill-current text-recovered" />
-            {item.rating}
-          </span>
-          <span aria-hidden="true">•</span>
-          <span>{item.distanceKm.toLocaleString("id-ID")} km</span>
-        </div>
         <div className="mt-auto pt-4">
           <p>
             <span className="font-semibold text-primary">
@@ -75,13 +74,18 @@ export function RescueItemCard({
               {formatIdr(item.originalPrice)}
             </s>
           </p>
-          <p className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground">
-            <Clock3 className="mt-0.5 size-3.5 shrink-0" />
-            Pickup {item.pickupWindow}
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <MapPin className="size-3.5" aria-hidden="true" />
+              {item.distanceKm.toLocaleString("id-ID")} km
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock3 className="size-3.5" aria-hidden="true" />
+              {item.pickupWindow}
+            </span>
+          </div>
           {horizontal ? (
-            <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <MapPin className="size-3.5" />
+            <p className="mt-1 text-xs text-muted-foreground">
               {item.remainingQuantity} paket tersisa
             </p>
           ) : null}

@@ -1,5 +1,5 @@
 import { Clock, ShieldCheck, ShieldX, AlertTriangle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -8,7 +8,7 @@ const statusConfig = {
     icon: Clock,
     title: "Menunggu verifikasi",
     description:
-      "Profil Anda sedang ditinjau oleh tim admin. Proses verifikasi biasanya memerlukan waktu 1–2 hari kerja.",
+      "Profil Anda sudah dikirim dan sedang menunggu peninjauan dari tim admin.",
     color: "text-amber-500",
     bgColor: "bg-amber-500/10",
   },
@@ -33,18 +33,24 @@ const statusConfig = {
 export default function PendingVerificationPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Determine verification status from profile
   const profile = user?.profile;
-  let verificationStatus: "pending" | "rejected" | "suspended" = "pending";
+  const submitted = Boolean(
+    (location.state as { profileSubmitted?: boolean } | null)?.profileSubmitted,
+  );
 
-  if (
-    profile &&
-    (profile.kind === "merchant" || profile.kind === "processor") &&
-    profile.verificationStatus !== "verified"
-  ) {
-    verificationStatus = profile.verificationStatus;
+  if (!user || (user.role !== "merchant" && user.role !== "processor")) {
+    return <Navigate to="/auth/continue" replace />;
   }
+  if (!profile && !submitted) {
+    return <Navigate to={`/${user.role}/onboarding`} replace />;
+  }
+  if (profile?.verificationStatus === "verified") {
+    return <Navigate to="/auth/continue" replace />;
+  }
+
+  const verificationStatus = profile?.verificationStatus ?? "pending";
 
   const config = statusConfig[verificationStatus];
   const Icon = config.icon;
@@ -86,9 +92,9 @@ export default function PendingVerificationPage() {
             <span>
               <strong className="block">Apa selanjutnya?</strong>
               <span className="text-muted-foreground">
-                Anda akan menerima notifikasi setelah admin menyelesaikan
+                Status di halaman ini akan diperbarui setelah admin menyelesaikan
                 peninjauan. Sementara itu, Anda tetap dapat menjelajah sebagai
-                consumer.
+                Consumer.
               </span>
             </span>
           </p>

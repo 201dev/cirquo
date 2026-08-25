@@ -1,70 +1,56 @@
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useAction } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { BackendRequiredNotice } from "@/components/common/backend-required-notice";
+import { FieldError } from "@/components/common/field-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { loginSchema } from "@/lib/validations";
-import { useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/contexts/auth-context";
-import { getErrorMessage } from "@/lib/errors";
+import { getAppError } from "@/lib/errors";
+import { isConvexConfigured } from "@/lib/convex";
+import { loginSchema } from "@/lib/validations";
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const { pathname } = useLocation();
-  const loginMutation = useMutation(api.auth.login);
+  const login = useAction(api.auth.login);
   const { setSession } = useAuth();
-  const [isPending, setIsPending] = useState(false);
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    setError,
+    formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
 
   const onSubmit = async (data: LoginFormValues) => {
-    setIsPending(true);
     try {
-      const result = await loginMutation({
-        email: data.email,
-        password: data.password,
-      });
+      const result = await login(data);
       await setSession(result.sessionToken);
-
-      const isDemoAdminLogin = pathname === "/admin/login";
-      if (isDemoAdminLogin && result.role === "admin") {
-        navigate("/admin");
-        return;
-      }
-
-      if (result.needsProfile) {
-        navigate(`/${result.role}/onboarding`);
-      } else {
-        const homeRoutes: Record<string, string> = {
-          consumer: "/",
-          merchant: "/merchant",
-          processor: "/processor",
-          admin: "/admin",
-        };
-        navigate(homeRoutes[result.role] || "/");
-      }
+      navigate("/auth/continue", { replace: true });
     } catch (error: unknown) {
-      toast.error(
-        getErrorMessage(error, "Gagal masuk. Periksa kembali email dan kata sandi Anda."),
+      const appError = getAppError(
+        error,
+        "Gagal masuk. Periksa koneksi lalu coba kembali.",
       );
-    } finally {
-      setIsPending(false);
+      setError("root.server", {
+        type: "server",
+        message:
+          appError.code === "INVALID_CREDENTIALS"
+            ? "Email atau kata sandi tidak sesuai."
+            : appError.message,
+      });
     }
   };
 
@@ -79,7 +65,11 @@ export default function LoginPage() {
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
         Gunakan akunmu untuk melanjutkan pickup atau pekerjaan operasional.
       </p>
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="mt-8 space-y-5"
+        aria-busy={isSubmitting}
+      >
         <div className="space-y-2">
           <Label htmlFor="login-email">Email</Label>
           <Input
@@ -87,22 +77,24 @@ export default function LoginPage() {
             type="email"
             autoComplete="email"
             placeholder="nama@email.com"
+            aria-invalid={Boolean(errors.email)}
+            aria-describedby={errors.email ? "login-email-error" : undefined}
             {...register("email")}
           />
-          {errors.email && (
-            <p className="text-sm text-destructive">{errors.email.message}</p>
-          )}
+          <FieldError id="login-email-error" message={errors.email?.message} />
         </div>
         <div className="space-y-2">
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-3">
             <Label htmlFor="login-password">Kata sandi</Label>
             <button
               type="button"
-              className="text-xs font-medium text-primary"
+              className="min-h-11 -my-3 text-xs font-medium text-primary"
               onClick={() =>
-                toast.info(
-                  "Pemulihan kata sandi akan tersedia di tahap selanjutnya.",
-                )
+                setError("root.server", {
+                  type: "manual",
+                  message:
+                    "Pemulihan kata sandi belum tersedia. Hubungi tim Cirquo jika kamu tidak dapat masuk.",
+                })
               }
             >
               Lupa kata sandi?
@@ -114,6 +106,10 @@ export default function LoginPage() {
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
               className="pr-12"
+              aria-invalid={Boolean(errors.password)}
+              aria-describedby={
+                errors.password ? "login-password-error" : undefined
+              }
               {...register("password")}
             />
             <Button
@@ -126,23 +122,23 @@ export default function LoginPage() {
                 showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"
               }
             >
-              {showPassword ? <EyeOff /> : <Eye />}
+              {showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
             </Button>
           </div>
-          {errors.password && (
-            <p className="text-sm text-destructive">
-              {errors.password.message}
-            </p>
-          )}
+          <FieldError
+            id="login-password-error"
+            message={errors.password?.message}
+          />
         </div>
+        <FieldError id="login-server-error" message={errors.root?.server?.message} />
         <Button
           type="submit"
           size="lg"
           className="w-full"
-          disabled={isPending}
+          disabled={isSubmitting}
         >
-          <LogIn className="mr-2" />
-          {isPending ? "Masuk..." : "Masuk"}
+          <LogIn className="mr-2" aria-hidden="true" />
+          {isSubmitting ? "Masuk..." : "Masuk"}
         </Button>
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">
@@ -156,4 +152,8 @@ export default function LoginPage() {
       </p>
     </>
   );
+}
+
+export default function LoginPage() {
+  return isConvexConfigured ? <LoginForm /> : <BackendRequiredNotice />;
 }

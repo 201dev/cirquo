@@ -1,18 +1,19 @@
 import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useAction } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { BackendRequiredNotice } from "@/components/common/backend-required-notice";
+import { FieldError } from "@/components/common/field-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { registerSchema } from "@/lib/validations";
-import { useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/contexts/auth-context";
-import { getErrorMessage } from "@/lib/errors";
+import { isConvexConfigured } from "@/lib/convex";
+import { getAppError } from "@/lib/errors";
+import { registerSchema } from "@/lib/validations";
 
 type RegistrationRole = "consumer" | "merchant" | "processor";
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -26,44 +27,42 @@ const copy = {
   },
 };
 
-export default function RegisterFormPage({ role }: { role: RegistrationRole }) {
+function RegisterForm({ role }: { role: RegistrationRole }) {
   const navigate = useNavigate();
   const page = copy[role];
-  const [isPending, setIsPending] = useState(false);
-  const registerMutation = useMutation(api.auth.register);
+  const registerAccount = useAction(api.auth.register);
   const { setSession } = useAuth();
 
   const {
-    register: registerField,
+    register,
     handleSubmit,
-    formState: { errors },
+    setError,
+    formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: { name: "", email: "", password: "" },
   });
 
   const onSubmit = async (data: RegisterFormValues) => {
-    setIsPending(true);
     try {
-      const result = await registerMutation({
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        role: role,
-      });
+      const result = await registerAccount({ ...data, role });
       await setSession(result.sessionToken);
-
-      if (result.needsProfile) {
-        navigate(`/${result.role}/onboarding`);
-      } else {
-        navigate("/");
-      }
+      navigate("/auth/continue", { replace: true });
     } catch (error: unknown) {
-      toast.error(
-        getErrorMessage(error, "Pendaftaran gagal. Silakan periksa kembali input Anda."),
+      const appError = getAppError(
+        error,
+        "Pendaftaran gagal. Periksa koneksi lalu coba kembali.",
       );
-    } finally {
-      setIsPending(false);
+      const field = appError.field;
+
+      if (field === "name" || field === "email" || field === "password") {
+        setError(field, { type: "server", message: appError.message });
+      } else {
+        setError("root.server", {
+          type: "server",
+          message: appError.message,
+        });
+      }
     }
   };
 
@@ -71,7 +70,7 @@ export default function RegisterFormPage({ role }: { role: RegistrationRole }) {
     <>
       <Button asChild variant="ghost" className="-ml-3 mb-4">
         <Link to="/register">
-          <ArrowLeft />
+          <ArrowLeft aria-hidden="true" />
           Pilih peran lain
         </Link>
       </Button>
@@ -81,17 +80,22 @@ export default function RegisterFormPage({ role }: { role: RegistrationRole }) {
       <p className="mt-3 text-sm text-muted-foreground">
         Isi data dasar untuk membuat akunmu.
       </p>
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="mt-8 space-y-5"
+        aria-busy={isSubmitting}
+      >
         <div className="space-y-2">
           <Label htmlFor="register-name">{page.name}</Label>
           <Input
             id="register-name"
             autoComplete="name"
-            {...registerField("name")}
+            maxLength={80}
+            aria-invalid={Boolean(errors.name)}
+            aria-describedby={errors.name ? "register-name-error" : undefined}
+            {...register("name")}
           />
-          {errors.name && (
-            <p className="text-sm text-destructive">{errors.name.message}</p>
-          )}
+          <FieldError id="register-name-error" message={errors.name?.message} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="register-email">Email</Label>
@@ -99,11 +103,11 @@ export default function RegisterFormPage({ role }: { role: RegistrationRole }) {
             id="register-email"
             type="email"
             autoComplete="email"
-            {...registerField("email")}
+            aria-invalid={Boolean(errors.email)}
+            aria-describedby={errors.email ? "register-email-error" : undefined}
+            {...register("email")}
           />
-          {errors.email && (
-            <p className="text-sm text-destructive">{errors.email.message}</p>
-          )}
+          <FieldError id="register-email-error" message={errors.email?.message} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="register-password">Kata sandi</Label>
@@ -111,27 +115,46 @@ export default function RegisterFormPage({ role }: { role: RegistrationRole }) {
             id="register-password"
             type="password"
             autoComplete="new-password"
-            {...registerField("password")}
+            maxLength={128}
+            aria-invalid={Boolean(errors.password)}
+            aria-describedby="register-password-hint register-password-error"
+            {...register("password")}
           />
-          {errors.password ? (
-            <p className="text-sm text-destructive">
-              {errors.password.message}
+          <FieldError
+            id="register-password-error"
+            message={errors.password?.message}
+          />
+          {!errors.password ? (
+            <p id="register-password-hint" className="text-xs text-muted-foreground">
+              Minimal 10 karakter, mengandung huruf dan angka.
             </p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Minimal 8 karakter, mengandung huruf dan angka.
-            </p>
-          )}
+          ) : null}
         </div>
+        <FieldError
+          id="register-server-error"
+          message={errors.root?.server?.message}
+        />
         <Button
           type="submit"
           size="lg"
           className="w-full"
-          disabled={isPending}
+          disabled={isSubmitting}
         >
-          {isPending ? "Mendaftar..." : "Lanjutkan"}
+          {isSubmitting ? "Mendaftar..." : "Lanjutkan"}
         </Button>
       </form>
     </>
+  );
+}
+
+export default function RegisterFormPage({
+  role,
+}: {
+  role: RegistrationRole;
+}) {
+  return isConvexConfigured ? (
+    <RegisterForm role={role} />
+  ) : (
+    <BackendRequiredNotice />
   );
 }

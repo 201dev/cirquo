@@ -1,34 +1,68 @@
 import { scrypt } from '@noble/hashes/scrypt.js'
 import { randomBytes } from '@noble/hashes/utils.js'
 
-const N = 16384, r = 8, p = 1, DK_LEN = 32
+const N = 16_384
+const R = 8
+const P = 1
+const KEY_LENGTH = 32
+const SALT_LENGTH = 16
 
-function b64(bytes: Uint8Array): string {
+function encodeBase64(bytes: Uint8Array): string {
   let binary = ''
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+  for (const byte of bytes) binary += String.fromCharCode(byte)
   return btoa(binary)
 }
-function unb64(s: string): Uint8Array {
-  return Uint8Array.from(atob(s), (c) => c.charCodeAt(0))
+
+function decodeBase64(value: string): Uint8Array {
+  return Uint8Array.from(atob(value), (character) => character.charCodeAt(0))
 }
 
-export function hashPassword(plain: string): string {
-  const salt = randomBytes(16)
-  const dk = scrypt(new TextEncoder().encode(plain), salt, { N, r, p, dkLen: DK_LEN })
-  return `scrypt$${N}$${r}$${p}$${b64(salt)}$${b64(dk)}`
-}
-
-export function verifyPassword(plain: string, stored: string): boolean {
-  const parts = stored.split('$')
-  if (parts.length !== 6 || parts[0] !== 'scrypt') return false
-  const [, sN, sr, sp, saltB64, hashB64] = parts
-  const salt = unb64(saltB64)
-  const expected = unb64(hashB64)
-  const dk = scrypt(new TextEncoder().encode(plain), salt, {
-    N: Number(sN), r: Number(sr), p: Number(sp), dkLen: expected.length,
+function derivePassword(password: string, salt: Uint8Array): Uint8Array {
+  return scrypt(new TextEncoder().encode(password), salt, {
+    N,
+    r: R,
+    p: P,
+    dkLen: KEY_LENGTH,
   })
-  // constant-time comparison
-  let diff = dk.length ^ expected.length
-  for (let i = 0; i < Math.min(dk.length, expected.length); i++) diff |= dk[i] ^ expected[i]
-  return diff === 0
+}
+
+export function hashPassword(password: string): string {
+  const salt = randomBytes(SALT_LENGTH)
+  const derivedKey = derivePassword(password, salt)
+
+  return `scrypt$${N}$${R}$${P}$${encodeBase64(salt)}$${encodeBase64(derivedKey)}`
+}
+
+export function verifyPassword(
+  password: string,
+  storedHash: string,
+): boolean {
+  const [algorithm, n, r, p, saltBase64, hashBase64] = storedHash.split('$')
+
+  if (
+    algorithm !== 'scrypt' ||
+    Number(n) !== N ||
+    Number(r) !== R ||
+    Number(p) !== P ||
+    !saltBase64 ||
+    !hashBase64
+  ) {
+    return false
+  }
+
+  const salt = decodeBase64(saltBase64)
+  const expected = decodeBase64(hashBase64)
+
+  if (salt.length !== SALT_LENGTH || expected.length !== KEY_LENGTH) {
+    return false
+  }
+
+  const actual = derivePassword(password, salt)
+  let difference = actual.length ^ expected.length
+
+  for (let index = 0; index < Math.min(actual.length, expected.length); index++) {
+    difference |= actual[index] ^ expected[index]
+  }
+
+  return difference === 0
 }

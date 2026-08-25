@@ -7,12 +7,8 @@ import { PageLoader } from "@/components/common/page-loader";
  * Shows a neutral loader while session is being restored (prevents login flash).
  * Redirects unauthenticated users to /login with a returnTo param.
  */
-export function ProtectedRoute({
-  allowedRoles,
-}: {
-  allowedRoles?: readonly string[];
-}) {
-  const { user, isLoading, isAuthenticated } = useAuth();
+export function ProtectedRoute() {
+  const { isLoading, isAuthenticated } = useAuth();
   const location = useLocation();
 
   if (isLoading) return <PageLoader />;
@@ -24,17 +20,6 @@ export function ProtectedRoute({
         replace
       />
     );
-  }
-
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    // User is logged in but wrong role — send them to their own home
-    const homeRoutes: Record<string, string> = {
-      consumer: "/",
-      merchant: "/merchant",
-      processor: "/processor",
-      admin: "/admin",
-    };
-    return <Navigate to={homeRoutes[user.role] || "/"} replace />;
   }
 
   return <Outlet />;
@@ -50,14 +35,33 @@ export function GuestRoute() {
   if (isLoading) return <PageLoader />;
 
   if (isAuthenticated && user) {
-    const homeRoutes: Record<string, string> = {
-      consumer: "/",
-      merchant: "/merchant",
-      processor: "/processor",
-      admin: "/admin",
-    };
-    return <Navigate to={homeRoutes[user.role] || "/"} replace />;
+    return <Navigate to="/auth/continue" replace />;
   }
 
   return <Outlet />;
+}
+
+export function PostAuthRoute() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return <PageLoader />;
+  if (!user) return <Navigate to="/login" replace />;
+
+  if (user.role === "merchant" || user.role === "processor") {
+    if (!user.profile) {
+      return <Navigate to={`/${user.role}/onboarding`} replace />;
+    }
+    if (user.profile.verificationStatus !== "verified") {
+      return <Navigate to="/pending-verification" replace />;
+    }
+  }
+
+  const homeRoutes: Record<typeof user.role, string> = {
+    consumer: "/",
+    merchant: "/merchant",
+    processor: "/processor",
+    admin: "/admin",
+  };
+
+  return <Navigate to={homeRoutes[user.role]} replace />;
 }

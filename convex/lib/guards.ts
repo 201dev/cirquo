@@ -1,94 +1,115 @@
 import { ConvexError } from 'convex/values'
-import type { QueryCtx, MutationCtx } from '../_generated/server'
 import type { Doc, Id } from '../_generated/dataModel'
-import { hashToken } from './tokens'
+import type { MutationCtx, QueryCtx } from '../_generated/server'
+import { hashSessionToken } from './tokens'
 
-type Ctx = QueryCtx | MutationCtx
-export type Role = 'consumer' | 'merchant' | 'processor' | 'admin'
+export type AuthCtx = QueryCtx | MutationCtx
+export type AuthedUser = Doc<'users'>
+export type UserRole = AuthedUser['role']
 
-function fail(code: string, message: string, details?: Record<string, string | number>): never {
-  throw new ConvexError({ code, message, details })
+const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/
+
+function fail(code: string, message: string): never {
+  throw new ConvexError({ code, message })
 }
 
-/**
- * Resolves a session token to an active user.
- */
-export async function requireAuth(ctx: Ctx, sessionToken: string): Promise<Doc<'users'>> {
-  if (!sessionToken || sessionToken.length < 20) {
-    fail('AUTH_REQUIRED', 'Missing or malformed session token.')
-  }
+export async function resolveAuth(
+  ctx: AuthCtx,
+  sessionToken: string | undefined,
+): Promise<AuthedUser | null> {
+  if (!sessionToken || !SESSION_TOKEN_PATTERN.test(sessionToken)) return null
 
-  const tokenHash = await hashToken(sessionToken)
+  const tokenHash = await hashSessionToken(sessionToken)
   const session = await ctx.db
     .query('sessions')
-    .withIndex('by_token_hash', (q) => q.eq('tokenHash', tokenHash))
+    .withIndex('by_token_hash', (query) => query.eq('tokenHash', tokenHash))
     .unique()
 
-  if (!session) fail('AUTH_REQUIRED', 'Session not found.')
-  if (session.expiresAt <= Date.now()) fail('SESSION_EXPIRED', 'Session has expired.')
+  if (!session) return null
+  const user = await ctx.db.get(session.userId)
+  if (!user || user.status === 'suspended') return null
+  return user
+}
+
+export async function requireAuth(
+  ctx: AuthCtx,
+  sessionToken: string | undefined,
+): Promise<AuthedUser> {
+  if (!sessionToken || !SESSION_TOKEN_PATTERN.test(sessionToken)) {
+    fail('AUTH_REQUIRED', 'Sesi tidak tersedia. Silakan masuk kembali.')
+  }
+
+  const tokenHash = await hashSessionToken(sessionToken)
+  const session = await ctx.db
+    .query('sessions')
+    .withIndex('by_token_hash', (query) => query.eq('tokenHash', tokenHash))
+    .unique()
+
+  if (!session) fail('AUTH_REQUIRED', 'Sesi tidak tersedia. Silakan masuk kembali.')
+  if (session.expiresAt <= Date.now()) {
+    fail('SESSION_EXPIRED', 'Sesi telah berakhir. Silakan masuk kembali.')
+  }
 
   const user = await ctx.db.get(session.userId)
-  if (!user) fail('AUTH_REQUIRED', 'Session refers to a missing user.')
-  if (user.status === 'suspended') fail('ACCOUNT_SUSPENDED', 'This account has been suspended.')
+  if (!user) fail('AUTH_REQUIRED', 'Sesi tidak tersedia. Silakan masuk kembali.')
+  if (user.status === 'suspended') {
+    fail('ACCOUNT_SUSPENDED', 'Akun ini sedang ditangguhkan.')
+  }
 
   return user
 }
 
 export async function requireRole(
-  ctx: Ctx,
-  sessionToken: string,
-  allowed: readonly Role[],
-): Promise<Doc<'users'>> {
+  ctx: AuthCtx,
+  sessionToken: string | undefined,
+  allowedRoles: readonly UserRole[],
+): Promise<AuthedUser> {
   const user = await requireAuth(ctx, sessionToken)
-  if (!allowed.includes(user.role as Role)) {
-    fail('FORBIDDEN', `Role '${user.role}' is not permitted to call this function.`)
+  if (!allowedRoles.includes(user.role)) {
+    fail('FORBIDDEN', 'Akun ini tidak memiliki izin untuk melakukan tindakan tersebut.')
   }
   return user
 }
 
-export function requireOwnership(
-  user: Doc<'users'>,
+export function requireOwnership<T>(
+  user: AuthedUser,
   ownerId: Id<'users'>,
-  resource: string,
-): void {
-  if (user.role === 'admin') return
-  if (user._id !== ownerId) {
-    fail('FORBIDDEN', `You do not own this ${resource}.`)
+  resource: T | null | undefined,
+): T {
+  if (!resource || (user.role !== 'admin' && user._id !== ownerId)) {
+    fail('NOT_FOUND', 'Data tidak ditemukan.')
   }
+  return resource
 }
 
 export async function requireVerifiedMerchant(
-  ctx: Ctx,
-  user: Doc<'users'>,
+  ctx: AuthCtx,
+  user: AuthedUser,
 ): Promise<Doc<'merchants'>> {
   const merchant = await ctx.db
     .query('merchants')
     .withIndex('by_owner', (q) => q.eq('ownerId', user._id))
     .unique()
 
-  if (!merchant) fail('NOT_FOUND', 'No merchant profile exists for this account.')
+  if (!merchant) fail('NOT_FOUND', 'Profil Merchant belum tersedia.')
   if (merchant.verificationStatus !== 'verified') {
-    fail('NOT_VERIFIED', 'Merchant account is not verified.', {
-      verificationStatus: merchant.verificationStatus,
-    })
+    fail('NOT_VERIFIED', 'Profil Merchant belum terverifikasi.')
   }
   return merchant
 }
 
 export async function requireVerifiedProcessor(
-  ctx: Ctx,
-  user: Doc<'users'>,
+  ctx: AuthCtx,
+  user: AuthedUser,
 ): Promise<Doc<'processors'>> {
   const processor = await ctx.db
     .query('processors')
     .withIndex('by_owner', (q) => q.eq('ownerId', user._id))
     .unique()
 
-  if (!processor) fail('NOT_FOUND', 'No processor profile exists for this account.')
+  if (!processor) fail('NOT_FOUND', 'Profil Organic Processor belum tersedia.')
   if (processor.verificationStatus !== 'verified') {
-    fail('NOT_VERIFIED', 'Processor account is not verified.', {
-      verificationStatus: processor.verificationStatus,
-    })
+    fail('NOT_VERIFIED', 'Profil Organic Processor belum terverifikasi.')
   }
   return processor
 }

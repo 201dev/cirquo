@@ -1,36 +1,36 @@
 /* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
-  useCallback,
   type ReactNode,
 } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
+import type { Id } from "../../convex/_generated/dataModel";
 import { api } from "../../convex/_generated/api";
-import { loadToken, saveToken, clearToken } from "@/lib/auth-storage";
+import { clearToken, loadToken, saveToken } from "@/lib/auth-storage";
+
+type VerificationStatus = "pending" | "verified" | "rejected" | "suspended";
 
 type Profile =
-  | { kind: "none" }
   | {
-      kind: "merchant";
-      merchantId: string;
+      id: Id<"merchants">;
+      type: "merchant";
       name: string;
-      city: string;
-      verificationStatus: "pending" | "verified" | "rejected" | "suspended";
+      verificationStatus: VerificationStatus;
     }
   | {
-      kind: "processor";
-      processorId: string;
+      id: Id<"processors">;
+      type: "processor";
       name: string;
-      city: string;
-      facilityType: string;
-      verificationStatus: "pending" | "verified" | "rejected" | "suspended";
-    };
+      verificationStatus: VerificationStatus;
+    }
+  | null;
 
 export type AuthUser = {
-  _id: string;
+  _id: Id<"users">;
   name: string;
   email: string;
   role: "consumer" | "merchant" | "processor" | "admin";
@@ -41,54 +41,54 @@ export type AuthUser = {
 };
 
 type AuthContextValue = {
-  /** null = not signed in, undefined should never leak (isLoading guards it) */
   user: AuthUser | null;
-  /** true while token is being loaded from storage OR getCurrentUser is in flight */
   isLoading: boolean;
-  /** convenience: user !== null */
   isAuthenticated: boolean;
-  /** the raw session token, for passing to mutations */
   sessionToken: string | null;
-  /** call after login/register to update the stored token and trigger re-query */
   setSession: (token: string) => Promise<void>;
-  /** call to logout — clears token, calls backend, resets state */
   logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within <AuthProvider>");
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used within <AuthProvider>");
+  return context;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Token lifecycle: undefined = loading from storage, null = no token, string = have token
   const [token, setToken] = useState<string | null | undefined>(undefined);
   const logoutMutation = useMutation(api.auth.logout);
 
-  // Load token from storage on mount
   useEffect(() => {
-    loadToken().then((t) => setToken(t ?? null));
+    let active = true;
+
+    loadToken()
+      .then((storedToken) => {
+        if (active) setToken(storedToken ?? null);
+      })
+      .catch(() => {
+        if (active) setToken(null);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  // Query getCurrentUser — skipped while token is unknown or absent
   const currentUser = useQuery(
     api.auth.getCurrentUser,
     token ? { sessionToken: token } : "skip",
   );
 
-  // Determine loading state
   const isTokenLoading = token === undefined;
-  // currentUser === undefined means the Convex query is still in flight
-  const isQueryLoading = token !== null && token !== undefined && currentUser === undefined;
+  const isQueryLoading = Boolean(token) && currentUser === undefined;
   const isLoading = isTokenLoading || isQueryLoading;
 
-  // If getCurrentUser returns null with a token present, the session is invalid — clear it
   useEffect(() => {
     if (token && currentUser === null) {
-      clearToken().then(() => setToken(null));
+      clearToken().finally(() => setToken(null));
     }
   }, [token, currentUser]);
 
@@ -102,17 +102,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         await logoutMutation({ sessionToken: token });
       } catch {
-        // Best-effort — the session may already be gone
+        // Local storage is still cleared if the server is unreachable.
       }
     }
-    await clearToken();
-    setToken(null);
+    try {
+      await clearToken();
+    } finally {
+      setToken(null);
+    }
   }, [token, logoutMutation]);
 
-  const user: AuthUser | null =
-    currentUser && typeof currentUser === "object" && "_id" in currentUser
-      ? (currentUser as AuthUser)
-      : null;
+  const user = currentUser === undefined ? null : currentUser;
 
   return (
     <AuthContext.Provider
@@ -121,6 +121,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAuthenticated: user !== null,
         sessionToken: typeof token === "string" ? token : null,
+        setSession,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function AuthUnavailableProvider({ children }: { children: ReactNode }) {
+  const setSession = useCallback(async () => {
+    throw new Error("Backend Convex belum terhubung.");
+  }, []);
+  const logout = useCallback(async () => {
+    await clearToken();
+  }, []);
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user: null,
+        isLoading: false,
+        isAuthenticated: false,
+        sessionToken: null,
         setSession,
         logout,
       }}
