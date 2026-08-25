@@ -1,166 +1,187 @@
-import { mutation, query } from './_generated/server'
-import { v, ConvexError } from 'convex/values'
-import { hashPassword, verifyPassword } from './lib/password'
-import { generateToken, hashToken } from './lib/tokens'
+import { ConvexError, v } from 'convex/values'
+import type { Doc, Id } from './_generated/dataModel'
+import { internal } from './_generated/api'
+import { action, mutation, query } from './_generated/server'
+import {
+  normalizeEmail,
+  registrationRole,
+  validateRegistrationInput,
+  type RegistrationRole,
+} from './lib/auth'
+import { resolveAuth } from './lib/guards'
+import {
+  generateSessionToken,
+  hashSessionToken,
+} from './lib/tokens'
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const DUMMY_PASSWORD_HASH =
+  'scrypt$16384$8$1$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
 
-function fail(code: string, message: string, details?: Record<string, string | number>): never {
-  throw new ConvexError({ code, message, details })
+const authResultValidator = v.object({
+  userId: v.id('users'),
+  sessionToken: v.string(),
+  expiresAt: v.number(),
+  role: v.union(registrationRole, v.literal('admin')),
+  name: v.string(),
+})
+
+type AuthResult = {
+  userId: Id<'users'>
+  sessionToken: string
+  expiresAt: number
+  role: RegistrationRole | 'admin'
+  name: string
 }
 
-const DUMMY_HASH = 'scrypt$16384$8$1$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
+const profileSummaryValidator = v.union(
+  v.object({
+    id: v.id('merchants'),
+    type: v.literal('merchant'),
+    name: v.string(),
+    verificationStatus: v.union(
+      v.literal('pending'),
+      v.literal('verified'),
+      v.literal('rejected'),
+      v.literal('suspended'),
+    ),
+  }),
+  v.object({
+    id: v.id('processors'),
+    type: v.literal('processor'),
+    name: v.string(),
+    verificationStatus: v.union(
+      v.literal('pending'),
+      v.literal('verified'),
+      v.literal('rejected'),
+      v.literal('suspended'),
+    ),
+  }),
+  v.null(),
+)
 
-export const register = mutation({
+type ProfileSummary =
+  | {
+      id: Id<'merchants'>
+      type: 'merchant'
+      name: string
+      verificationStatus: Doc<'merchants'>['verificationStatus']
+    }
+  | {
+      id: Id<'processors'>
+      type: 'processor'
+      name: string
+      verificationStatus: Doc<'processors'>['verificationStatus']
+    }
+
+export const register = action({
   args: {
     name: v.string(),
     email: v.string(),
     password: v.string(),
-    role: v.union(v.literal('consumer'), v.literal('merchant'), v.literal('processor')),
-    phone: v.optional(v.string()),
+    role: registrationRole,
   },
-  handler: async (ctx, args) => {
-    const email = args.email.trim().toLowerCase()
-    const name = args.name.trim()
+  returns: authResultValidator,
+  handler: async (ctx, args): Promise<AuthResult> => {
+    const { name, email } = validateRegistrationInput(
+      args.name,
+      args.email,
+      args.password,
+    )
+    const existing: Doc<'users'> | null = await ctx.runQuery(
+      internal.users.getByEmail,
+      { email },
+    )
 
-    if (name.length < 2 || name.length > 80) {
-      fail('VALIDATION_FAILED', 'Name must be 2–80 characters.', { field: 'name' })
-    }
-    if (!EMAIL_RE.test(email)) {
-      fail('VALIDATION_FAILED', 'Enter a valid email address.', { field: 'email' })
-    }
-    if (args.password.length < 8 || args.password.length > 128 ||
-        !/[A-Za-z]/.test(args.password) || !/[0-9]/.test(args.password)) {
-      fail('VALIDATION_FAILED', 'Password must be 8+ characters with a letter and a number.',
-           { field: 'password' })
-    }
-
-    const existing = await ctx.db
-      .query('users')
-      .withIndex('by_email', (q) => q.eq('email', email))
-      .unique()
     if (existing) {
-      fail('VALIDATION_FAILED', 'An account with this email already exists.', { field: 'email' })
+      throw new ConvexError({
+        code: 'EMAIL_ALREADY_REGISTERED',
+        field: 'email',
+        message: 'Email ini sudah terdaftar.',
+      })
     }
 
-    const passwordHash = hashPassword(args.password)
-    const token = generateToken()
-    const tHash = await hashToken(token)
-
-    const now = Date.now()
-    const userId = await ctx.db.insert('users', {
-      name,
-      email,
-      passwordHash,
-      role: args.role,
-      phone: args.phone,
-      status: 'active',
-      createdAt: now,
-    })
-
-    const expiresAt = now + 30 * 24 * 60 * 60 * 1000
-    await ctx.db.insert('sessions', {
-      userId,
-      tokenHash: tHash,
-      expiresAt,
-      createdAt: now,
-    })
-
-    await ctx.db.insert('authEvents', {
-      userId,
-      email,
-      type: 'REGISTER',
-      success: true,
-      occurredAt: now,
-    })
+    const passwordHash: string = await ctx.runAction(
+      internal.authNode.hashPassword,
+      { password: args.password },
+    )
+    const sessionToken = generateSessionToken()
+    const tokenHash = await hashSessionToken(sessionToken)
+    const result: { userId: Id<'users'>; expiresAt: number } =
+      await ctx.runMutation(internal.authInternal.createUserAndSession, {
+        name,
+        email,
+        passwordHash,
+        role: args.role,
+        tokenHash,
+      })
 
     return {
-      userId,
-      sessionToken: token,
-      expiresAt,
+      ...result,
+      sessionToken,
       role: args.role,
-      needsProfile: args.role !== 'consumer',
+      name,
     }
   },
 })
 
-export const login = mutation({
+export const login = action({
   args: {
     email: v.string(),
     password: v.string(),
   },
-  handler: async (ctx, args) => {
-    const email = args.email.trim().toLowerCase()
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_email', (q) => q.eq('email', email))
-      .unique()
+  returns: authResultValidator,
+  handler: async (ctx, args): Promise<AuthResult> => {
+    const email = normalizeEmail(args.email)
+    const user: Doc<'users'> | null = await ctx.runQuery(
+      internal.users.getByEmail,
+      { email },
+    )
+    const valid: boolean = await ctx.runAction(
+      internal.authNode.verifyPassword,
+      {
+        password: args.password,
+        passwordHash: user?.passwordHash ?? DUMMY_PASSWORD_HASH,
+      },
+    )
 
-    if (!user) {
-      verifyPassword(args.password, DUMMY_HASH) // constant-ish timing
-      fail('AUTH_REQUIRED', 'Incorrect email or password.')
-    }
-    if (!verifyPassword(args.password, user.passwordHash)) {
-      fail('AUTH_REQUIRED', 'Incorrect email or password.')
+    if (!user || !valid) {
+      throw new ConvexError({
+        code: 'INVALID_CREDENTIALS',
+        message: 'Email atau kata sandi tidak sesuai.',
+      })
     }
     if (user.status === 'suspended') {
-      fail('ACCOUNT_SUSPENDED', 'This account has been suspended.')
+      throw new ConvexError({
+        code: 'ACCOUNT_SUSPENDED',
+        message: 'Akun ini sedang ditangguhkan.',
+      })
     }
 
-    const token = generateToken()
-    const tHash = await hashToken(token)
-    const now = Date.now()
-    const expiresAt = now + 30 * 24 * 60 * 60 * 1000
-
-    await ctx.db.insert('sessions', {
-      userId: user._id,
-      tokenHash: tHash,
-      expiresAt,
-      createdAt: now,
-    })
-
-    await ctx.db.insert('authEvents', {
-      userId: user._id,
-      email,
-      type: 'LOGIN_SUCCESS',
-      success: true,
-      occurredAt: now,
-    })
-
-    // check if profile is needed
-    let needsProfile = false
-    let verificationStatus = undefined
-    if (user.role === 'merchant') {
-      const m = await ctx.db.query('merchants').withIndex('by_owner', q => q.eq('ownerId', user._id)).unique()
-      if (!m) needsProfile = true
-      else verificationStatus = m.verificationStatus
-    } else if (user.role === 'processor') {
-      const p = await ctx.db.query('processors').withIndex('by_owner', q => q.eq('ownerId', user._id)).unique()
-      if (!p) needsProfile = true
-      else verificationStatus = p.verificationStatus
-    }
+    const sessionToken = generateSessionToken()
+    const tokenHash = await hashSessionToken(sessionToken)
+    const result: { expiresAt: number } = await ctx.runMutation(
+      internal.authInternal.createSession,
+      { userId: user._id, email: user.email, tokenHash },
+    )
 
     return {
       userId: user._id,
-      sessionToken: token,
-      expiresAt,
+      sessionToken,
+      expiresAt: result.expiresAt,
       role: user.role,
       name: user.name,
-      verificationStatus,
-      needsProfile,
     }
   },
 })
 
 export const logout = mutation({
-  args: {
-    sessionToken: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const tHash = await hashToken(args.sessionToken)
+  args: { sessionToken: v.string() },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, { sessionToken }) => {
+    const tokenHash = await hashSessionToken(sessionToken)
     const session = await ctx.db
       .query('sessions')
-      .withIndex('by_token_hash', (q) => q.eq('tokenHash', tHash))
+      .withIndex('by_token_hash', (index) => index.eq('tokenHash', tokenHash))
       .unique()
 
     if (session) {
@@ -176,54 +197,58 @@ export const logout = mutation({
         })
       }
     }
+
     return { success: true }
   },
 })
 
 export const getCurrentUser = query({
-  args: {
-    sessionToken: v.string(),
-  },
-  handler: async (ctx, args) => {
-    if (!args.sessionToken || args.sessionToken.length < 20) return null
-    const tHash = await hashToken(args.sessionToken)
-    const session = await ctx.db
-      .query('sessions')
-      .withIndex('by_token_hash', (q) => q.eq('tokenHash', tHash))
-      .unique()
+  args: { sessionToken: v.optional(v.string()) },
+  returns: v.union(
+    v.object({
+      _id: v.id('users'),
+      name: v.string(),
+      email: v.string(),
+      role: v.union(registrationRole, v.literal('admin')),
+      phone: v.optional(v.string()),
+      status: v.union(v.literal('active'), v.literal('suspended')),
+      createdAt: v.number(),
+      profile: profileSummaryValidator,
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, { sessionToken }) => {
+    const user = await resolveAuth(ctx, sessionToken)
+    if (!user) return null
 
-    if (!session || session.expiresAt <= Date.now()) return null
-    const user = await ctx.db.get(session.userId)
-    if (!user || user.status === 'suspended') return null
-
-    type Profile =
-      | { kind: 'none' }
-      | { kind: 'merchant'; merchantId: string; name: string; city: string; verificationStatus: string }
-      | { kind: 'processor'; processorId: string; name: string; city: string; facilityType: string; verificationStatus: string }
-
-    let profile: Profile = { kind: 'none' }
+    let profile: ProfileSummary | null = null
 
     if (user.role === 'merchant') {
-      const m = await ctx.db.query('merchants').withIndex('by_owner', q => q.eq('ownerId', user._id)).unique()
-      if (m) {
+      const merchant = await ctx.db
+        .query('merchants')
+        .withIndex('by_owner', (index) => index.eq('ownerId', user._id))
+        .unique()
+
+      if (merchant) {
         profile = {
-          kind: 'merchant',
-          merchantId: m._id,
-          name: m.name,
-          city: m.address,
-          verificationStatus: m.verificationStatus,
+          id: merchant._id,
+          type: 'merchant',
+          name: merchant.name,
+          verificationStatus: merchant.verificationStatus,
         }
       }
     } else if (user.role === 'processor') {
-      const p = await ctx.db.query('processors').withIndex('by_owner', q => q.eq('ownerId', user._id)).unique()
-      if (p) {
+      const processor = await ctx.db
+        .query('processors')
+        .withIndex('by_owner', (index) => index.eq('ownerId', user._id))
+        .unique()
+
+      if (processor) {
         profile = {
-          kind: 'processor',
-          processorId: p._id,
-          name: p.name,
-          city: p.address,
-          facilityType: 'Organic',
-          verificationStatus: p.verificationStatus,
+          id: processor._id,
+          type: 'processor',
+          name: processor.name,
+          verificationStatus: processor.verificationStatus,
         }
       }
     }

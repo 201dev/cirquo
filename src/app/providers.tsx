@@ -3,7 +3,10 @@ import { ConvexProvider } from "convex/react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { convexClient } from "@/lib/convex";
-import { AuthProvider } from "@/contexts/auth-context";
+import {
+  AuthProvider,
+  AuthUnavailableProvider,
+} from "@/contexts/auth-context";
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const themed = (
@@ -19,6 +22,6 @@ export function AppProviders({ children }: { children: ReactNode }) {
       <AuthProvider>{themed}</AuthProvider>
     </ConvexProvider>
   ) : (
-    themed
+    <AuthUnavailableProvider>{themed}</AuthUnavailableProvider>
   );
 }

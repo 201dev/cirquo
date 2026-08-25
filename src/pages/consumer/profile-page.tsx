@@ -1,11 +1,23 @@
-import { Bell, ChevronRight, MapPin, Salad, UserRound } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Bell, ChevronRight, LogOut, MapPin, Salad, UserRound } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/page-header";
 import { ThemeToggle } from "@/components/common/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function ProfilePage() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    await logout();
+    navigate("/login", { replace: true });
+  };
+
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
@@ -16,13 +28,32 @@ export default function ProfilePage() {
         <span className="grid size-14 place-items-center rounded-full bg-primary text-primary-foreground">
           <UserRound />
         </span>
-        <div>
-          <h2 className="font-semibold">Alya Putri</h2>
-          <p className="text-sm text-muted-foreground">
-            alya@example.com · akun demo
-          </p>
-        </div>
+        {user ? (
+          <div className="min-w-0">
+            <h2 className="truncate font-semibold">{user.name}</h2>
+            <p className="truncate text-sm text-muted-foreground">
+              {user.email}
+            </p>
+          </div>
+        ) : (
+          <div className="min-w-0">
+            <h2 className="font-semibold">Belum masuk</h2>
+            <p className="text-sm text-muted-foreground">
+              Masuk untuk memulihkan sesi dan melihat akunmu.
+            </p>
+          </div>
+        )}
       </section>
+      {!user ? (
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <Button asChild>
+            <Link to="/login">Masuk</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/register">Buat akun</Link>
+          </Button>
+        </div>
+      ) : null}
       <div className="mt-6 divide-y rounded-xl bg-card px-4 shadow-[0_10px_30px_-25px_color-mix(in_oklab,var(--foreground)_50%,transparent)]">
         {[
           { icon: MapPin, title: "Lokasi utama", value: "Tembalang, Semarang" },
@@ -58,28 +89,17 @@ export default function ProfilePage() {
           <ThemeToggle />
         </div>
       </div>
-      <div className="mt-6 rounded-xl border p-5">
-        <div>
-          <p className="font-semibold">Peran demo</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Jelajahi layar operasional yang tersedia.
-          </p>
-        </div>
-        <div className="mt-5 grid gap-2 sm:grid-cols-3">
-          <Button asChild variant="outline">
-            <Link to="/merchant">Merchant</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to="/processor">Processor</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to="/admin">Admin</Link>
-          </Button>
-        </div>
-      </div>
-      <Button asChild variant="ghost" className="mt-5 w-full">
-        <Link to="/login">Keluar dari mode demo</Link>
-      </Button>
+      {user ? (
+        <Button
+          variant="ghost"
+          className="mt-5 w-full text-muted-foreground hover:text-destructive"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+        >
+          <LogOut aria-hidden="true" />
+          {isLoggingOut ? "Keluar..." : "Keluar dari akun"}
+        </Button>
+      ) : null}
     </div>
   );
 }

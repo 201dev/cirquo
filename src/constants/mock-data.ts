@@ -17,7 +17,7 @@ export const rescueItems: RescueItemPreview[] = [
     originalPrice: 36000,
     remainingQuantity: 4,
     weightPerItemGrams: 450,
-    pickupWindow: "17.00–19.00 WIB",
+    pickupWindow: "17.00-19.00 WIB",
     status: "active",
     category: "bakery",
     description:
@@ -37,7 +37,7 @@ export const rescueItems: RescueItemPreview[] = [
     originalPrice: 28000,
     remainingQuantity: 7,
     weightPerItemGrams: 500,
-    pickupWindow: "18.30–20.00 WIB",
+    pickupWindow: "18.30-20.00 WIB",
     status: "active",
     category: "meal",
     description:
@@ -57,7 +57,7 @@ export const rescueItems: RescueItemPreview[] = [
     originalPrice: 26000,
     remainingQuantity: 3,
     weightPerItemGrams: 900,
-    pickupWindow: "16.00–18.00 WIB",
+    pickupWindow: "16.00-18.00 WIB",
     status: "active",
     category: "produce",
     description:
@@ -77,7 +77,7 @@ export const rescueItems: RescueItemPreview[] = [
     originalPrice: 42000,
     remainingQuantity: 0,
     weightPerItemGrams: 520,
-    pickupWindow: "17.30–19.30 WIB",
+    pickupWindow: "17.30-19.30 WIB",
     status: "sold_out",
     category: "bakery",
     description:
@@ -100,7 +100,7 @@ export const orders: OrderPreview[] = [
     pickupCode: "CQ-4821",
     status: "paid",
     quantity: 1,
-    pickupWindow: "Hari ini, 17.00–19.00 WIB",
+    pickupWindow: "Hari ini, 17.00-19.00 WIB",
     image: bakeryImage,
     orderedAt: "17 Agu 2026, 14.12 WIB",
   },
@@ -112,7 +112,7 @@ export const orders: OrderPreview[] = [
     pickupCode: "CQ-1945",
     status: "picked_up",
     quantity: 2,
-    pickupWindow: "15 Agu 2026, 18.30–20.00 WIB",
+    pickupWindow: "15 Agu 2026, 18.30-20.00 WIB",
     image: mealImage,
     orderedAt: "15 Agu 2026, 11.07 WIB",
   },
@@ -127,7 +127,7 @@ export const recoveryBatches: RecoveryBatchPreview[] = [
     status: "offered",
     distanceKm: 3.8,
     requestedAt: "Hari ini, 19.05 WIB",
-    pickupWindow: "20.00–21.00 WIB",
+    pickupWindow: "20.00-21.00 WIB",
   },
   {
     id: "batch-2",
@@ -137,7 +137,7 @@ export const recoveryBatches: RecoveryBatchPreview[] = [
     status: "processed",
     distanceKm: 5.2,
     requestedAt: "15 Agu 2026, 18.40 WIB",
-    pickupWindow: "15 Agu, 19.30–21.00 WIB",
+    pickupWindow: "15 Agu, 19.30-21.00 WIB",
     outcome: "compost",
   },
 ];

@@ -169,6 +169,14 @@
   .hero-reveal {
     animation: hero-reveal 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
+
+  .welcome-enter > img {
+    animation: welcome-image 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .welcome-enter section {
+    animation: welcome-copy 700ms 80ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
 }
 
 @keyframes hero-reveal {
@@ -179,6 +187,28 @@
   to {
     opacity: 1;
     clip-path: inset(0 0 0 0 round 1rem);
+  }
+}
+
+@keyframes welcome-image {
+  from {
+    opacity: 0.82;
+    transform: scale(1.025);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes welcome-copy {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

@@ -6,8 +6,14 @@ import { AuthLayout } from "@/layouts/auth-layout";
 import { ConsumerLayout } from "@/layouts/consumer-layout";
 import { MerchantLayout } from "@/layouts/merchant-layout";
 import { ProcessorLayout } from "@/layouts/processor-layout";
-import { GuestRoute, ProtectedRoute } from "@/components/common/route-guards";
+import {
+  GuestRoute,
+  PostAuthRoute,
+  ProtectedRoute,
+} from "@/components/common/route-guards";
+import { ConsumerEntryRoute } from "@/components/common/consumer-entry-route";
 import NotFoundPage from "@/pages/not-found-page";
+import WelcomePage from "@/pages/welcome-page";
 
 const AdminDashboardPage = lazy(() => import("@/pages/admin/dashboard-page"));
 const LoginPage = lazy(() => import("@/pages/auth/login-page"));
@@ -50,12 +56,12 @@ const RecoveryPage = lazy(() => import("@/pages/processor/recovery-page"));
 const PendingVerificationPage = lazy(
   () => import("@/pages/auth/pending-verification-page"),
 );
-
 export const router = createBrowserRouter([
   // --- Guest-only routes (login, register) ---
   {
     element: <GuestRoute />,
     children: [
+      { path: "welcome", element: <WelcomePage /> },
       {
         element: <AuthLayout />,
         children: [
@@ -86,6 +92,7 @@ export const router = createBrowserRouter([
       {
         element: <AuthLayout />,
         children: [
+          { path: "auth/continue", element: <PostAuthRoute /> },
           {
             path: "merchant/onboarding",
             element: <OnboardingPage role="merchant" />,
@@ -103,11 +110,21 @@ export const router = createBrowserRouter([
     ],
   },
 
+  // --- Consumer entry: guests see welcome, restored sessions see home ---
+  {
+    element: <ConsumerEntryRoute />,
+    children: [
+      {
+        element: <ConsumerLayout />,
+        children: [{ index: true, element: <ConsumerHomePage /> }],
+      },
+    ],
+  },
+
   // --- Consumer routes ---
   {
     element: <ConsumerLayout />,
     children: [
-      { index: true, element: <ConsumerHomePage /> },
       { path: "explore", element: <ExplorePage /> },
       { path: "orders", element: <OrdersPage /> },
       { path: "orders/:id", element: <OrderDetailPage /> },
@@ -120,60 +137,45 @@ export const router = createBrowserRouter([
   // --- Merchant routes ---
   {
     path: "merchant",
-    element: <ProtectedRoute allowedRoles={["merchant", "admin"]} />,
+    element: <MerchantLayout />,
     children: [
-      {
-        element: <MerchantLayout />,
-        children: [
-          { index: true, element: <MerchantDashboardPage /> },
-          { path: "surplus", element: <MerchantSurplusPage /> },
-          { path: "surplus/new", element: <CreateSurplusPage /> },
-          { path: "surplus/:id", element: <SurplusDetailPage /> },
-          { path: "pickup", element: <PickupPage /> },
-          { path: "impact", element: <MerchantImpactPage /> },
-        ],
-      },
+      { index: true, element: <MerchantDashboardPage /> },
+      { path: "surplus", element: <MerchantSurplusPage /> },
+      { path: "surplus/new", element: <CreateSurplusPage /> },
+      { path: "surplus/:id", element: <SurplusDetailPage /> },
+      { path: "pickup", element: <PickupPage /> },
+      { path: "impact", element: <MerchantImpactPage /> },
     ],
   },
 
   // --- Processor routes ---
   {
     path: "processor",
-    element: <ProtectedRoute allowedRoles={["processor", "admin"]} />,
+    element: <ProcessorLayout />,
     children: [
-      {
-        element: <ProcessorLayout />,
-        children: [
-          { index: true, element: <ProcessorDashboardPage /> },
-          { path: "recovery", element: <RecoveryPage /> },
-          { path: "recovery/:id", element: <RecoveryDetailPage /> },
-          { path: "history", element: <ProcessorHistoryPage /> },
-        ],
-      },
+      { index: true, element: <ProcessorDashboardPage /> },
+      { path: "recovery", element: <RecoveryPage /> },
+      { path: "recovery/:id", element: <RecoveryDetailPage /> },
+      { path: "history", element: <ProcessorHistoryPage /> },
     ],
   },
 
   // --- Admin routes ---
   {
     path: "admin",
-    element: <ProtectedRoute allowedRoles={["admin"]} />,
+    element: <AdminLayout />,
     children: [
+      { index: true, element: <AdminDashboardPage /> },
       {
-        element: <AdminLayout />,
-        children: [
-          { index: true, element: <AdminDashboardPage /> },
-          {
-            path: "verifications",
-            element: <ReviewQueuePage type="verifications" />,
-          },
-          {
-            path: "moderation",
-            element: <ReviewQueuePage type="moderation" />,
-          },
-          { path: "ledger", element: <LedgerPage /> },
-          { path: "disputes", element: <ReviewQueuePage type="disputes" /> },
-        ],
+        path: "verifications",
+        element: <ReviewQueuePage type="verifications" />,
       },
+      {
+        path: "moderation",
+        element: <ReviewQueuePage type="moderation" />,
+      },
+      { path: "ledger", element: <LedgerPage /> },
+      { path: "disputes", element: <ReviewQueuePage type="disputes" /> },
     ],
   },
 

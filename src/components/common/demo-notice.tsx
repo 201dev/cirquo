@@ -16,7 +16,7 @@ export function DemoNotice({
       )}
     >
       <FlaskConical className="size-4" aria-hidden="true" />
-      {compact ? "Mode demo" : "Data demo — belum terhubung ke backend"}
+      {compact ? "Mode demo" : "Data marketplace di halaman ini masih demo"}
     </div>
   );
 }
