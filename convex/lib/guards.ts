@@ -25,7 +25,7 @@ export async function resolveAuth(
     .withIndex('by_token_hash', (query) => query.eq('tokenHash', tokenHash))
     .unique()
 
-  if (!session) return null
+  if (!session || session.expiresAt <= Date.now()) return null
   const user = await ctx.db.get(session.userId)
   if (!user || user.status === 'suspended') return null
   return user
