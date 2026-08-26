@@ -112,3 +112,80 @@ export const expireHold = internalMutation({
     })
   }
 })
+
+import { query } from './_generated/server'
+
+export const listMine = query({
+  args: { sessionToken: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await requireRole(ctx, args.sessionToken, ['consumer'])
+    const orders = await ctx.db
+      .query('orders')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .order('desc')
+      .collect()
+
+    const enriched = await Promise.all(
+      orders.map(async (order) => {
+        const item = await ctx.db.get(order.surplusItemId)
+        if (!item) return null
+        
+        const merchant = await ctx.db.get(item.merchantId)
+        if (!merchant) return null
+
+        return {
+          _id: order._id,
+          itemName: item.name,
+          merchantName: merchant.name,
+          totalPrice: order.totalPrice,
+          status: order.status,
+          quantity: order.quantity,
+          pickupWindow: `${new Date(item.pickupStartAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} - ${new Date(item.pickupEndAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`,
+          image: item.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800",
+          orderedAt: new Date(order.createdAt).toISOString(),
+          // Explicitly NOT returning pickupCode here
+        }
+      })
+    )
+
+    return enriched.filter((o): o is NonNullable<typeof o> => o !== null)
+  }
+})
+
+export const get = query({
+  args: { 
+    orderId: v.id('orders'),
+    sessionToken: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    const user = await requireRole(ctx, args.sessionToken, ['consumer'])
+    
+    const order = await ctx.db.get(args.orderId)
+    if (!order) return null
+    if (order.userId !== user._id) return null
+
+    const item = await ctx.db.get(order.surplusItemId)
+    if (!item) return null
+
+    const merchant = await ctx.db.get(item.merchantId)
+    if (!merchant) return null
+
+    return {
+      _id: order._id,
+      itemName: item.name,
+      merchantName: merchant.name,
+      merchantAddress: merchant.address,
+      totalPrice: order.totalPrice,
+      status: order.status,
+      quantity: order.quantity,
+      rescuedWeightGrams: order.rescuedWeightGrams,
+      pickupWindow: `${new Date(item.pickupStartAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} - ${new Date(item.pickupEndAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`,
+      pickupDate: new Date(item.pickupStartAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+      image: item.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800",
+      orderedAt: new Date(order.createdAt).toISOString(),
+      createdAt: order.createdAt,
+      // Only reveal pickupCode if paid
+      pickupCode: order.status === 'paid' ? order.pickupCode : undefined,
+    }
+  }
+})

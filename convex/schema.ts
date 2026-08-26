@@ -233,4 +233,18 @@ export default defineSchema({
     .index('by_merchant', ['merchantId'])
     .index('by_processor', ['processorId'])
     .index('by_status', ['status']),
+
+  payments: defineTable({
+    orderId: v.id('orders'),
+    provider: v.literal('midtrans'),
+    amount: v.number(),
+    providerStatus: v.string(),
+    paymentMethod: v.optional(v.string()),
+    providerTxnId: v.optional(v.string()),
+    rawPayload: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_order', ['orderId'])
+    .index('by_provider_txn', ['providerTxnId']),
 })
