@@ -63,7 +63,7 @@ export default function ExplorePage() {
     
     let isMounted = true;
     let hasResolved = false;
-    let timeoutId: number;
+    let timeoutId: ReturnType<typeof setTimeout>;
 
     const onSuccess = (pos: GeolocationPosition) => {
       if (isMounted) {
@@ -447,7 +447,7 @@ export default function ExplorePage() {
           
           {nearbyData !== undefined && filtered.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-              {filtered.map((item) => (
+              {filtered.map((item: any) => (
                 <div key={item._id} onClick={() => setSelectedItemId(item._id)} className="cursor-pointer">
                   <RescueItemCard item={mapToPreview(item)} horizontal />
                 </div>

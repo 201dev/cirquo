@@ -23,6 +23,7 @@ const RegisterPage = lazy(() => import("@/pages/auth/register-page"));
 const LedgerPage = lazy(() => import("@/pages/admin/ledger-page"));
 const ReviewQueuePage = lazy(() => import("@/pages/admin/review-queue-page"));
 const ExplorePage = lazy(() => import("@/pages/consumer/explore-page"));
+const CheckoutPage = lazy(() => import("@/pages/consumer/checkout-page"));
 const ConsumerHomePage = lazy(() => import("@/pages/consumer/home-page"));
 const ImpactPage = lazy(() => import("@/pages/consumer/impact-page"));
 const ItemDetailPage = lazy(() => import("@/pages/consumer/item-detail-page"));
@@ -122,6 +123,7 @@ export const router = createBrowserRouter([
           { path: "explore", element: <ExplorePage /> },
           { path: "orders", element: <OrdersPage /> },
           { path: "orders/:id", element: <OrderDetailPage /> },
+          { path: "checkout/:orderId", element: <CheckoutPage /> },
           { path: "item/:id", element: <ItemDetailPage /> },
           { path: "impact", element: <ImpactPage /> },
           { path: "profile", element: <ProfilePage /> },
