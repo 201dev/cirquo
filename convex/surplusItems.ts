@@ -45,6 +45,12 @@ type SurplusItemFields = Pick<
   | 'dietaryTags'
 >
 
+type SurplusItemField = keyof SurplusItemFields
+
+function failValidation(field: SurplusItemField, message: string): never {
+  throw new ConvexError({ code: 'VALIDATION_FAILED', field, message })
+}
+
 const surplusItemUpdateArgs = {
   name: v.optional(v.string()),
   description: v.optional(v.string()),
@@ -61,17 +67,19 @@ const surplusItemUpdateArgs = {
 }
 
 function validateItemFields(args: SurplusItemFields) {
-  if (args.name.length < 2 || args.name.length > 120) throw new ConvexError('Nama harus 2-120 karakter')
-  if (args.description && args.description.length > 500) throw new ConvexError('Deskripsi maksimal 500 karakter')
-  if (args.originalPrice <= 0 || !Number.isInteger(args.originalPrice)) throw new ConvexError('Harga awal tidak valid')
-  if (args.floorPrice <= 0 || !Number.isInteger(args.floorPrice)) throw new ConvexError('Floor price tidak valid')
-  if (args.currentPrice <= 0 || !Number.isInteger(args.currentPrice)) throw new ConvexError('Harga saat ini tidak valid')
-  if (!(args.floorPrice <= args.currentPrice && args.currentPrice < args.originalPrice)) throw new ConvexError('Harga tidak memenuhi batasan')
-  if (args.initialQuantity < 1 || args.initialQuantity > 999 || !Number.isInteger(args.initialQuantity)) throw new ConvexError('Jumlah tidak valid')
-  if (args.weightPerItemGrams < 1 || args.weightPerItemGrams > 50000 || !Number.isInteger(args.weightPerItemGrams)) throw new ConvexError('Berat tidak valid')
-  if (args.pickupEndAt <= args.pickupStartAt) throw new ConvexError('Waktu selesai harus setelah waktu mulai')
-  if (args.pickupEndAt - args.pickupStartAt > 72 * 60 * 60 * 1000) throw new ConvexError('Waktu pickup maksimal 72 jam')
-  if (args.pickupStartAt < Date.now() - 5 * 60 * 1000) throw new ConvexError('Waktu pickup tidak boleh di masa lalu')
+  if (args.name.length < 2 || args.name.length > 120) failValidation('name', 'Nama harus 2-120 karakter')
+  if (args.description && args.description.length > 500) failValidation('description', 'Deskripsi maksimal 500 karakter')
+  if (args.originalPrice <= 0 || !Number.isInteger(args.originalPrice)) failValidation('originalPrice', 'Harga awal tidak valid')
+  if (args.floorPrice <= 0 || !Number.isInteger(args.floorPrice)) failValidation('floorPrice', 'Floor price tidak valid')
+  if (args.currentPrice <= 0 || !Number.isInteger(args.currentPrice)) failValidation('currentPrice', 'Harga saat ini tidak valid')
+  if (args.floorPrice > args.currentPrice) throw new ConvexError({ code: 'PRICE_BELOW_FLOOR', field: 'currentPrice', message: 'Harga rescue tidak boleh di bawah floor price' })
+  if (args.currentPrice >= args.originalPrice) throw new ConvexError({ code: 'PRICE_ABOVE_ORIGINAL', field: 'currentPrice', message: 'Harga rescue harus lebih rendah dari harga awal' })
+  if (args.floorPrice >= args.originalPrice) failValidation('floorPrice', 'Floor price harus lebih rendah dari harga awal')
+  if (args.initialQuantity < 1 || args.initialQuantity > 999 || !Number.isInteger(args.initialQuantity)) failValidation('initialQuantity', 'Jumlah tidak valid')
+  if (args.weightPerItemGrams < 1 || args.weightPerItemGrams > 50000 || !Number.isInteger(args.weightPerItemGrams)) failValidation('weightPerItemGrams', 'Berat tidak valid')
+  if (args.pickupEndAt <= args.pickupStartAt) failValidation('pickupEndAt', 'Waktu selesai harus setelah waktu mulai')
+  if (args.pickupEndAt - args.pickupStartAt > 72 * 60 * 60 * 1000) failValidation('pickupEndAt', 'Waktu pickup maksimal 72 jam')
+  if (args.pickupStartAt < Date.now() - 5 * 60 * 1000) failValidation('pickupStartAt', 'Waktu pickup tidak boleh di masa lalu')
 }
 
 export const create = mutation({

@@ -131,7 +131,7 @@ test("draft tidak menulis ledger, lalu publish menulis satu LISTED", async () =>
       dietaryTags: [],
       sessionToken,
     }),
-  ).rejects.toThrow("Harga tidak memenuhi batasan");
+  ).rejects.toThrow('"code":"PRICE_ABOVE_ORIGINAL","field":"currentPrice"');
 });
 
 test("Merchant yang belum terverifikasi tidak dapat membuat Rescue Item", async () => {
@@ -276,7 +276,7 @@ test("edit dan cancel menjaga lock reservasi serta Material Flow Ledger", async 
       currentPrice: 7_000,
       sessionToken,
     }),
-  ).rejects.toThrow("Harga tidak memenuhi batasan");
+  ).rejects.toThrow('"code":"PRICE_BELOW_FLOOR","field":"currentPrice"');
   await expect(
     t.mutation(api.surplusItems.update, {
       id: activeId,
