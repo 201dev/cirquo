@@ -304,8 +304,6 @@ export const listMine = query({
       processingOnly: item.processingOnly,
       publishedAt: item.publishedAt,
       createdAt: item.createdAt,
-      imageUrl: item.imageUrl,
-      weightPerItemGrams: item.weightPerItemGrams,
     }))
   }
 })

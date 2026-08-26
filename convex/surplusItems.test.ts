@@ -322,3 +322,104 @@ test("edit dan cancel menjaga lock reservasi serta Material Flow Ledger", async 
     t.mutation(api.surplusItems.cancel, { id: reservedId, sessionToken }),
   ).rejects.toThrow("ALREADY_RESERVED");
 });
+
+test("listMine hanya mengembalikan Rescue Item milik Merchant pada sesi", async () => {
+  const t = convexTest(schema, modules);
+  const now = Date.now();
+  const merchantToken = "l".repeat(43);
+  const otherMerchantToken = "o".repeat(43);
+
+  const { merchantItemId, otherMerchantItemId } = await t.run(async (ctx) => {
+    const merchantUserId = await ctx.db.insert("users", {
+      name: "Merchant Pending",
+      email: "merchant.listmine@example.com",
+      passwordHash: "test-password-hash",
+      role: "merchant",
+      status: "active",
+      createdAt: now,
+    });
+    const otherMerchantUserId = await ctx.db.insert("users", {
+      name: "Merchant Lain",
+      email: "merchant.lain.listmine@example.com",
+      passwordHash: "test-password-hash",
+      role: "merchant",
+      status: "active",
+      createdAt: now,
+    });
+    const merchantId = await ctx.db.insert("merchants", {
+      ownerId: merchantUserId,
+      name: "Roti Pending",
+      address: "Jl. Pandanaran, Semarang",
+      verificationStatus: "pending",
+      createdAt: now,
+    });
+    const otherMerchantId = await ctx.db.insert("merchants", {
+      ownerId: otherMerchantUserId,
+      name: "Roti Lain",
+      address: "Jl. Pemuda, Semarang",
+      verificationStatus: "verified",
+      createdAt: now,
+    });
+
+    await ctx.db.insert("sessions", {
+      userId: merchantUserId,
+      tokenHash: await hashSessionToken(merchantToken),
+      expiresAt: now + HOUR_MS,
+      createdAt: now,
+    });
+    await ctx.db.insert("sessions", {
+      userId: otherMerchantUserId,
+      tokenHash: await hashSessionToken(otherMerchantToken),
+      expiresAt: now + HOUR_MS,
+      createdAt: now,
+    });
+
+    const item = {
+      originalPrice: 20_000,
+      floorPrice: 8_000,
+      currentPrice: 12_000,
+      initialQuantity: 3,
+      remainingQuantity: 3,
+      weightPerItemGrams: 450,
+      pickupStartAt: now + HOUR_MS,
+      pickupEndAt: now + 3 * HOUR_MS,
+      materialType: "bakery" as const,
+      dietaryTags: [],
+      processingOnly: false,
+      status: "active" as const,
+      publishedAt: now,
+      createdAt: now,
+    };
+
+    const merchantItemId = await ctx.db.insert("surplusItems", {
+      ...item,
+      merchantId,
+      name: "Roti Merchant Sendiri",
+    });
+    const otherMerchantItemId = await ctx.db.insert("surplusItems", {
+      ...item,
+      merchantId: otherMerchantId,
+      name: "Roti Merchant Lain",
+      processingOnly: true,
+    });
+
+    return { merchantItemId, otherMerchantItemId };
+  });
+
+  const merchantItems = await t.query(api.surplusItems.listMine, {
+    sessionToken: merchantToken,
+  });
+  const otherMerchantItems = await t.query(api.surplusItems.listMine, {
+    sessionToken: otherMerchantToken,
+  });
+
+  expect(merchantItems).toHaveLength(1);
+  expect(merchantItems[0]).toMatchObject({
+    _id: merchantItemId,
+    name: "Roti Merchant Sendiri",
+    currentPrice: 12_000,
+    processingOnly: false,
+  });
+  expect(merchantItems.map((item) => item._id)).not.toContain(otherMerchantItemId);
+  expect(otherMerchantItems.map((item) => item._id)).toEqual([otherMerchantItemId]);
+});
