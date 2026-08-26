@@ -1,6 +1,8 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context";
 import { PageLoader } from "@/components/common/page-loader";
+import { homeForRole } from "@/lib/role-home";
+import type { UserRole } from "@/types/domain";
 
 /**
  * Wraps routes that require authentication.
@@ -21,6 +23,30 @@ export function ProtectedRoute() {
       />
     );
   }
+
+  return <Outlet />;
+}
+
+/**
+ * Wraps role-specific routes. The client guard is for navigation UX only;
+ * Convex guards remain the authorization boundary.
+ */
+export function RoleRoute({ role }: { role: UserRole }) {
+  const { user, isLoading, isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) return <PageLoader />;
+
+  if (!isAuthenticated || !user) {
+    return (
+      <Navigate
+        to={`/login?returnTo=${encodeURIComponent(location.pathname)}`}
+        replace
+      />
+    );
+  }
+
+  if (user.role !== role) return <Navigate to={homeForRole(user.role)} replace />;
 
   return <Outlet />;
 }
@@ -56,12 +82,5 @@ export function PostAuthRoute() {
     }
   }
 
-  const homeRoutes: Record<typeof user.role, string> = {
-    consumer: "/",
-    merchant: "/merchant",
-    processor: "/processor",
-    admin: "/admin",
-  };
-
-  return <Navigate to={homeRoutes[user.role]} replace />;
+  return <Navigate to={homeForRole(user.role)} replace />;
 }

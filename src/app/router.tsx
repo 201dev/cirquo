@@ -10,8 +10,8 @@ import {
   GuestRoute,
   PostAuthRoute,
   ProtectedRoute,
+  RoleRoute,
 } from "@/components/common/route-guards";
-import { ConsumerEntryRoute } from "@/components/common/consumer-entry-route";
 import NotFoundPage from "@/pages/not-found-page";
 import WelcomePage from "@/pages/welcome-page";
 
@@ -110,72 +110,82 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // --- Consumer entry: guests see welcome, restored sessions see home ---
+  // --- Consumer routes ---
   {
-    element: <ConsumerEntryRoute />,
+    element: <RoleRoute role="consumer" />,
     children: [
       {
         element: <ConsumerLayout />,
-        children: [{ index: true, element: <ConsumerHomePage /> }],
+        children: [
+          { index: true, element: <ConsumerHomePage /> },
+          { path: "explore", element: <ExplorePage /> },
+          { path: "orders", element: <OrdersPage /> },
+          { path: "orders/:id", element: <OrderDetailPage /> },
+          { path: "item/:id", element: <ItemDetailPage /> },
+          { path: "impact", element: <ImpactPage /> },
+          { path: "profile", element: <ProfilePage /> },
+        ],
       },
-    ],
-  },
-
-  // --- Consumer routes ---
-  {
-    element: <ConsumerLayout />,
-    children: [
-      { path: "explore", element: <ExplorePage /> },
-      { path: "orders", element: <OrdersPage /> },
-      { path: "orders/:id", element: <OrderDetailPage /> },
-      { path: "item/:id", element: <ItemDetailPage /> },
-      { path: "impact", element: <ImpactPage /> },
-      { path: "profile", element: <ProfilePage /> },
     ],
   },
 
   // --- Merchant routes ---
   {
-    path: "merchant",
-    element: <MerchantLayout />,
+    element: <RoleRoute role="merchant" />,
     children: [
-      { index: true, element: <MerchantDashboardPage /> },
-      { path: "surplus", element: <MerchantSurplusPage /> },
-      { path: "surplus/new", element: <CreateSurplusPage /> },
-      { path: "surplus/:id", element: <SurplusDetailPage /> },
-      { path: "pickup", element: <PickupPage /> },
-      { path: "impact", element: <MerchantImpactPage /> },
+      {
+        path: "merchant",
+        element: <MerchantLayout />,
+        children: [
+          { index: true, element: <MerchantDashboardPage /> },
+          { path: "surplus", element: <MerchantSurplusPage /> },
+          { path: "surplus/new", element: <CreateSurplusPage /> },
+          { path: "surplus/:id", element: <SurplusDetailPage /> },
+          { path: "pickup", element: <PickupPage /> },
+          { path: "impact", element: <MerchantImpactPage /> },
+        ],
+      },
     ],
   },
 
   // --- Processor routes ---
   {
-    path: "processor",
-    element: <ProcessorLayout />,
+    element: <RoleRoute role="processor" />,
     children: [
-      { index: true, element: <ProcessorDashboardPage /> },
-      { path: "recovery", element: <RecoveryPage /> },
-      { path: "recovery/:id", element: <RecoveryDetailPage /> },
-      { path: "history", element: <ProcessorHistoryPage /> },
+      {
+        path: "processor",
+        element: <ProcessorLayout />,
+        children: [
+          { index: true, element: <ProcessorDashboardPage /> },
+          { path: "recovery", element: <RecoveryPage /> },
+          { path: "recovery/:id", element: <RecoveryDetailPage /> },
+          { path: "history", element: <ProcessorHistoryPage /> },
+        ],
+      },
     ],
   },
 
   // --- Admin routes ---
   {
-    path: "admin",
-    element: <AdminLayout />,
+    element: <RoleRoute role="admin" />,
     children: [
-      { index: true, element: <AdminDashboardPage /> },
       {
-        path: "verifications",
-        element: <ReviewQueuePage type="verifications" />,
+        path: "admin",
+        element: <AdminLayout />,
+        children: [
+          { index: true, element: <AdminDashboardPage /> },
+          {
+            path: "verifications",
+            element: <ReviewQueuePage type="verifications" />,
+          },
+          {
+            path: "moderation",
+            element: <ReviewQueuePage type="moderation" />,
+          },
+          { path: "ledger", element: <LedgerPage /> },
+          { path: "disputes", element: <ReviewQueuePage type="disputes" /> },
+        ],
       },
-      {
-        path: "moderation",
-        element: <ReviewQueuePage type="moderation" />,
-      },
-      { path: "ledger", element: <LedgerPage /> },
-      { path: "disputes", element: <ReviewQueuePage type="disputes" /> },
     ],
   },
 

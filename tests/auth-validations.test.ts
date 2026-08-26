@@ -16,8 +16,16 @@ import { resolveAuth } from "../convex/lib/guards";
 import { generateSessionToken } from "../convex/lib/tokens";
 import { clearToken, loadToken, saveToken } from "../src/lib/auth-storage";
 import { getAppError } from "../src/lib/errors";
+import { homeForRole } from "../src/lib/role-home";
 
 describe("validasi akun", () => {
+  test("setiap peran memiliki halaman tujuan yang aman", () => {
+    expect(homeForRole("consumer")).toBe("/");
+    expect(homeForRole("merchant")).toBe("/merchant");
+    expect(homeForRole("processor")).toBe("/processor");
+    expect(homeForRole("admin")).toBe("/admin");
+  });
+
   test("token sesi web bertahan sampai logout", async () => {
     const originalStorage = Object.getOwnPropertyDescriptor(
       globalThis,
