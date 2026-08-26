@@ -28,7 +28,19 @@ const surplusItemInputArgs = {
   sessionToken: v.optional(v.string()),
 }
 
-function validateItemFields(args: any) {
+type SurplusItemFields = {
+  name: string
+  description?: string
+  originalPrice: number
+  floorPrice: number
+  currentPrice: number
+  initialQuantity: number
+  weightPerItemGrams: number
+  pickupStartAt: number
+  pickupEndAt: number
+}
+
+function validateItemFields(args: SurplusItemFields) {
   if (args.name.length < 2 || args.name.length > 120) throw new ConvexError('Nama harus 2-120 karakter')
   if (args.description && args.description.length > 500) throw new ConvexError('Deskripsi maksimal 500 karakter')
   if (args.originalPrice <= 0 || !Number.isInteger(args.originalPrice)) throw new ConvexError('Harga awal tidak valid')

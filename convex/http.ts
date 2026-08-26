@@ -1,7 +1,7 @@
 import { httpAction, internalMutation } from "./_generated/server";
 import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
 import { recordLedgerEvent } from "./lib/ledger";
 import { v } from "convex/values";
 
@@ -27,7 +27,7 @@ const midtransWebhook = httpAction(async (ctx, request) => {
   let payload;
   try {
     payload = await request.json();
-  } catch (e) {
+  } catch {
     return new Response("Invalid JSON", { status: 400 });
   }
 
