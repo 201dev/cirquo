@@ -210,11 +210,13 @@ export default defineSchema({
     rescuedWeightGrams: v.number(),
     pickupCode: v.string(),
     status: orderStatus,
+    idempotencyKey: v.optional(v.string()),
     createdAt: v.number(),
     pickedUpAt: v.optional(v.number()),
   })
     .index('by_user', ['userId'])
     .index('by_item', ['surplusItemId'])
+    .index('by_idempotency_key', ['idempotencyKey'])
     .index('by_pickup_code', ['pickupCode']),
 
   recoveryBatches: defineTable({
