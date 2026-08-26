@@ -90,7 +90,11 @@ gantt
 
 ---
 
-## 3. Phase 0 — Foundation ✅ (Complete)
+## 3. Phase 0 — Foundation ✅ (Historical baseline)
+
+> This section records the original scaffold milestone; it is not the current
+> implementation snapshot. For the current state, see the status note above and
+> inspect source/UAT evidence.
 
 The repository scaffold exists and is type-safe. This phase deliberately built **structure, not business logic**.
 
@@ -102,8 +106,8 @@ The repository scaffold exists and is type-safe. This phase deliberately built *
 | Layouts | `ConsumerLayout` (bottom nav mobile), `RoleShell` for Merchant/Processor/Admin (sidebar + sheet) |
 | UI primitives | 17 shadcn/ui components (button, card, form, dialog, sheet, table, tabs, select, progress, etc.) |
 | Custom components | `PageHeader`, `SummaryCard`, `RoleShell` |
-| Convex schema | 5 tables: `users`, `merchants`, `surplusItems`, `orders`, `recoveryBatches` |
-| Convex functions | 6 internal read-only queries, **zero mutations**; public exposure waits for M1 auth guards |
+| Convex schema | Original 5-table scaffold; now expanded to 10 tables |
+| Convex functions | Original 6-query scaffold; now expanded with guarded auth, Merchant, Consumer, and payment functions |
 | Pages | 9 placeholder pages rendering mock data from `src/constants/mock-data.ts` |
 | Mobile | Capacitor Android configured (`com.cirquo.app`), PWA manifest + service worker |
 | Theming | OKLCH design tokens, Geist Variable font, light/dark variables defined |
@@ -120,7 +124,10 @@ The repository scaffold exists and is type-safe. This phase deliberately built *
 - ❌ No impact calculation
 - ❌ All dashboard numbers are hardcoded placeholders
 
-> **Honest assessment:** Phase 0 is roughly 15% of the MVP. It is a well-organised shell with disproportionately thorough documentation. Preliminary scoring weights *Progress & Implementation* at 20% and expects 50–75% completion — so from here, shipped functionality is worth more than any further planning artefact. Stop writing documents; start writing mutations.
+> **Status note — 2026-08-27:** this roadmap is a delivery plan, not the live
+> implementation tracker. M1/M2 foundations and portions of M3 now exist in
+> source; M4 onward remains target work. Use `convex/`, the route table, and UAT
+> evidence to assess completion.
 
 ---
 

@@ -17,7 +17,11 @@ The Cirquo backend has exactly one non-negotiable responsibility: **every kilogr
 
 This document specifies how Convex functions are organised, when to use each function type, how transactions guarantee that a quantity decrement and a **Material Flow Ledger** write can never diverge, how authorisation is enforced, how pure logic is kept out of the database layer, and how external systems (Midtrans, Mapbox) are integrated safely.
 
-**Current state, stated honestly.** The backend today contains a schema and **six read-only queries**: `users.getByEmail`, `merchants.getByOwner`, `surplusItems.listByStatus`, `orders.listByUser`, `recoveryBatches.listByStatus`, `impact.getPlaceholderSummary`. There are **no mutations, no authentication, no Midtrans integration, no cron jobs, and no HTTP actions**. Everything else in this document is a specification (📋), not a description.
+**Current state — 2026-08-27.** The backend now has a 10-table schema, session
+authentication and guards, Material Flow Ledger writes, Merchant Rescue Item
+lifecycle mutations, Consumer discovery/reservation, and a Midtrans Sandbox
+`httpAction`. Sections marked 📋 in this document remain target architecture;
+verify `convex/` before treating them as implemented.
 
 ---
 
@@ -1352,7 +1356,7 @@ Mapbox is **client-side only**. There is no server-side Mapbox call anywhere in 
 
 | Concern | Decision |
 | --- | --- |
-| Token | `VITE_MAPBOX_TOKEN`, public scope, URL-restricted in the Mapbox dashboard |
+| Token | `VITE_MAPBOX_ACCESS_TOKEN`, public scope, URL-restricted in the Mapbox dashboard |
 | Geocoding | Client-side during merchant/processor onboarding; lat/lng stored on the profile |
 | Distance | **Never** Mapbox Directions — `haversineMeters` from `src/lib/geo.ts` |
 | Tiles | Client only; never proxied through Convex |
@@ -1681,11 +1685,11 @@ bun run dev                 # Vite dev server (separate terminal)
 
 | Variable | Location | Purpose | Status |
 | --- | --- | --- | --- |
-| `VITE_CONVEX_URL` | `.env.local` | Client to deployment URL | ✅ the only env var today |
-| `VITE_MAPBOX_TOKEN` | `.env.local` | Mapbox GL, public scope | 📋 |
-| `VITE_MIDTRANS_CLIENT_KEY` | `.env.local` | Snap.js, public by design | 📋 |
-| `MIDTRANS_SERVER_KEY` | `bunx convex env set` | Snap API auth plus webhook signature | 📋 |
-| `MIDTRANS_WEBHOOK_URL` | Midtrans dashboard | Points at `<deployment>.convex.site/midtrans/webhook` | 📋 |
+| `VITE_CONVEX_URL` | `.env.local` | Client to deployment URL | ✅ |
+| `VITE_MAPBOX_ACCESS_TOKEN` | `.env.local` | Mapbox GL, public scope | ✅ |
+| `VITE_MIDTRANS_CLIENT_KEY` | `.env.local` | Snap.js, public by design | ✅ |
+| `MIDTRANS_SERVER_KEY` | `bunx convex env set` | Snap API auth plus webhook signature | ✅ |
+| `MIDTRANS_WEBHOOK_URL` | Midtrans dashboard | Points at `<deployment>.convex.site/midtrans/webhook` | 🚧 Dashboard registration/UAT required |
 
 Note the split: `VITE_*` variables are bundled into the client and are public. `MIDTRANS_SERVER_KEY` is set with `bunx convex env set` and lives only in the Convex runtime. Putting the server key in a `VITE_*` variable would ship the signature secret to every browser.
 

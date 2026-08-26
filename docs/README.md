@@ -134,14 +134,14 @@ Version history, contribution workflow.
 
 ## For Developers
 
-**Current implementation status:** MVP foundation in place. Core schema (5 Convex tables), basic routing, placeholder UI components, no backend business logic yet. See [DEVELOPMENT.md](engineering/DEVELOPMENT.md) for local setup.
+**Current implementation status (2026-08-27):** the codebase now includes a 10-table Convex schema, session authentication and role guards, the Material Flow Ledger, Merchant Rescue Item lifecycle work, Consumer discovery/reservation, Mapbox, and Midtrans Sandbox integration. Some dashboards, Processor workflows, Circular Routing, pickup confirmation, and Admin operations remain incomplete. See [DEVELOPMENT.md](engineering/DEVELOPMENT.md) for local setup and the source for the current contract.
 
 **Next priorities:**
-1. Material Flow Ledger implementation
-2. Dynamic Rescue Pricing algorithm
-3. Circular Routing logic
-4. Payment integration (Midtrans Sandbox)
-5. Map integration (Mapbox)
+1. Complete pickup confirmation and Circular Routing
+2. Complete Processor intake and outcome logging
+3. Replace remaining dashboard placeholders with ledger-derived impact
+4. Complete Admin operations and notifications
+5. Verify end-to-end web and Android UAT
 
 **For judges/stakeholders:** Start with [PRODUCT.md](product/PRODUCT.md) → [PRD.md](product/PRD.md) → [IMPACT.md](impact/IMPACT.md) → [ARCHITECTURE.md](architecture/ARCHITECTURE.md).
 

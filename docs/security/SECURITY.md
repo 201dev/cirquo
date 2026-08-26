@@ -10,7 +10,16 @@
 
 This document is the security backbone of the platform. It states what we protect, in what order, against whom, and how. Every control listed here is either **already implemented** (✅) or **planned and must land before the milestone it gates** (📋). Honesty about that distinction is a feature of this document, not a gap in it.
 
-> **Current posture in one line:** the repository today contains only six read-only Convex queries. There is no authentication, no authorization, no payment code, and no ledger. Everything below is the *design* that milestone M1 must implement. See [Section 21](#21-current-security-posture-honest) for the exact scope.
+Unless a section explicitly says otherwise, the status labels in the detailed
+threat tables are **target hardening priorities**, not a generated release
+status. The implementation snapshot is maintained in §21 and source remains
+authoritative.
+
+> **Current posture — 2026-08-27:** session authentication, server-side role
+> guards, Merchant verification checks, Material Flow Ledger writes, and
+> Midtrans Sandbox code exist. Sections marked as future hardening remain design
+> work; see [Section 21](#21-current-security-posture-honest) and `convex/` for
+> the current scope.
 
 ---
 
@@ -540,23 +549,25 @@ Adds what MVP can consciously defer.
 
 **What exists today:**
 
-- ✅ Six read-only Convex queries only.
-- ✅ `VITE_CONVEX_URL` is the sole env var, and nothing secret has ever been committed.
-- ✅ No secrets in the repo (verified by the total absence of integration code).
+- ✅ Opaque session registration/login/logout and `auth.getCurrentUser`.
+- ✅ Server-side session, role, ownership, and Merchant/Processor verification guards for current guarded functions.
+- ✅ Material Flow Ledger table/helper, current lifecycle writes, and `bun scripts/check-ledger.ts`.
+- ✅ Midtrans Sandbox transaction action plus a signature-checking webhook handler.
+- ✅ Public Mapbox and Midtrans client keys are documented as `VITE_*`; `MIDTRANS_SERVER_KEY` remains server-only.
 
-**What does not exist (must land in milestone M1):**
+**What is still incomplete or not yet verified:**
 
 | Item | Milestone |
 |---|---|
-| Sessions table, password hashing, any auth function | M1 |
-| Any authorization guard on any function | M1 |
-| Ledger write path and its integrity controls | M1 |
-| Midtrans webhook `httpAction` and signature verification | M1 |
-| Rate limiting | M1 |
-| UU PDP surface (consent, retention purge, deletion/pseudonymisation) | M1 |
-| Admin surface and audit trail | M1 |
+| Rate limiting and security monitoring | Hardening |
+| Password reset, change password, and session refresh | Auth hardening |
+| Full function-by-function authorization/UAT audit | Ongoing |
+| Midtrans dashboard registration, amount verification, and end-to-end webhook UAT | M3 completion |
+| UU PDP surface (consent, retention purge, deletion/pseudonymisation) | Hardening |
+| Admin surface and audit trail | M7 |
 
-Every "📋 M1" in this document is therefore the *definition of milestone M1's security work*, in dependency order: auth first (`AUTH.md`), then authorization (`PERMISSIONS.md`), then ledger + webhook, then the compliance surface.
+The remaining 📋 entries describe the target security posture in dependency
+order. They are not evidence that a control already exists.
 
 Known accepted risk for the competition: no MFA, no formal pentest, per-function rate limiting rather than distributed WAF-grade protection, and a single-operator alert channel. These are consciously deferred and tracked in `RISKS.md` (TECH-02, TECH-04, TECH-06, TECH-07, TECH-08).
 

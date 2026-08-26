@@ -32,7 +32,11 @@ Cirquo is a Convex application. There are no REST endpoints for processors. The 
 
 **Status legend:** ✅ Implemented · 🚧 In progress · 📋 Planned.
 
-Only six read-only queries currently exist in the codebase (`users.getByEmail`, `merchants.getByOwner`, `surplusItems.listByStatus`, `orders.listByUser`, `recoveryBatches.listByStatus`, `impact.getPlaceholderSummary`). Everything on this page is **📋 Planned** and documented ahead of implementation so that the contract is stable before code lands.
+Authentication, profiles, the Material Flow Ledger, Merchant flows, and
+Consumer flows are implemented elsewhere in the codebase. The
+Processor-specific functions documented on this page are still **📋 planned**;
+this file is a target contract rather than a description of deployed Processor
+functionality.
 
 ---
 

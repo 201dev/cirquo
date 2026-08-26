@@ -21,7 +21,7 @@ Convex deployment, no signed APK.
 | Convex production deployment | 📋 Planned |
 | GitHub Actions CI | 📋 Planned — workflow written in §6, not yet committed |
 | Android release keystore | 📋 Planned |
-| Midtrans webhook endpoint | 📋 Planned — no `convex/http.ts` exists |
+| Midtrans webhook endpoint | 🚧 Implemented in `convex/http.ts`; dashboard registration and end-to-end UAT remain required |
 | Monitoring / alerting | 📋 Planned |
 
 Everything below is the plan, written concretely enough to execute without
@@ -282,8 +282,6 @@ VITE_CONVEX_URL="https://<prod-name>.convex.cloud" bun run android:sync
 ```bash
 # Production deployment
 bunx convex env set MIDTRANS_SERVER_KEY "SB-Mid-server-xxxxxxxxxxxxxxxxxxxx" --prod
-bunx convex env set MIDTRANS_CLIENT_KEY "SB-Mid-client-xxxxxxxxxxxxxxxxxxxx" --prod
-bunx convex env set MIDTRANS_IS_PRODUCTION "false" --prod
 
 # Verify
 bunx convex env list --prod
@@ -319,20 +317,16 @@ forge a payment notification and mark orders as paid.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `VITE_CONVEX_URL` | Host / `.env.local` | Dev deploy URL | Shared dev URL | Shared dev URL | Prod URL | Prod URL | 🔓 Public |
 | `CONVEX_DEPLOYMENT` | `.env.local` (CLI only) | Auto-written | — | — | — | — | 🔓 Public |
-| `VITE_MAPBOX_TOKEN` | Host / `.env.local` | Dev-restricted `pk.*` | Preview-restricted `pk.*` | Staging `pk.*` | Prod `pk.*` | Prod `pk.*` | 🔓 **Public** |
+| `VITE_MAPBOX_ACCESS_TOKEN` | Host / `.env.local` | Dev-restricted `pk.*` | Preview-restricted `pk.*` | Staging `pk.*` | Prod `pk.*` | Prod `pk.*` | 🔓 **Public** |
 | `MIDTRANS_SERVER_KEY` | **Convex env** | Dev deploy | Shared dev | Shared dev | Prod | via Convex | 🔒 **SECRET** |
-| `MIDTRANS_CLIENT_KEY` | **Convex env** | Dev deploy | Shared dev | Shared dev | Prod | via Convex | 🔓 Public value, server-held |
-| `MIDTRANS_IS_PRODUCTION` | **Convex env** | `"false"` | `"false"` | `"false"` | `"false"` | `"false"` | 🔓 Public value |
+| `VITE_MIDTRANS_CLIENT_KEY` | Host / `.env.local` | Sandbox client key | Sandbox client key | Sandbox client key | Sandbox client key | Sandbox client key | 🔓 **Public** |
 | `CONVEX_DEPLOY_KEY` | GitHub Secrets | — | — | — | Used by CI | — | 🔒 **SECRET** |
 | `VERCEL_TOKEN` | GitHub Secrets | — | — | — | Used by CI | — | 🔒 **SECRET** |
 
-`MIDTRANS_IS_PRODUCTION` stays `"false"` in every environment for the
-competition. Cirquo uses **Midtrans Sandbox** throughout — we are not processing
-real money, and saying so plainly is more credible than implying otherwise.
-
-`MIDTRANS_CLIENT_KEY` is a public value that is nonetheless held server-side and
-handed to the browser by a Convex query. That way, switching sandbox↔production
-is a server-side change requiring no frontend rebuild.
+Cirquo currently calls the **Midtrans Sandbox** endpoint in source. The client
+key is public by design and is supplied as `VITE_MIDTRANS_CLIENT_KEY`; only
+`MIDTRANS_SERVER_KEY` belongs in Convex. A production environment switch is not
+implemented yet and must not be assumed from this matrix.
 
 ---
 
@@ -368,7 +362,8 @@ for `VITE_CONVEX_URL`.
 
 ### 6.2 GitHub Actions workflow
 
-`.github/workflows/ci.yml`:
+The following is a template for `.github/workflows/ci.yml`. It is **not
+committed** in this repository yet:
 
 ```yaml
 name: CI
@@ -409,18 +404,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Ledger immutability guard
-        run: |
-          echo "Checking Material Flow Ledger immutability..."
-          if grep -rEn 'db\.(patch|delete|replace)\([^)]*materialFlowLedger' convex/; then
-            echo "::error::The Material Flow Ledger is append-only."
-            echo "::error::Corrections must be compensating entries, never mutations."
-            exit 1
-          fi
-          if grep -rEn 'ctx\.db\.(patch|delete|replace)\(\s*ledger' convex/; then
-            echo "::error::Detected a mutating operation on a ledger document."
-            exit 1
-          fi
-          echo "OK: no mutating operations against materialFlowLedger."
+        run: bun scripts/check-ledger.ts
 
       - name: Terminology guard
         run: |
@@ -450,7 +434,8 @@ jobs:
         run: bun run build
         env:
           VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL }}
-          VITE_MAPBOX_TOKEN: ${{ vars.VITE_MAPBOX_TOKEN }}
+          VITE_MAPBOX_ACCESS_TOKEN: ${{ vars.VITE_MAPBOX_ACCESS_TOKEN }}
+          VITE_MIDTRANS_CLIENT_KEY: ${{ vars.VITE_MIDTRANS_CLIENT_KEY }}
 
       - name: Report bundle size
         run: |
@@ -524,7 +509,8 @@ rubber stamp — see [CONTRIBUTING.md](../project/CONTRIBUTING.md).
 | --- | --- | --- |
 | Secret | `CONVEX_DEPLOY_KEY` | From Convex dashboard → Settings → Deploy Keys |
 | Variable | `VITE_CONVEX_URL` | Production Convex URL |
-| Variable | `VITE_MAPBOX_TOKEN` | CI-restricted public Mapbox token |
+| Variable | `VITE_MAPBOX_ACCESS_TOKEN` | CI-restricted public Mapbox token |
+| Variable | `VITE_MIDTRANS_CLIENT_KEY` | Midtrans Sandbox client key |
 
 ---
 
@@ -772,11 +758,11 @@ event, not a material movement. Weight moves at `RESERVED` and `RESCUED`.
 | Snap JS | `app.sandbox.midtrans.com/snap/snap.js` | `app.midtrans.com/snap/snap.js` |
 | Dashboard | `dashboard.sandbox.midtrans.com` | `dashboard.midtrans.com` |
 | Money | None | Real |
-| Selected by | `MIDTRANS_IS_PRODUCTION="false"` | `MIDTRANS_IS_PRODUCTION="true"` |
+| Current source | Used by the current implementation | Not configured |
 
-**Cirquo uses Sandbox for the competition.** `MIDTRANS_IS_PRODUCTION` is
-`"false"` in every environment, including production. We are not processing real
-money, and stating that plainly is more credible than implying otherwise.
+**Cirquo uses Sandbox for the competition.** The current source calls the
+Sandbox endpoint directly; a production switch needs explicit implementation and
+verification before it can be documented as supported.
 
 ### 8.6 Testing locally
 
@@ -876,10 +862,9 @@ Infrastructure
 Environment
 [ ] VITE_CONVEX_URL set on Vercel Production = production Convex URL
 [ ] VITE_CONVEX_URL set on Vercel Preview = shared dev Convex URL
-[ ] VITE_MAPBOX_TOKEN set per environment, each URL-restricted
+[ ] VITE_MAPBOX_ACCESS_TOKEN set per environment, each URL-restricted
 [ ] MIDTRANS_SERVER_KEY set on Convex production
-[ ] MIDTRANS_CLIENT_KEY set on Convex production
-[ ] MIDTRANS_IS_PRODUCTION="false" on Convex production
+[ ] VITE_MIDTRANS_CLIENT_KEY set on the frontend host
 [ ] `bunx convex env list --prod` verified
 [ ] No secret is behind a VITE_ prefix — verified by grep of dist/
 

@@ -43,35 +43,23 @@ docs/
 
 ## Current Implementation Status
 
-**✅ Implemented (MVP foundation in place):**
+**✅ Implemented foundations (snapshot 2026-08-27):**
 
-- Folder structure: `src/`, `convex/`, `public/`, `docs/`
-- Convex schema with 5 tables: `users`, `merchants`, `surplusItems`, `orders`, `recoveryBatches`
-- Basic Convex queries (6 internal read-only functions, no mutations yet; expose only after M1 auth guards)
-- React Router with role-based layouts (Consumer, Merchant, Processor, Admin)
-- Placeholder UI components (shadcn/ui primitives + 3 custom commons)
-- Responsive mobile-first layout with Capacitor Android setup
-- Tailwind CSS v4 with OKLCH color tokens
-- Mock data in `src/constants/mock-data.ts` for development
+- 10-table Convex schema, including `sessions`, `authEvents`, `materialFlowLedger`, and `payments`
+- Session-based registration, login, logout, `auth.getCurrentUser`, role onboarding, and server-side guards
+- React Router role guards plus persisted session restoration for web and Capacitor Android
+- Dynamic Rescue Pricing and Merchant Rescue Item create, publish, edit, cancel, and reactive list functions
+- Consumer Mapbox discovery, reservation/order queries, and Midtrans Sandbox transaction/webhook code
+- Responsive Vite/React/Capacitor foundation and Tailwind CSS v4 tokens
 
-**🚧 In Progress:**
+**🚧 Still incomplete or requiring UAT:**
 
-- Complete documentation system (you're reading part of it)
+- Pickup confirmation and the complete Merchant fulfilment flow
+- Circular Routing, Processor intake/outcome, and lifecycle scheduling
+- Ledger-derived impact dashboards, notifications, and complete Admin operations
+- End-to-end web and Android verification for each implemented flow
 
-**📋 Planned (MVP required, not yet started):**
-
-- Material Flow Ledger implementation (core differentiator)
-- Dynamic Rescue Pricing algorithm
-- Circular Routing logic (unclaimed items → processor matching)
-- Authentication (session-based, role onboarding)
-- Payment integration (Midtrans Sandbox)
-- Map integration (Mapbox for discovery + geolocation)
-- Realtime subscriptions (Convex reactive queries)
-- Scheduled jobs (pricing updates, expiry checks, routing triggers)
-- Impact calculation module (kg rescued, kg diverted, CO2e estimation)
-- Notifications (new listings, reservation confirmed, pickup reminders)
-- QR code pickup verification
-- Admin moderation tools
+The current source, schema, and generated Convex API are authoritative. Design documents may describe the intended final contract beyond what is implemented.
 
 **❌ Explicitly out of MVP scope:**
 

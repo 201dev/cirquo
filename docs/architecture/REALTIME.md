@@ -19,7 +19,9 @@ Realtime is not decoration in this product. It is the mechanism by which two peo
 
 This document specifies how Convex reactivity works, every realtime surface in the product, how subscriptions are scoped, when optimistic updates are safe and when they are actively dangerous, offline and reconnection behaviour, the demo-critical moment, failure modes, and load projections.
 
-**Current state.** Six read-only Convex queries exist and are reactive by default. **No page is wired to them yet** — all nine pages read `src/constants/mock-data.ts`. Everything below marked 📋 is specification.
+**Current state — 2026-08-27.** Auth, Merchant Rescue Item, Consumer discovery,
+and order pages use reactive Convex queries. Some dashboards and later-role
+flows still use placeholder UI. Everything below marked 📋 is specification.
 
 ---
 

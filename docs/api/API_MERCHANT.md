@@ -8,8 +8,24 @@
 | **Backend** | Convex (`convex/surplusItems.ts`, `convex/orders.ts`, `convex/merchants.ts`, `convex/impact.ts`, `convex/recoveryBatches.ts`) |
 | **Verification gate** | All listing and fulfilment functions require `merchants.verificationStatus === 'verified'` |
 | **Status legend** | ✅ implemented · 📋 planned |
-| **Implemented today** | `merchants.getByOwner` ✅, `surplusItems.listByStatus` ✅ — everything else 📋 |
+| **Implemented today** | Merchant Rescue Item create, publish, update, cancel, and `listMine` are implemented with server-side ownership/verification guards. Processing-only, fulfilment, routing, and impact functions remain planned. |
 | **Conventions** | [`API.md`](./API.md) §7 units · §9 errors · §15 ledger contract |
+
+---
+
+> **Current implementation — 2026-08-27.** The compact reference below is
+> the current MVP contract. Sections marked 📋 later in this document are target
+> contracts and may contain fields or functions that do not yet exist.
+
+## Current MVP function reference
+
+| Function | Kind | Access | Current contract |
+|---|---|---|
+| `surplusItems.create` | mutation | Verified Merchant | Creates a `draft` from `{ name, description?, imageUrl?, originalPrice, floorPrice, currentPrice, initialQuantity, weightPerItemGrams, pickupStartAt, pickupEndAt, materialType, dietaryTags, sessionToken? }`; returns its ID. `processingOnly` is currently always `false`. |
+| `surplusItems.publish` | mutation | Verified owner | `{ id, sessionToken? }`; turns only a draft into `active` and appends exactly one `LISTED` event with `initialQuantity × weightPerItemGrams`. |
+| `surplusItems.update` | mutation | Verified owner | `{ id, ...partialFields, sessionToken? }`; rejects reserved items and records zero-weight `PRICE_ADJUSTED` only for an active price change. |
+| `surplusItems.cancel` | mutation | Verified owner | `{ id, sessionToken? }`; closes an untouched draft or active item. An active item appends negative `CANCELLED`; a draft appends nothing. |
+| `surplusItems.listMine` | query | Merchant | `{ sessionToken? }`; resolves ownership from the session and returns the Merchant's own summaries. Pending Merchants may read their history. |
 
 ---
 
@@ -35,7 +51,7 @@ Three invariants dominate this file:
 
 ---
 
-## 2. Function reference
+## 2. Target function reference
 
 ### `surplusItems.create` 📋
 **Type:** mutation · **Auth:** Merchant (verified) · **PRD ref:** MER-01
@@ -1307,13 +1323,13 @@ type MerchantRecoveryBatchSummary = {
 
 | Function | Kind | Auth | Ledger event | Priority | Status |
 |---|---|---|---|---|---|
-| `surplusItems.create` | mutation | Merchant (verified) | `LISTED` (if published) | **A** | 📋 |
+| `surplusItems.create` | mutation | Merchant (verified) | — (draft only) | **A** | ✅ |
 | `surplusItems.suggestPrice` | query | Merchant (verified) | — | B | 📋 |
-| `surplusItems.update` | mutation | Merchant (owner) | `PRICE_ADJUSTED` | B | 📋 |
-| `surplusItems.publish` | mutation | Merchant (owner) | `LISTED` | **A** | 📋 |
-| `surplusItems.cancel` | mutation | Merchant (owner) | `CANCELLED` | B | 📋 |
+| `surplusItems.update` | mutation | Merchant (owner) | `PRICE_ADJUSTED` when active price changes | B | ✅ |
+| `surplusItems.publish` | mutation | Merchant (owner) | `LISTED` | **A** | ✅ |
+| `surplusItems.cancel` | mutation | Merchant (owner) | `CANCELLED` for active items | B | ✅ |
 | `surplusItems.markProcessingOnly` | mutation | Merchant (owner) | `MODERATED` | B | 📋 |
-| `surplusItems.listMine` | query | Merchant | — | **A** | 📋 |
+| `surplusItems.listMine` | query | Merchant | — | **A** | ✅ |
 | `surplusItems.listByStatus` | query | Internal/Admin | — | — | ✅ |
 | `surplusItems.get` | query | Merchant (owner) | — | A | 📋 |
 | `orders.listForMerchant` | query | Merchant | — | **A** | 📋 |

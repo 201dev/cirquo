@@ -156,9 +156,9 @@ Full setup, troubleshooting, and the Android workflow: [`docs/engineering/DEVELO
 | Variable | Scope | Public? | Purpose |
 |---|---|---|---|
 | `VITE_CONVEX_URL` | Client | ⚠️ Yes | Convex deployment URL. Unset ⇒ placeholder mode |
-| `VITE_MAPBOX_TOKEN` | Client | ⚠️ Yes | Mapbox access token (scope and URL-restrict it) |
+| `VITE_MAPBOX_ACCESS_TOKEN` | Client | ⚠️ Yes | Mapbox access token (scope and URL-restrict it) |
 | `MIDTRANS_SERVER_KEY` | Convex | 🔒 No | Set via `bunx convex env set` — never in `.env` |
-| `MIDTRANS_CLIENT_KEY` | Convex | 🔒 No | Set via `bunx convex env set` |
+| `VITE_MIDTRANS_CLIENT_KEY` | Client | ⚠️ Yes | Midtrans Snap client key; public by design |
 
 **Anything prefixed `VITE_` is embedded in the client bundle and is therefore public.** Secrets belong in Convex environment variables only. See [`docs/security/SECURITY.md`](docs/security/SECURITY.md).
 
@@ -198,41 +198,42 @@ docs/             complete documentation system
 
 | Actor | Routes |
 |---|---|
-| Consumer | `/` · `/explore` · `/orders` |
+| Guest | `/welcome` · `/login` · `/register` |
+| Consumer | `/` · `/discover` · `/explore` · `/orders` · `/item/:id` · `/checkout/:orderId` |
 | Merchant | `/merchant` · `/merchant/surplus` · `/merchant/surplus/new` |
 | Processor | `/processor` · `/processor/recovery` |
-| Admin | `/admin` |
+| Admin | `/admin` · `/admin/ledger` |
 | Fallback | `*` |
 
-Planned routes (auth, listing detail, checkout, pickup verification, ledger audit, and more) are inventoried in [`docs/spec/USER_FLOW.md`](docs/spec/USER_FLOW.md).
+Route access is restored from the persisted session and checked by role. See [`src/app/router.tsx`](src/app/router.tsx) for the current route table and [`docs/architecture/FRONTEND.md`](docs/architecture/FRONTEND.md) for the architecture.
 
 ---
 
 ## Current Status
 
-**Version 0.1.0 — foundation scaffold.** Roughly 15% of the MVP.
+**Implementation snapshot — 2026-08-27.** Source code is the release-status authority; roadmap and API documents distinguish implemented functions from target contracts.
 
 **✅ In place**
 
 - Vite + Bun + TypeScript toolchain, oxlint
 - React Router with four role-scoped layouts
 - 17 shadcn/ui primitives plus `PageHeader`, `SummaryCard`, `RoleShell`
-- Convex schema with 5 tables and 10 indexes
-- 6 internal read-only Convex queries (kept non-public until M1 auth guards land)
-- 9 placeholder pages rendering mock data
+- Convex schema with 10 tables, including sessions, auth events, Material Flow Ledger, and payments
+- Session authentication, role onboarding, persisted token restoration, and role-specific route guards
+- Merchant Rescue Item draft, publish, edit, cancellation, and reactive list flows with ledger writes
+- Consumer Mapbox discovery, reservation, order views, and Midtrans Sandbox transaction/webhook integration
 - Capacitor Android configured (`com.cirquo.app`), PWA manifest and service worker
 - Tailwind v4 OKLCH design tokens, Geist Variable font
-- Complete documentation system (38 documents)
+- Documentation system; implementation notes are being kept in sync with source
 
 **📋 Not yet built**
 
-- Material Flow Ledger table and write path
-- All mutations — nothing can currently be written
-- Authentication and role onboarding
-- Mapbox, Midtrans, scheduled functions
-- Impact calculation, notifications, QR pickup, admin tooling
+- Processor intake and outcome logging
+- Full Circular Routing and lifecycle scheduling
+- Pickup confirmation and complete Merchant fulfilment flow
+- Ledger-derived impact aggregation, notifications, and complete Admin operations
 
-Dashboard figures shown today are hardcoded placeholders. Honest status per feature: [`docs/spec/FEATURES.md`](docs/spec/FEATURES.md). Delivery plan: [`docs/business/ROADMAP.md`](docs/business/ROADMAP.md).
+Some dashboards and role surfaces remain placeholders. Verify the relevant Convex function and UAT before presenting any dashboard figure as real. Delivery plan: [`docs/business/ROADMAP.md`](docs/business/ROADMAP.md).
 
 ---
 

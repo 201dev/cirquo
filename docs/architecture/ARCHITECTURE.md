@@ -234,7 +234,7 @@ graph LR
         PR["providers.tsx<br/>ConvexProvider + Toaster"]
         LC["ConsumerLayout<br/>header + bottom nav"]
         LR2["RoleShell<br/>sidebar / Sheet"]
-        PG["Pages<br/>9 placeholder screens"]
+        PG["Pages<br/>role screens; some placeholders"]
         UI["components/ui<br/>17 shadcn primitives"]
         CM["components/common<br/>PageHeader, SummaryCard"]
     end
@@ -298,7 +298,7 @@ graph LR
 | `src/layouts/{Merchant,Processor,Admin}Layout.tsx` | Thin wrappers over `RoleShell` | ✅ |
 | `src/components/ui/*` | 17 shadcn/ui primitives (new-york, neutral) | ✅ |
 | `src/components/common/{PageHeader,SummaryCard}.tsx` | Shared page furniture | ✅ |
-| `src/constants/mock-data.ts` | Placeholder data for the 9 screens | ✅ |
+| `src/constants/mock-data.ts` | Remaining placeholder data; must not back completed flows | 🚧 |
 | `src/types/domain.ts` | Mirrors the Convex schema for client typing | ✅ |
 | `src/types/navigation.ts` | `NavigationItem` | ✅ |
 | `src/lib/convex.ts` | Conditional client construction | ✅ |
@@ -750,10 +750,10 @@ Cirquo uses **Midtrans Sandbox in every environment**, including the demo. Handl
 
 | Variable | Consumer | Present today | Notes |
 | --- | --- | --- | --- |
-| `VITE_CONVEX_URL` | Frontend | ✅ Yes — the only env var | When unset, `providers.tsx` falls back to **no-backend placeholder mode** so the UI is demoable without a backend |
-| `VITE_MAPBOX_TOKEN` | Frontend | 📋 Planned | Public token, URL-restricted |
-| `MIDTRANS_SERVER_KEY` | Convex action + webhook | 📋 Planned | **Server-side only**, never in the bundle |
-| `MIDTRANS_CLIENT_KEY` | Frontend (Snap) | 📋 Planned | Public by design |
+| `VITE_CONVEX_URL` | Frontend | ✅ | When unset, the provider falls back to **no-backend placeholder mode** for UI work |
+| `VITE_MAPBOX_ACCESS_TOKEN` | Frontend | ✅ | Public token, URL-restricted |
+| `MIDTRANS_SERVER_KEY` | Convex action + webhook | ✅ | **Server-side only**, never in the bundle |
+| `VITE_MIDTRANS_CLIENT_KEY` | Frontend (Snap) | ✅ | Public by design |
 
 The conditional-provider pattern is a deliberate resilience feature: a judge can run `bun dev` with no `.env` at all and still see every screen.
 

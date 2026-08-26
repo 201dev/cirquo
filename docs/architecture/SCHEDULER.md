@@ -19,7 +19,9 @@ Scheduled jobs are what make the platform's central promise true: **every kilogr
 
 This document specifies every job, its schedule, its idempotency guarantee, its ledger emissions, its failure behaviour, and the ordering dependencies between jobs.
 
-**Current state.** `convex/crons.ts` **does not exist**. There are no scheduled jobs, no `ctx.scheduler` calls, and no sweeps. Everything below is specification (📋).
+**Current state — 2026-08-27.** `convex/crons.ts` does not exist and there are
+no recurring sweeps. `orders.reserve` does use `ctx.scheduler.runAfter` for the
+15-minute reservation hold. Everything below marked 📋 is specification.
 
 ---
 
