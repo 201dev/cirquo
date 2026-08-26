@@ -25,19 +25,19 @@ const categoryShortcuts = [
     label: "Roti & pastry",
     description: "Paket bakery hari ini",
     image: bakeryImage,
-    href: "/explore?category=bakery",
+    href: "/discover?category=bakery",
   },
   {
     label: "Siap santap",
     description: "Menu makan lengkap",
     image: mealImage,
-    href: "/explore?category=meal",
+    href: "/discover?category=meal",
   },
   {
     label: "Sayur & buah",
     description: "Segar dan layak konsumsi",
     image: produceImage,
-    href: "/explore?category=produce",
+    href: "/discover?category=produce",
   },
 ];
 
@@ -53,7 +53,7 @@ export default function ConsumerHomePage() {
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    navigate(`/explore${query ? `?q=${encodeURIComponent(query)}` : ""}`);
+    navigate(`/discover${query ? `?q=${encodeURIComponent(query)}` : ""}`);
   }
 
   return (
@@ -157,7 +157,7 @@ export default function ConsumerHomePage() {
             </p>
           </div>
           <Button asChild variant="ghost" className="hidden sm:inline-flex">
-            <Link to="/explore">
+            <Link to="/discover">
               Lihat semua <ArrowRight aria-hidden="true" />
             </Link>
           </Button>
@@ -170,7 +170,7 @@ export default function ConsumerHomePage() {
             ))}
         </div>
         <Button asChild variant="outline" className="mt-5 w-full sm:hidden">
-          <Link to="/explore">
+          <Link to="/discover">
             Lihat semua Rescue Item <ArrowRight aria-hidden="true" />
           </Link>
         </Button>

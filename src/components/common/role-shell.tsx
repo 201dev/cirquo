@@ -56,7 +56,7 @@ export function RoleShell({ roleLabel, navigation, children }: RoleShellProps) {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/login");
+    navigate("/login", { replace: true });
   };
   return (
     <div className="min-h-svh bg-muted/35">
@@ -78,12 +78,6 @@ export function RoleShell({ roleLabel, navigation, children }: RoleShellProps) {
             <p className="mt-1 text-xs text-muted-foreground">
               {user?.email ?? 'Semarang · Indonesia'}
             </p>
-            <NavLink
-              to="/"
-              className="mt-3 inline-flex min-h-10 items-center text-xs font-semibold text-primary"
-            >
-              Lihat sisi consumer →
-            </NavLink>
           </div>
           <Button
             variant="ghost"

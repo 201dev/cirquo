@@ -4,27 +4,37 @@ import {
   Compass,
   Home,
   Leaf,
+  LogOut,
   MapPin,
   ShoppingBag,
 } from "lucide-react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { AppLogo } from "@/components/common/app-logo";
 import { DemoNotice } from "@/components/common/demo-notice";
 import { PageLoader } from "@/components/common/page-loader";
 import { RouteFocus } from "@/components/common/route-focus";
 import { ThemeToggle } from "@/components/common/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { href: "/", label: "Beranda", icon: Home, end: true },
-  { href: "/explore", label: "Jelajah", icon: Compass },
+  { href: "/discover", label: "Jelajah", icon: Compass },
   { href: "/orders", label: "Pesanan", icon: ShoppingBag },
   { href: "/impact", label: "Dampak", icon: Leaf },
   { href: "/profile", label: "Profil", icon: CircleUserRound },
 ];
 
 export function ConsumerLayout() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login", { replace: true });
+  };
+
   return (
     <div className="min-h-svh bg-background">
       <RouteFocus />
@@ -66,6 +76,14 @@ export function ConsumerLayout() {
             <span className="truncate">Tembalang, Semarang</span>
           </Button>
           <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Keluar"
+            onClick={handleLogout}
+          >
+            <LogOut aria-hidden="true" />
+          </Button>
         </div>
       </header>
       <main
