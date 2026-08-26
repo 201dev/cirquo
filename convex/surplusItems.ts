@@ -1,5 +1,6 @@
 import { internalQuery, mutation, query } from './_generated/server'
 import { v, ConvexError } from 'convex/values'
+import type { Doc } from './_generated/dataModel'
 import { rescueItemStatus, materialType } from './schema'
 import { requireVerifiedMerchant, requireOwnership, requireRole } from './lib/guards'
 import { recordLedgerEvent } from './lib/ledger'
@@ -28,16 +29,35 @@ const surplusItemInputArgs = {
   sessionToken: v.optional(v.string()),
 }
 
-type SurplusItemFields = {
-  name: string
-  description?: string
-  originalPrice: number
-  floorPrice: number
-  currentPrice: number
-  initialQuantity: number
-  weightPerItemGrams: number
-  pickupStartAt: number
-  pickupEndAt: number
+type SurplusItemFields = Pick<
+  Doc<'surplusItems'>,
+  | 'name'
+  | 'description'
+  | 'imageUrl'
+  | 'originalPrice'
+  | 'floorPrice'
+  | 'currentPrice'
+  | 'initialQuantity'
+  | 'weightPerItemGrams'
+  | 'pickupStartAt'
+  | 'pickupEndAt'
+  | 'materialType'
+  | 'dietaryTags'
+>
+
+const surplusItemUpdateArgs = {
+  name: v.optional(v.string()),
+  description: v.optional(v.string()),
+  imageUrl: v.optional(v.string()),
+  originalPrice: v.optional(v.number()),
+  floorPrice: v.optional(v.number()),
+  currentPrice: v.optional(v.number()),
+  initialQuantity: v.optional(v.number()),
+  weightPerItemGrams: v.optional(v.number()),
+  pickupStartAt: v.optional(v.number()),
+  pickupEndAt: v.optional(v.number()),
+  materialType: v.optional(materialType),
+  dietaryTags: v.optional(v.array(v.string())),
 }
 
 function validateItemFields(args: SurplusItemFields) {
@@ -123,7 +143,11 @@ export const publish = mutation({
 })
 
 export const update = mutation({
-  args: { id: v.id('surplusItems'), ...surplusItemInputArgs },
+  args: {
+    id: v.id('surplusItems'),
+    ...surplusItemUpdateArgs,
+    sessionToken: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const user = await requireRole(ctx, args.sessionToken, ['merchant'])
     const merchant = await requireVerifiedMerchant(ctx, user)
@@ -135,35 +159,55 @@ export const update = mutation({
     if (item.status !== 'draft' && item.status !== 'active') throw new ConvexError('Hanya draft dan active yang dapat diubah')
     if (item.remainingQuantity !== item.initialQuantity) throw new ConvexError('ALREADY_RESERVED')
     
-    // Validasi field sesuai aturan
-    validateItemFields(args)
+    const nextItem: SurplusItemFields = {
+      name: args.name ?? item.name,
+      description: args.description ?? item.description,
+      imageUrl: args.imageUrl ?? item.imageUrl,
+      originalPrice: args.originalPrice ?? item.originalPrice,
+      floorPrice: args.floorPrice ?? item.floorPrice,
+      currentPrice: args.currentPrice ?? item.currentPrice,
+      initialQuantity: args.initialQuantity ?? item.initialQuantity,
+      weightPerItemGrams: args.weightPerItemGrams ?? item.weightPerItemGrams,
+      pickupStartAt: args.pickupStartAt ?? item.pickupStartAt,
+      pickupEndAt: args.pickupEndAt ?? item.pickupEndAt,
+      materialType: args.materialType ?? item.materialType,
+      dietaryTags: args.dietaryTags ?? item.dietaryTags,
+    }
+    const hasChanges =
+      nextItem.name !== item.name ||
+      nextItem.description !== item.description ||
+      nextItem.imageUrl !== item.imageUrl ||
+      nextItem.originalPrice !== item.originalPrice ||
+      nextItem.floorPrice !== item.floorPrice ||
+      nextItem.currentPrice !== item.currentPrice ||
+      nextItem.initialQuantity !== item.initialQuantity ||
+      nextItem.weightPerItemGrams !== item.weightPerItemGrams ||
+      nextItem.pickupStartAt !== item.pickupStartAt ||
+      nextItem.pickupEndAt !== item.pickupEndAt ||
+      nextItem.materialType !== item.materialType ||
+      nextItem.dietaryTags.length !== item.dietaryTags.length ||
+      nextItem.dietaryTags.some((tag, index) => tag !== item.dietaryTags[index])
+    if (!hasChanges) throw new ConvexError('EMPTY_UPDATE')
 
-    if (item.status === 'active') {
-      if (args.floorPrice > item.floorPrice) throw new ConvexError('Floor price hanya boleh diturunkan')
-      if (args.pickupStartAt !== item.pickupStartAt || args.pickupEndAt < item.pickupEndAt) {
-        throw new ConvexError('Waktu pickup hanya boleh diperpanjang (end diperpanjang, start tidak berubah)')
-      }
-      if (args.initialQuantity !== item.initialQuantity) throw new ConvexError('Jumlah tidak boleh diubah jika sudah aktif')
-      if (args.weightPerItemGrams !== item.weightPerItemGrams) throw new ConvexError('Berat tidak boleh diubah jika sudah aktif')
-      if (args.materialType !== item.materialType) throw new ConvexError('Tipe material tidak boleh diubah jika sudah aktif')
+    validateItemFields(nextItem)
+    if (nextItem.floorPrice > item.floorPrice) {
+      throw new ConvexError('Floor price hanya boleh diturunkan')
     }
 
-    const priceChanged = item.status === 'active' && args.currentPrice !== item.currentPrice
+    if (item.status === 'active') {
+      if (nextItem.pickupStartAt !== item.pickupStartAt || nextItem.pickupEndAt < item.pickupEndAt) {
+        throw new ConvexError('Waktu pickup hanya boleh diperpanjang (end diperpanjang, start tidak berubah)')
+      }
+      if (nextItem.initialQuantity !== item.initialQuantity) throw new ConvexError('Jumlah tidak boleh diubah jika sudah aktif')
+      if (nextItem.weightPerItemGrams !== item.weightPerItemGrams) throw new ConvexError('Berat tidak boleh diubah jika sudah aktif')
+      if (nextItem.materialType !== item.materialType) throw new ConvexError('Tipe material tidak boleh diubah jika sudah aktif')
+    }
+
+    const priceChanged = item.status === 'active' && nextItem.currentPrice !== item.currentPrice
 
     await ctx.db.patch(item._id, {
-      name: args.name,
-      description: args.description,
-      imageUrl: args.imageUrl,
-      originalPrice: args.originalPrice,
-      floorPrice: args.floorPrice,
-      currentPrice: args.currentPrice,
-      initialQuantity: args.initialQuantity,
-      remainingQuantity: args.initialQuantity,
-      weightPerItemGrams: args.weightPerItemGrams,
-      pickupStartAt: args.pickupStartAt,
-      pickupEndAt: args.pickupEndAt,
-      materialType: args.materialType,
-      dietaryTags: args.dietaryTags,
+      ...nextItem,
+      remainingQuantity: nextItem.initialQuantity,
     })
 
     if (priceChanged) {
@@ -175,8 +219,8 @@ export const update = mutation({
         actorRole: 'merchant',
         metadata: {
           previousPrice: item.currentPrice,
-          newPrice: args.currentPrice,
-          floorPrice: args.floorPrice,
+          newPrice: nextItem.currentPrice,
+          floorPrice: nextItem.floorPrice,
           trigger: 'merchant_edit'
         }
       })
@@ -194,8 +238,10 @@ export const cancel = mutation({
     if (!item) throw new ConvexError('NOT_FOUND')
     requireOwnership(user, merchant.ownerId, item)
     if (item.merchantId !== merchant._id) throw new ConvexError('FORBIDDEN')
+    if (item.status !== 'draft' && item.status !== 'active') {
+      throw new ConvexError('Hanya draft dan active yang dapat dibatalkan')
+    }
     if (item.remainingQuantity !== item.initialQuantity) throw new ConvexError('ALREADY_RESERVED')
-    if (item.status === 'closed') throw new ConvexError('Sudah dibatalkan')
 
     const wasActive = item.status === 'active'
 

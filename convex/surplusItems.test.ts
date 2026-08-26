@@ -181,3 +181,144 @@ test("Merchant yang belum terverifikasi tidak dapat membuat Rescue Item", async 
     }),
   ).rejects.toThrow("Profil Merchant belum terverifikasi");
 });
+
+test("edit dan cancel menjaga lock reservasi serta Material Flow Ledger", async () => {
+  const t = convexTest(schema, modules);
+  const now = Date.now();
+  const sessionToken = "e".repeat(43);
+
+  await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", {
+      name: "Merchant Editor",
+      email: "merchant.editor.m203@example.com",
+      passwordHash: "test-password-hash",
+      role: "merchant",
+      status: "active",
+      createdAt: now,
+    });
+
+    await ctx.db.insert("merchants", {
+      ownerId: userId,
+      name: "Roti Editor",
+      address: "Jl. Gajah Mada, Semarang",
+      verificationStatus: "verified",
+      createdAt: now,
+    });
+
+    await ctx.db.insert("sessions", {
+      userId,
+      tokenHash: await hashSessionToken(sessionToken),
+      expiresAt: now + HOUR_MS,
+      createdAt: now,
+    });
+  });
+
+  const createArgs = {
+    name: "Roti M2-03",
+    originalPrice: 20_000,
+    floorPrice: 8_000,
+    currentPrice: 12_000,
+    initialQuantity: 3,
+    weightPerItemGrams: 450,
+    pickupStartAt: now + HOUR_MS,
+    pickupEndAt: now + 3 * HOUR_MS,
+    materialType: "bakery" as const,
+    dietaryTags: [],
+    sessionToken,
+  };
+
+  const draftId = await t.mutation(api.surplusItems.create, createArgs);
+  await t.mutation(api.surplusItems.update, {
+    id: draftId,
+    name: "Roti M2-03 diperbarui",
+    sessionToken,
+  });
+  expect(await t.run((ctx) => ctx.db.get(draftId))).toMatchObject({
+    name: "Roti M2-03 diperbarui",
+  });
+
+  await expect(
+    t.mutation(api.surplusItems.update, { id: draftId, sessionToken }),
+  ).rejects.toThrow("EMPTY_UPDATE");
+  await expect(
+    t.mutation(api.surplusItems.update, {
+      id: draftId,
+      floorPrice: 9_000,
+      sessionToken,
+    }),
+  ).rejects.toThrow("Floor price hanya boleh diturunkan");
+
+  await t.mutation(api.surplusItems.cancel, { id: draftId, sessionToken });
+  expect(await t.run((ctx) => ctx.db.get(draftId))).toMatchObject({
+    status: "closed",
+  });
+  expect(
+    await t.run((ctx) =>
+      ctx.db
+        .query("materialFlowLedger")
+        .withIndex("by_rescue_item", (index) =>
+          index.eq("surplusItemId", draftId),
+        )
+        .collect(),
+    ),
+  ).toEqual([]);
+
+  const activeId = await t.mutation(api.surplusItems.create, createArgs);
+  await t.mutation(api.surplusItems.publish, { id: activeId, sessionToken });
+  await t.mutation(api.surplusItems.update, {
+    id: activeId,
+    currentPrice: 11_000,
+    sessionToken,
+  });
+  await expect(
+    t.mutation(api.surplusItems.update, {
+      id: activeId,
+      currentPrice: 7_000,
+      sessionToken,
+    }),
+  ).rejects.toThrow("Harga tidak memenuhi batasan");
+  await expect(
+    t.mutation(api.surplusItems.update, {
+      id: activeId,
+      pickupEndAt: now + 2 * HOUR_MS,
+      sessionToken,
+    }),
+  ).rejects.toThrow("Waktu pickup hanya boleh diperpanjang");
+
+  await t.mutation(api.surplusItems.cancel, { id: activeId, sessionToken });
+  const activeEvents = await t.run((ctx) =>
+    ctx.db
+      .query("materialFlowLedger")
+      .withIndex("by_rescue_item", (index) =>
+        index.eq("surplusItemId", activeId),
+      )
+      .collect(),
+  );
+  expect(activeEvents).toMatchObject([
+    { eventType: "LISTED", weightDeltaGrams: 1_350 },
+    {
+      eventType: "PRICE_ADJUSTED",
+      weightDeltaGrams: 0,
+      metadata: JSON.stringify({
+        previousPrice: 12_000,
+        newPrice: 11_000,
+        floorPrice: 8_000,
+        trigger: "merchant_edit",
+      }),
+    },
+    { eventType: "CANCELLED", weightDeltaGrams: -1_350 },
+  ]);
+
+  const reservedId = await t.mutation(api.surplusItems.create, createArgs);
+  await t.run((ctx) => ctx.db.patch(reservedId, { remainingQuantity: 2 }));
+  await expect(
+    t.mutation(api.surplusItems.update, {
+      id: reservedId,
+      name: "Tidak boleh diubah",
+      sessionToken,
+    }),
+  ).rejects.toThrow("ALREADY_RESERVED");
+  await expect(
+    t.mutation(api.surplusItems.cancel, { id: reservedId, sessionToken }),
+  ).rejects.toThrow("ALREADY_RESERVED");
+});
