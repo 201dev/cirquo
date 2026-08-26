@@ -16,14 +16,22 @@ import { resolveAuth } from "../convex/lib/guards";
 import { generateSessionToken } from "../convex/lib/tokens";
 import { clearToken, loadToken, saveToken } from "../src/lib/auth-storage";
 import { getAppError } from "../src/lib/errors";
-import { homeForRole } from "../src/lib/role-home";
+import { homeForRole, safeReturnTo } from "../src/lib/role-home";
 
 describe("validasi akun", () => {
   test("setiap peran memiliki halaman tujuan yang aman", () => {
-    expect(homeForRole("consumer")).toBe("/");
+    expect(homeForRole("consumer")).toBe("/discover");
     expect(homeForRole("merchant")).toBe("/merchant");
     expect(homeForRole("processor")).toBe("/processor");
     expect(homeForRole("admin")).toBe("/admin");
+  });
+
+  test("returnTo hanya menerima path internal", () => {
+    expect(safeReturnTo("/merchant/surplus?status=draft")).toBe(
+      "/merchant/surplus?status=draft",
+    );
+    expect(safeReturnTo("https://contoh.test")).toBeNull();
+    expect(safeReturnTo("//contoh.test")).toBeNull();
   });
 
   test("token sesi web bertahan sampai logout", async () => {

@@ -28,7 +28,7 @@ export default function ItemDetailPage() {
       <div className="py-16 text-center">
         <h1 className="text-2xl font-semibold">Rescue Item tidak ditemukan</h1>
         <Button asChild className="mt-5">
-          <Link to="/explore">Kembali menjelajah</Link>
+          <Link to="/discover">Kembali menjelajah</Link>
         </Button>
       </div>
     );
@@ -38,7 +38,7 @@ export default function ItemDetailPage() {
   return (
     <div className="-mt-2 pb-20 sm:pb-0">
       <Button asChild variant="ghost" className="mb-4 -ml-3">
-        <Link to="/explore">
+        <Link to="/discover">
           <ArrowLeft />
           Kembali
         </Link>

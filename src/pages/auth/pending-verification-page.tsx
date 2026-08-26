@@ -2,6 +2,7 @@ import { Clock, ShieldCheck, ShieldX, AlertTriangle } from "lucide-react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
+import { homeForRole } from "@/lib/role-home";
 
 const statusConfig = {
   pending: {
@@ -57,7 +58,7 @@ export default function PendingVerificationPage() {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/login");
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -102,8 +103,12 @@ export default function PendingVerificationPage() {
       )}
 
       <div className="mt-8 flex flex-col gap-3">
-        <Button size="lg" className="w-full" onClick={() => navigate("/")}>
-          Jelajah sebagai Consumer
+        <Button
+          size="lg"
+          className="w-full"
+          onClick={() => navigate(homeForRole(user.role))}
+        >
+          Kembali ke ringkasan
         </Button>
         <Button
           variant="ghost"

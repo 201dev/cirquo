@@ -1,8 +1,12 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context";
 import { PageLoader } from "@/components/common/page-loader";
-import { homeForRole } from "@/lib/role-home";
+import { homeForRole, safeReturnTo } from "@/lib/role-home";
 import type { UserRole } from "@/types/domain";
+
+function loginRoute(pathname: string, search: string) {
+  return `/login?returnTo=${encodeURIComponent(`${pathname}${search}`)}`;
+}
 
 /**
  * Wraps routes that require authentication.
@@ -18,7 +22,7 @@ export function ProtectedRoute() {
   if (!isAuthenticated) {
     return (
       <Navigate
-        to={`/login?returnTo=${encodeURIComponent(location.pathname)}`}
+        to={loginRoute(location.pathname, location.search)}
         replace
       />
     );
@@ -31,7 +35,13 @@ export function ProtectedRoute() {
  * Wraps role-specific routes. The client guard is for navigation UX only;
  * Convex guards remain the authorization boundary.
  */
-export function RoleRoute({ role }: { role: UserRole }) {
+export function RoleRoute({
+  role,
+  requiresVerified = false,
+}: {
+  role: UserRole;
+  requiresVerified?: boolean;
+}) {
   const { user, isLoading, isAuthenticated } = useAuth();
   const location = useLocation();
 
@@ -40,13 +50,20 @@ export function RoleRoute({ role }: { role: UserRole }) {
   if (!isAuthenticated || !user) {
     return (
       <Navigate
-        to={`/login?returnTo=${encodeURIComponent(location.pathname)}`}
+        to={loginRoute(location.pathname, location.search)}
         replace
       />
     );
   }
 
   if (user.role !== role) return <Navigate to={homeForRole(user.role)} replace />;
+
+  if (requiresVerified && role !== "consumer" && role !== "admin") {
+    if (!user.profile) return <Navigate to={`/${role}/onboarding`} replace />;
+    if (user.profile.verificationStatus !== "verified") {
+      return <Navigate to="/pending-verification" replace />;
+    }
+  }
 
   return <Outlet />;
 }
@@ -69,6 +86,7 @@ export function GuestRoute() {
 
 export function PostAuthRoute() {
   const { user, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
@@ -82,5 +100,9 @@ export function PostAuthRoute() {
     }
   }
 
-  return <Navigate to={homeForRole(user.role)} replace />;
+  const returnTo = safeReturnTo(
+    new URLSearchParams(location.search).get("returnTo"),
+  );
+
+  return <Navigate to={returnTo ?? homeForRole(user.role)} replace />;
 }

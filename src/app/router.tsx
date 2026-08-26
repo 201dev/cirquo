@@ -118,6 +118,7 @@ export const router = createBrowserRouter([
         element: <ConsumerLayout />,
         children: [
           { index: true, element: <ConsumerHomePage /> },
+          { path: "discover", element: <ExplorePage /> },
           { path: "explore", element: <ExplorePage /> },
           { path: "orders", element: <OrdersPage /> },
           { path: "orders/:id", element: <OrderDetailPage /> },
@@ -139,10 +140,15 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <MerchantDashboardPage /> },
           { path: "surplus", element: <MerchantSurplusPage /> },
-          { path: "surplus/new", element: <CreateSurplusPage /> },
-          { path: "surplus/:id", element: <SurplusDetailPage /> },
-          { path: "pickup", element: <PickupPage /> },
           { path: "impact", element: <MerchantImpactPage /> },
+          {
+            element: <RoleRoute role="merchant" requiresVerified />,
+            children: [
+              { path: "surplus/new", element: <CreateSurplusPage /> },
+              { path: "surplus/:id", element: <SurplusDetailPage /> },
+              { path: "pickup", element: <PickupPage /> },
+            ],
+          },
         ],
       },
     ],
@@ -157,9 +163,14 @@ export const router = createBrowserRouter([
         element: <ProcessorLayout />,
         children: [
           { index: true, element: <ProcessorDashboardPage /> },
-          { path: "recovery", element: <RecoveryPage /> },
-          { path: "recovery/:id", element: <RecoveryDetailPage /> },
           { path: "history", element: <ProcessorHistoryPage /> },
+          {
+            element: <RoleRoute role="processor" requiresVerified />,
+            children: [
+              { path: "recovery", element: <RecoveryPage /> },
+              { path: "recovery/:id", element: <RecoveryDetailPage /> },
+            ],
+          },
         ],
       },
     ],

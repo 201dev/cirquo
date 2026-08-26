@@ -1,6 +1,6 @@
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/auth-context";
 import { getAppError } from "@/lib/errors";
 import { isConvexConfigured } from "@/lib/convex";
+import { safeReturnTo } from "@/lib/role-home";
 import { loginSchema } from "@/lib/validations";
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -21,6 +22,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const login = useAction(api.auth.login);
   const { setSession } = useAuth();
 
@@ -38,7 +40,15 @@ function LoginForm() {
     try {
       const result = await login(data);
       await setSession(result.sessionToken);
-      navigate("/auth/continue", { replace: true });
+      const returnTo = safeReturnTo(
+        new URLSearchParams(location.search).get("returnTo"),
+      );
+      navigate(
+        returnTo
+          ? `/auth/continue?returnTo=${encodeURIComponent(returnTo)}`
+          : "/auth/continue",
+        { replace: true },
+      );
     } catch (error: unknown) {
       const appError = getAppError(
         error,
