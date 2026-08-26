@@ -12,9 +12,57 @@ import {
   validateProcessorProfile,
 } from "../convex/lib/profiles";
 import { hashPassword, verifyPassword } from "../convex/lib/password";
+import { resolveAuth } from "../convex/lib/guards";
+import { generateSessionToken } from "../convex/lib/tokens";
+import { clearToken, loadToken, saveToken } from "../src/lib/auth-storage";
 import { getAppError } from "../src/lib/errors";
 
 describe("validasi akun", () => {
+  test("token sesi web bertahan sampai logout", async () => {
+    const originalStorage = Object.getOwnPropertyDescriptor(
+      globalThis,
+      "localStorage",
+    );
+    const values = new Map<string, string>();
+
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => values.delete(key),
+      },
+    });
+
+    try {
+      await saveToken("test-session-token");
+      expect(await loadToken()).toBe("test-session-token");
+
+      await clearToken();
+      expect(await loadToken()).toBeNull();
+    } finally {
+      if (originalStorage) {
+        Object.defineProperty(globalThis, "localStorage", originalStorage);
+      } else {
+        delete (globalThis as { localStorage?: unknown }).localStorage;
+      }
+    }
+  });
+
+  test("sesi kedaluwarsa tidak dipulihkan", async () => {
+    const context = {
+      db: {
+        query: () => ({
+          withIndex: () => ({
+            unique: async () => ({ expiresAt: Date.now() - 1 }),
+          }),
+        }),
+      },
+    };
+
+    expect(await resolveAuth(context as never, generateSessionToken())).toBeNull();
+  });
+
   test("menolak kata sandi di bawah 10 karakter", () => {
     const result = registerSchema.safeParse({
       name: "Zaki",
