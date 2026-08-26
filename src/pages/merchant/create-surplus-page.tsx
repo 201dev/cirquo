@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, Calculator, ImagePlus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowLeft, Calculator } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -28,15 +28,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { formatIdr } from "@/constants/mock-data";
-import { type MaterialType, suggestRescuePrice } from "@/lib/pricing";
-
-const categories = [
-  { value: "bakery", label: "Roti & pastry" },
-  { value: "ready_meal", label: "Makanan siap santap" },
-  { value: "produce", label: "Sayur & buah" },
-  { value: "grocery", label: "Bahan pangan" },
-] as const;
+import { getAppError } from "@/lib/errors";
+import { MATERIAL_TYPES, suggestRescuePrice } from "@/lib/pricing";
 
 const materialTypes = [
   { value: "prepared_food", label: "Makanan matang" },
@@ -56,28 +49,27 @@ const dietaryOptions = [
   { value: "nut-free", label: "Bebas kacang" },
 ] as const;
 
+const formatIdr = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0,
+}).format;
+
 const schema = z
   .object({
-    name: z.string().min(3, "Nama minimal 3 karakter."),
-    description: z
+    name: z
       .string()
-      .min(10, "Jelaskan isi dan kondisi paket minimal 10 karakter."),
-    category: z.enum(["bakery", "ready_meal", "produce", "grocery"]),
-    materialType: z.enum([
-      "prepared_food",
-      "bakery",
-      "produce",
-      "dairy",
-      "protein",
-      "dry_goods",
-      "mixed",
-    ]),
+      .min(2, "Nama minimal 2 karakter.")
+      .max(120, "Nama maksimal 120 karakter."),
+    description: z.string().max(500, "Deskripsi maksimal 500 karakter."),
+    imageUrl: z.string().url("Masukkan URL gambar yang valid.").or(z.literal("")),
+    materialType: z.enum(MATERIAL_TYPES),
     dietaryTags: z.array(z.string()),
     quantity: z.number().int().min(1, "Jumlah minimal 1 unit."),
-    weight: z.number().int().min(50, "Berat minimal 50 gram."),
-    originalPrice: z.number().int().min(1000, "Harga minimal Rp1.000."),
-    floorPrice: z.number().int().min(5000, "Floor price minimal Rp5.000."),
-    rescuePrice: z.number().int().min(500, "Harga rescue minimal Rp500."),
+    weight: z.number().int().min(1, "Berat minimal 1 gram."),
+    originalPrice: z.number().int().min(1, "Harga awal minimal Rp1."),
+    floorPrice: z.number().int().min(1, "Floor price minimal Rp1."),
+    rescuePrice: z.number().int().min(1, "Harga rescue minimal Rp1."),
     pickupStart: z.string().min(1, "Waktu mulai wajib diisi."),
     pickupEnd: z.string().min(1, "Waktu selesai wajib diisi."),
   })
@@ -100,7 +92,72 @@ const schema = z
   .refine((data) => toTimestamp(data.pickupStart) > Date.now(), {
     path: ["pickupStart"],
     message: "Waktu mulai harus setelah waktu sekarang.",
-  });
+  })
+  .refine(
+    (data) =>
+      toTimestamp(data.pickupEnd) - toTimestamp(data.pickupStart) <=
+      72 * 60 * 60 * 1_000,
+    {
+      path: ["pickupEnd"],
+      message: "Waktu pickup maksimal 72 jam.",
+    },
+  );
+
+const serverFieldMap = {
+  name: "name",
+  description: "description",
+  imageUrl: "imageUrl",
+  materialType: "materialType",
+  dietaryTags: "dietaryTags",
+  originalPrice: "originalPrice",
+  floorPrice: "floorPrice",
+  currentPrice: "rescuePrice",
+  initialQuantity: "quantity",
+  weightPerItemGrams: "weight",
+  pickupStartAt: "pickupStart",
+  pickupEndAt: "pickupEnd",
+} as const;
+
+type FormValues = z.infer<typeof schema>;
+type SubmitAction = "draft" | "publish";
+
+function getSubmitAction(event: unknown): SubmitAction {
+  return event instanceof SubmitEvent && event.submitter?.getAttribute("value") === "publish"
+    ? "publish"
+    : "draft";
+}
+
+function getDefaultValues(): FormValues {
+  const pickupStart = getDefaultDatetime(1);
+  const pickupEnd = getDefaultDatetime(4);
+  const originalPrice = 36_000;
+  const floorPrice = 12_000;
+  const quantity = 4;
+
+  return {
+    name: "",
+    description: "",
+    imageUrl: "",
+    materialType: "bakery",
+    dietaryTags: ["vegetarian"],
+    quantity,
+    weight: 450,
+    originalPrice,
+    floorPrice,
+    rescuePrice: suggestRescuePrice({
+      originalPrice,
+      floorPrice,
+      pickupStartAt: toTimestamp(pickupStart),
+      pickupEndAt: toTimestamp(pickupEnd),
+      now: Date.now(),
+      initialQuantity: quantity,
+      remainingQuantity: quantity,
+      materialType: "bakery",
+    }).suggestedPrice,
+    pickupStart,
+    pickupEnd,
+  };
+}
 
 function toTimestamp(dateTimeLocalStr: string) {
   return new Date(dateTimeLocalStr).getTime();
@@ -114,31 +171,18 @@ function getDefaultDatetime(offsetHours: number) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-type FormValues = z.infer<typeof schema>;
-
 export default function CreateSurplusPage() {
   const { sessionToken } = useAuth();
   const navigate = useNavigate();
   const createItem = useMutation(api.surplusItems.create);
   const publishItem = useMutation(api.surplusItems.publish);
-  const [submitAction, setSubmitAction] = useState<"draft" | "publish">("draft");
+  const [submitAction, setSubmitAction] = useState<SubmitAction>("draft");
+  const [hasManualPrice, setHasManualPrice] = useState(false);
+  const defaultValues = useMemo(getDefaultValues, []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      name: "",
-      description: "",
-      category: "bakery",
-      materialType: "bakery",
-      dietaryTags: ["vegetarian"],
-      quantity: 4,
-      weight: 450,
-      originalPrice: 36000,
-      floorPrice: 12000,
-      rescuePrice: 18000,
-      pickupStart: getDefaultDatetime(1),
-      pickupEnd: getDefaultDatetime(4),
-    },
+    defaultValues,
   });
   const originalPrice =
     useWatch({ control: form.control, name: "originalPrice" }) || 0;
@@ -173,7 +217,7 @@ export default function CreateSurplusPage() {
       now: Date.now(),
       initialQuantity: quantity,
       remainingQuantity: quantity,
-      materialType: (materialType ?? "mixed") as MaterialType,
+      materialType: materialType ?? "mixed",
     });
   }, [
     floorPrice,
@@ -183,6 +227,54 @@ export default function CreateSurplusPage() {
     pickupStart,
     quantity,
   ]);
+
+  useEffect(() => {
+    if (!hasManualPrice) {
+      form.setValue("rescuePrice", suggestion.suggestedPrice, {
+        shouldValidate: true,
+      });
+    }
+  }, [form, hasManualPrice, suggestion.suggestedPrice]);
+
+  const onSubmit = async (data: FormValues, action: SubmitAction) => {
+    setSubmitAction(action);
+
+    try {
+      const itemId = await createItem({
+        name: data.name,
+        description: data.description || undefined,
+        imageUrl: data.imageUrl || undefined,
+        originalPrice: data.originalPrice,
+        floorPrice: data.floorPrice,
+        currentPrice: data.rescuePrice,
+        initialQuantity: data.quantity,
+        weightPerItemGrams: data.weight,
+        pickupStartAt: toTimestamp(data.pickupStart),
+        pickupEndAt: toTimestamp(data.pickupEnd),
+        materialType: data.materialType,
+        dietaryTags: data.dietaryTags,
+        sessionToken: sessionToken || undefined,
+      });
+
+      if (action === "publish") {
+        await publishItem({ id: itemId, sessionToken: sessionToken || undefined });
+        toast.success("Rescue Item berhasil diterbitkan.");
+      } else {
+        toast.success("Rescue Item disimpan sebagai draft.");
+      }
+      navigate("/merchant/surplus");
+    } catch (error: unknown) {
+      const appError = getAppError(error, "Gagal menyimpan Rescue Item.");
+      const field = appError.field
+        ? serverFieldMap[appError.field as keyof typeof serverFieldMap]
+        : undefined;
+
+      if (field) {
+        form.setError(field, { type: "server", message: appError.message });
+      }
+      toast.error(appError.message);
+    }
+  };
 
   return (
     <>
@@ -198,36 +290,11 @@ export default function CreateSurplusPage() {
       />
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit(async (data) => {
-            try {
-              const itemId = await createItem({
-                 name: data.name,
-                 description: data.description,
-                 imageUrl: undefined,
-                 originalPrice: data.originalPrice,
-                 floorPrice: data.floorPrice,
-                 currentPrice: data.rescuePrice,
-                 initialQuantity: data.quantity,
-                 weightPerItemGrams: data.weight,
-                 pickupStartAt: toTimestamp(data.pickupStart),
-                 pickupEndAt: toTimestamp(data.pickupEnd),
-                 materialType: data.materialType as any,
-                 dietaryTags: data.dietaryTags,
-                 sessionToken: sessionToken || undefined,
-              });
-      
-              if (submitAction === "publish") {
-                 await publishItem({ id: itemId, sessionToken: sessionToken || undefined });
-                 toast.success("Rescue Item berhasil diterbitkan.");
-              } else {
-                 toast.success("Rescue Item disimpan sebagai draft.");
-              }
-              navigate("/merchant/surplus");
-            } catch (error: any) {
-              toast.error(error.message || "Gagal menyimpan item.");
-            }
-          })}
+          onSubmit={form.handleSubmit((data, event) =>
+            onSubmit(data, getSubmitAction(event?.nativeEvent)),
+          )}
           className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]"
+          aria-busy={form.formState.isSubmitting}
         >
           <div className="space-y-6 rounded-xl bg-card p-5 shadow-[0_10px_30px_-25px_color-mix(in_oklab,var(--foreground)_50%,transparent)] sm:p-6">
             <section aria-labelledby="item-section">
@@ -272,79 +339,57 @@ export default function CreateSurplusPage() {
                     </FormItem>
                   )}
                 />
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Kategori marketplace</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih kategori" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {categories.map((item) => (
-                              <SelectItem key={item.value} value={item.value}>
-                                {item.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="materialType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Jenis material</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih jenis material" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {materialTypes.map((item) => (
-                              <SelectItem key={item.value} value={item.value}>
-                                {item.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          Dipakai untuk pricing dan kecocokan processor.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="item-photo"
-                    className="flex items-center gap-2 text-sm font-medium"
-                  >
-                    <ImagePlus className="size-4 text-primary" />
-                    Foto Rescue Item (opsional)
-                  </label>
-                  <Input id="item-photo" type="file" accept="image/*" />
-                  <p className="text-xs text-muted-foreground">
-                    Pratinjau frontend menerima pilihan file; unggah permanen
-                    aktif setelah penyimpanan backend tersedia.
-                  </p>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="materialType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Jenis material</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih jenis material" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {materialTypes.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Dipakai untuk pricing dan kecocokan processor.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="imageUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>URL gambar Rescue Item (opsional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          inputMode="url"
+                          placeholder="https://contoh.com/roti.jpg"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Masukkan URL gambar; unggah file belum tersedia.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="dietaryTags"
@@ -429,7 +474,7 @@ export default function CreateSurplusPage() {
                       <FormControl>
                         <Input
                           type="number"
-                          min="50"
+                          min="1"
                           inputMode="numeric"
                           {...field}
                           onChange={(event) =>
@@ -450,7 +495,7 @@ export default function CreateSurplusPage() {
                       <FormControl>
                         <Input
                           type="number"
-                          min="1000"
+                          min="1"
                           inputMode="numeric"
                           {...field}
                           onChange={(event) =>
@@ -471,7 +516,7 @@ export default function CreateSurplusPage() {
                       <FormControl>
                         <Input
                           type="number"
-                          min="5000"
+                          min="1"
                           inputMode="numeric"
                           {...field}
                           onChange={(event) =>
@@ -495,17 +540,19 @@ export default function CreateSurplusPage() {
                       <FormControl>
                         <Input
                           type="number"
-                          min="500"
+                          min="1"
                           inputMode="numeric"
                           {...field}
-                          onChange={(event) =>
-                            field.onChange(event.target.valueAsNumber)
-                          }
+                          onChange={(event) => {
+                            setHasManualPrice(true);
+                            field.onChange(event.target.valueAsNumber);
+                          }}
                         />
                       </FormControl>
                       <FormDescription>
-                        Bisa menerima saran atau diubah selama berada di antara
-                        floor price dan harga awal.
+                        {hasManualPrice
+                          ? "Harga manual tidak akan diubah hingga kamu memilih saran pricing."
+                          : "Harga mengikuti saran pricing dan tetap bisa diubah."}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -547,7 +594,7 @@ export default function CreateSurplusPage() {
               </div>
             </section>
           </div>
-          <aside className="sticky top-28 rounded-xl bg-secondary p-5">
+          <aside className="sticky top-28 rounded-xl bg-secondary p-5" aria-live="polite">
             <div className="flex items-center gap-2 text-sm font-semibold text-primary">
               <Calculator className="size-4" />
               Pratinjau harga
@@ -582,24 +629,26 @@ export default function CreateSurplusPage() {
                 size="sm"
                 className="mt-4 w-full"
                 disabled={floorPrice >= originalPrice}
-                onClick={() =>
+                onClick={() => {
+                  setHasManualPrice(false);
                   form.setValue("rescuePrice", suggestion.suggestedPrice, {
                     shouldDirty: true,
                     shouldValidate: true,
-                  })
-                }
+                  });
+                }}
               >
                 Gunakan saran pricing
               </Button>
               <p className="mt-4 border-t border-primary/15 pt-4">
-                Formula ini adalah pratinjau frontend. Server nantinya
-                menghitung ulang, memvalidasi floor price, dan menyimpan
-                snapshot harga.
+                Harga dapat diubah Merchant. Server tetap memvalidasi floor
+                price dan harga diskon saat disimpan.
               </p>
             </div>
             <div className="mt-6 flex flex-col gap-3">
               <Button
                 type="submit"
+                name="action"
+                value="publish"
                 className="w-full"
                 disabled={form.formState.isSubmitting}
                 onClick={() => setSubmitAction("publish")}
@@ -608,6 +657,8 @@ export default function CreateSurplusPage() {
               </Button>
               <Button
                 type="submit"
+                name="action"
+                value="draft"
                 variant="outline"
                 className="w-full"
                 disabled={form.formState.isSubmitting}
