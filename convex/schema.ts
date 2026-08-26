@@ -73,6 +73,22 @@ export const recoveryBatchStatus = v.union(
   v.literal('processed'),
 )
 
+export const ledgerEventType = v.union(
+  v.literal('LISTED'),
+  v.literal('PRICE_ADJUSTED'),
+  v.literal('RESERVED'),
+  v.literal('PAID'),
+  v.literal('RESCUED'),
+  v.literal('CANCELLED'),
+  v.literal('EXPIRED'),
+  v.literal('ROUTED'),
+  v.literal('ROUTING_FAILED'),
+  v.literal('INTAKE_ACCEPTED'),
+  v.literal('INTAKE_DECLINED'),
+  v.literal('PROCESSED'),
+  v.literal('MODERATED'),
+)
+
 export default defineSchema({
   users: defineTable({
     name: v.string(),
@@ -151,18 +167,40 @@ export default defineSchema({
     description: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     originalPrice: v.number(),
+    floorPrice: v.number(),
     currentPrice: v.number(),
     initialQuantity: v.number(),
     remainingQuantity: v.number(),
     weightPerItemGrams: v.number(),
     pickupStartAt: v.number(),
     pickupEndAt: v.number(),
+    materialType: materialType,
     dietaryTags: v.array(v.string()),
+    processingOnly: v.boolean(),
     status: rescueItemStatus,
+    publishedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index('by_merchant', ['merchantId'])
     .index('by_status', ['status']),
+
+  materialFlowLedger: defineTable({
+    surplusItemId: v.id('surplusItems'),
+    orderId: v.optional(v.id('orders')),
+    recoveryBatchId: v.optional(v.id('recoveryBatches')),
+    eventType: ledgerEventType,
+    weightDeltaGrams: v.number(),
+    actorId: v.optional(v.id('users')),
+    actorRole: v.optional(userRole),
+    metadata: v.optional(v.string()),
+    methodologyVersion: v.string(),
+    occurredAt: v.number(),
+  })
+    .index('by_rescue_item', ['surplusItemId'])
+    .index('by_occurred_at', ['occurredAt'])
+    .index('by_actor', ['actorId', 'occurredAt'])
+    .index('by_event_type', ['eventType', 'occurredAt'])
+    .index('by_order', ['orderId']),
 
   orders: defineTable({
     userId: v.id('users'),

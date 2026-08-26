@@ -76,3 +76,58 @@ export function suggestRescuePrice(input: PricingInput): PricingResult {
 }
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+
+// @ts-ignore: Bun specific extension for main module execution
+if (import.meta.main) {
+  const HOUR = 60 * 60 * 1000;
+  const START = 1_770_000_000_000;
+  const assert = (condition: boolean, msg: string) => {
+    if (!condition) throw new Error(`Assertion failed: ${msg}`);
+  };
+
+  const baseInput = {
+    originalPrice: 20_000,
+    floorPrice: 5_000,
+    pickupStartAt: START,
+    pickupEndAt: START + 4 * HOUR,
+    initialQuantity: 10,
+    materialType: "prepared_food" as MaterialType,
+  };
+
+  // 1. Start of window (elapsed = 0)
+  const res1 = suggestRescuePrice({ ...baseInput, now: START, remainingQuantity: 10 });
+  assert(res1.discountPercent === 50, "Start of window should only have base discount");
+  assert(res1.suggestedPrice === 10_000, "Start of window price should be 10_000");
+
+  // 2. Near-expiry (elapsed = 0.94), stock pressure kicks in
+  const res2 = suggestRescuePrice({ ...baseInput, now: START + 3.75 * HOUR, remainingQuantity: 8 });
+  assert(res2.discountPercent > 50, "Near expiry should have higher discount");
+  assert(res2.breakdown.urgency > 0, "Urgency should be greater than 0");
+  assert(res2.breakdown.stockPressure > 0, "Stock pressure should apply");
+
+  // 3. No stock pressure (sell-through ahead of time)
+  const res3 = suggestRescuePrice({ ...baseInput, now: START + 2 * HOUR, remainingQuantity: 1 });
+  assert(res3.breakdown.stockPressure === 0, "No stock pressure if selling well");
+
+  // 4. Floor clamping
+  const res4 = suggestRescuePrice({
+    ...baseInput,
+    floorPrice: 15_000,
+    now: START + 4 * HOUR,
+    remainingQuantity: 10,
+  });
+  assert(res4.suggestedPrice === 15_000, "Price should not fall below floorPrice");
+  assert(res4.clampedByFloor === true, "Should report clampedByFloor");
+
+  // 5. Min price IDR clamping
+  const res5 = suggestRescuePrice({
+    ...baseInput,
+    originalPrice: 6_000,
+    floorPrice: 1_000,
+    now: START + 4 * HOUR,
+    remainingQuantity: 10,
+  });
+  assert(res5.suggestedPrice === 5_000, "Price should not fall below MIN_PRICE_IDR");
+
+  console.log("pricing.ts: All self-checks passed.");
+}

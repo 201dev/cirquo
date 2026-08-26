@@ -1,10 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Calculator, ImagePlus } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { useAuth } from "@/contexts/auth-context";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -90,18 +93,36 @@ const schema = z
     path: ["rescuePrice"],
     message: "Harga rescue tidak boleh di bawah floor price.",
   })
-  .refine((data) => data.pickupEnd > data.pickupStart, {
+  .refine((data) => toTimestamp(data.pickupEnd) > toTimestamp(data.pickupStart), {
     path: ["pickupEnd"],
     message: "Waktu selesai harus setelah waktu mulai.",
   })
-  .refine((data) => toTodayTimestamp(data.pickupStart) > Date.now(), {
+  .refine((data) => toTimestamp(data.pickupStart) > Date.now(), {
     path: ["pickupStart"],
     message: "Waktu mulai harus setelah waktu sekarang.",
   });
 
+function toTimestamp(dateTimeLocalStr: string) {
+  return new Date(dateTimeLocalStr).getTime();
+}
+
+function getDefaultDatetime(offsetHours: number) {
+  const d = new Date();
+  d.setHours(d.getHours() + offsetHours);
+  d.setMinutes(0, 0, 0);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 type FormValues = z.infer<typeof schema>;
 
 export default function CreateSurplusPage() {
+  const { sessionToken } = useAuth();
+  const navigate = useNavigate();
+  const createItem = useMutation(api.surplusItems.create);
+  const publishItem = useMutation(api.surplusItems.publish);
+  const [submitAction, setSubmitAction] = useState<"draft" | "publish">("draft");
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -115,8 +136,8 @@ export default function CreateSurplusPage() {
       originalPrice: 36000,
       floorPrice: 12000,
       rescuePrice: 18000,
-      pickupStart: "17:00",
-      pickupEnd: "19:00",
+      pickupStart: getDefaultDatetime(1),
+      pickupEnd: getDefaultDatetime(4),
     },
   });
   const originalPrice =
@@ -141,8 +162,8 @@ export default function CreateSurplusPage() {
   const discount =
     originalPrice > 0 ? Math.round((1 - rescuePrice / originalPrice) * 100) : 0;
   const suggestion = useMemo(() => {
-    const pickupStartAt = toTodayTimestamp(pickupStart);
-    const pickupEndAt = toTodayTimestamp(pickupEnd);
+    const pickupStartAt = toTimestamp(pickupStart);
+    const pickupEndAt = toTimestamp(pickupEnd);
 
     return suggestRescuePrice({
       originalPrice,
@@ -177,11 +198,35 @@ export default function CreateSurplusPage() {
       />
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit(() =>
-            toast.success(
-              "Pratinjau Rescue Item valid. Penyimpanan akan aktif setelah backend M2.",
-            ),
-          )}
+          onSubmit={form.handleSubmit(async (data) => {
+            try {
+              const itemId = await createItem({
+                 name: data.name,
+                 description: data.description,
+                 imageUrl: undefined,
+                 originalPrice: data.originalPrice,
+                 floorPrice: data.floorPrice,
+                 currentPrice: data.rescuePrice,
+                 initialQuantity: data.quantity,
+                 weightPerItemGrams: data.weight,
+                 pickupStartAt: toTimestamp(data.pickupStart),
+                 pickupEndAt: toTimestamp(data.pickupEnd),
+                 materialType: data.materialType as any,
+                 dietaryTags: data.dietaryTags,
+                 sessionToken: sessionToken || undefined,
+              });
+      
+              if (submitAction === "publish") {
+                 await publishItem({ id: itemId, sessionToken: sessionToken || undefined });
+                 toast.success("Rescue Item berhasil diterbitkan.");
+              } else {
+                 toast.success("Rescue Item disimpan sebagai draft.");
+              }
+              navigate("/merchant/surplus");
+            } catch (error: any) {
+              toast.error(error.message || "Gagal menyimpan item.");
+            }
+          })}
           className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]"
         >
           <div className="space-y-6 rounded-xl bg-card p-5 shadow-[0_10px_30px_-25px_color-mix(in_oklab,var(--foreground)_50%,transparent)] sm:p-6">
@@ -480,7 +525,7 @@ export default function CreateSurplusPage() {
                     <FormItem>
                       <FormLabel>Mulai</FormLabel>
                       <FormControl>
-                        <Input type="time" {...field} />
+                        <Input type="datetime-local" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -493,7 +538,7 @@ export default function CreateSurplusPage() {
                     <FormItem>
                       <FormLabel>Selesai</FormLabel>
                       <FormControl>
-                        <Input type="time" {...field} />
+                        <Input type="datetime-local" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -552,23 +597,28 @@ export default function CreateSurplusPage() {
                 snapshot harga.
               </p>
             </div>
-            <Button
-              type="submit"
-              className="mt-6 w-full"
-              disabled={form.formState.isSubmitting}
-            >
-              Pratinjau Rescue Item
-            </Button>
+            <div className="mt-6 flex flex-col gap-3">
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={form.formState.isSubmitting}
+                onClick={() => setSubmitAction("publish")}
+              >
+                {form.formState.isSubmitting && submitAction === "publish" ? "Menerbitkan..." : "Terbitkan Sekarang"}
+              </Button>
+              <Button
+                type="submit"
+                variant="outline"
+                className="w-full"
+                disabled={form.formState.isSubmitting}
+                onClick={() => setSubmitAction("draft")}
+              >
+                {form.formState.isSubmitting && submitAction === "draft" ? "Menyimpan..." : "Simpan Draft"}
+              </Button>
+            </div>
           </aside>
         </form>
       </Form>
     </>
   );
-}
-
-function toTodayTimestamp(time: string | undefined) {
-  const [hours = 0, minutes = 0] = (time ?? "00:00").split(":").map(Number);
-  const date = new Date();
-  date.setHours(hours, minutes, 0, 0);
-  return date.getTime();
 }
