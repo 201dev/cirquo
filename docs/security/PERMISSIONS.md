@@ -7,7 +7,7 @@
 | **Last updated** | 2026-08-06 |
 | **Applies to** | Every Convex function in `convex/`, the guard library `convex/lib/guards.ts`, the React 19 / Capacitor 8 client |
 | **Depends on** | [AUTH.md](AUTH.md) — this document consumes `requireAuth` and assumes session tokens exist |
-| **Implementation status** | 📋 **Planned — no guard exists in the codebase today.** See §1.1. |
+| **Implementation status** | ✅ Guard foundations implemented; the full capability matrix remains target work. See §1.1. |
 
 ---
 
@@ -42,7 +42,10 @@ No amount of conditional rendering prevents that call. `{isVerifiedMerchant && <
 
 ### 1.1 Where Cirquo stands today
 
-📋 **No authorization exists.** The six read-only queries in the repository have no guards at all:
+✅ **Authorization foundations exist.** Session, role, ownership, and Merchant/
+Processor verification guards are implemented in `convex/lib/guards.ts`. The
+matrix below remains the target capability model; each new function must still
+apply its server-side guard before accessing data.
 
 | Function | Exposure today | Severity |
 |---|---|---|
@@ -53,7 +56,9 @@ No amount of conditional rendering prevents that call. `{isVerifiedMerchant && <
 | `surplusItems.listByStatus` | Public browse | 🟢 Acceptable for `active` only |
 | `impact.getPlaceholderSummary` | Aggregate, non-identifying | 🟢 Acceptable |
 
-Everything below is the M1 target. None of it is running.
+The detailed matrix below is the target capability model. Current functions use
+the implemented guard helpers, but every new function must be checked against
+this model before it is exposed.
 
 ---
 

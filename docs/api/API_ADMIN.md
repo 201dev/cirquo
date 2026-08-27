@@ -43,7 +43,10 @@ Cirquo runs on Convex. There are no REST endpoints for admins. Every function be
 
 **Status legend:** ✅ Implemented · 🚧 In progress · 📋 Planned.
 
-Only six read-only queries exist in the codebase today (`users.getByEmail`, `merchants.getByOwner`, `surplusItems.listByStatus`, `orders.listByUser`, `recoveryBatches.listByStatus`, `impact.getPlaceholderSummary`). Every function on this page is **📋 Planned**.
+The codebase now contains authentication, ledger, Merchant, and Consumer
+functions. Admin-specific functions in this document remain **📋 planned**;
+this page is a target contract rather than a description of deployed Admin
+functionality.
 
 ---
 

@@ -27,40 +27,28 @@ This guide gets the whole thing running on your machine.
 
 ## 2. Current State — Read This First
 
-Being honest about what exists prevents wasted hours looking for code that was
-never written.
+The source and `.env.example` are authoritative. This snapshot prevents wasted
+hours looking for code that was never written.
 
 | Area | Status | Detail |
 | --- | --- | --- |
-| Convex schema | ✅ Partial | 5 tables: `users`, `merchants`, `surplusItems`, `orders`, `recoveryBatches` |
-| Convex queries | ✅ 6 exist | All internal and read-only until M1 auth guards land (listed below) |
-| Convex mutations | 📋 None | **Zero mutations exist today** |
-| Authentication | 📋 Planned | No auth of any kind |
-| Material Flow Ledger | 📋 Planned | Table not yet in schema |
-| Mapbox | 📋 Planned | Not integrated |
-| Midtrans | 📋 Planned | Not integrated |
-| Scheduler / cron | 📋 Planned | No `convex/crons.ts` |
-| Impact calculation | 📋 Planned | Dashboards show hardcoded figures |
-| Tests | 📋 None | **No tests of any kind** |
-| Pages | ✅ 9 placeholders | Read from `src/constants/mock-data.ts` |
-| Routing | ✅ Works | React Router v7, 4 role layouts |
+| Convex schema | ✅ | 10 tables, including sessions, auth events, Material Flow Ledger, and payments |
+| Convex functions | ✅ Partial | Auth, profile, Merchant lifecycle, Consumer discovery/reservation, and payment functions exist; Processor/Admin flows remain incomplete |
+| Authentication | ✅ | Opaque session token, server-side guards, profile onboarding, and client persistence |
+| Material Flow Ledger | ✅ Foundation | Append-only table/helper with current Rescue Item and order event writes |
+| Mapbox | ✅ | Explore route reads `VITE_MAPBOX_ACCESS_TOKEN` |
+| Midtrans | 🚧 | Sandbox transaction action and webhook code exist; integration UAT remains required |
+| Scheduler / cron | 🚧 | Reservation hold uses `ctx.scheduler.runAfter`; no `convex/crons.ts` sweep exists |
+| Impact calculation | 📋 | Dashboards still require ledger-derived aggregation |
+| Tests | ✅ Partial | Unit tests and the ledger immutability check exist; full UAT remains required |
+| Pages | 🚧 | Auth, Merchant Rescue Item, and Consumer discovery/order pages use real flows; some dashboards remain placeholders |
+| Routing | ✅ | React Router role guards and session restoration |
 | Design system | ✅ Works | Tailwind v4 OKLCH tokens, 17 shadcn primitives |
 | Capacitor Android | ✅ Configured | `com.cirquo.app`, `webDir: dist` |
 | PWA | ✅ Basic | `manifest.webmanifest` + `sw.js`, registered in PROD only |
 
-The six existing internal queries:
-
-| Function | Returns |
-| --- | --- |
-| `users.getByEmail` | A user document by email |
-| `merchants.getByOwner` | Merchants owned by a user |
-| `surplusItems.listByStatus` | Rescue Items filtered by status |
-| `orders.listByUser` | Orders belonging to a user |
-| `recoveryBatches.listByStatus` | Recovery batches by status |
-| `impact.getPlaceholderSummary` | **Placeholder** impact numbers, not ledger-derived |
-
-The target schema adds: `materialFlowLedger`, `processors`, `payments`,
-`sessions`, `notifications`, `disputes`, `impactSnapshots`.
+See [`../api/API.md`](../api/API.md) for the current function index. Do not use
+this guide as a substitute for source validators or the generated Convex API.
 
 ---
 
@@ -150,10 +138,12 @@ appear and resolution will diverge between machines.
 cp .env.example .env.local
 ```
 
-`.env.example` today contains exactly one variable:
+`.env.example` contains the client variables required by the current web app:
 
 ```bash
 VITE_CONVEX_URL=
+VITE_MAPBOX_ACCESS_TOKEN=
+VITE_MIDTRANS_CLIENT_KEY=
 ```
 
 `.env.local` is gitignored. `.env.example` is committed and **must never contain
@@ -200,8 +190,8 @@ Vite starts on `http://localhost:5173`.
 | `http://localhost:5173` loads | Cirquo landing page renders |
 | Browser console | No red errors |
 | Convex terminal | `Convex functions ready!` |
-| Convex dashboard | 5 tables listed (likely empty) |
-| Navigate to a consumer page | Placeholder listings from `mock-data.ts` |
+| Convex dashboard | 10 schema tables listed after `convex dev` syncs |
+| Navigate to `/explore` | Real discovery data when Convex and Mapbox are configured; otherwise the app's fallback state |
 
 ---
 
@@ -278,23 +268,19 @@ Two rules follow:
 | --- | --- | --- | --- | --- | --- |
 | `VITE_CONVEX_URL` | Client | ✅ Yes (backend mode) | 🔓 **Public** | Convex deployment URL the client connects to | `.env.local` — written automatically by `bunx convex dev`; set in the host's env for production |
 | `CONVEX_DEPLOYMENT` | CLI | ✅ Yes | 🔓 Public | Tells the Convex CLI which deployment to target | `.env.local` — written by `bunx convex dev` |
-| `VITE_MAPBOX_TOKEN` | Client | 📋 From M3 | 🔓 **Public** | Mapbox GL access token for the discovery map | `.env.local`; must be a **scoped, URL-restricted** public token (`pk.*`) |
-| `MIDTRANS_SERVER_KEY` | **Convex server** | 📋 From M3 | 🔒 **SECRET** | Signs Snap transaction requests, verifies webhook signatures | `bunx convex env set MIDTRANS_SERVER_KEY <key>` |
-| `MIDTRANS_CLIENT_KEY` | **Convex server** | 📋 From M3 | 🔓 Public value, server-held | Returned to the client by a Convex query to initialise Snap | `bunx convex env set MIDTRANS_CLIENT_KEY <key>` |
-| `MIDTRANS_IS_PRODUCTION` | **Convex server** | 📋 From M3 | 🔓 Public value | `"false"` for Sandbox, `"true"` for production; selects the API base URL | `bunx convex env set MIDTRANS_IS_PRODUCTION false` |
+| `VITE_MAPBOX_ACCESS_TOKEN` | Client | Required for map | 🔓 **Public** | Mapbox GL access token for the discovery map | `.env.local`; must be a **scoped, URL-restricted** public token (`pk.*`) |
+| `MIDTRANS_SERVER_KEY` | **Convex server** | Required for checkout/webhook | 🔒 **SECRET** | Signs Snap transaction requests and verifies webhook signatures | `bunx convex env set MIDTRANS_SERVER_KEY <key>` |
+| `VITE_MIDTRANS_CLIENT_KEY` | Client | Required for Snap checkout | 🔓 **Public** | Midtrans Snap client key, embedded in the client bundle by design | `.env.local` and the frontend host environment |
 
-`MIDTRANS_CLIENT_KEY` is technically a public value but is **still held
-server-side**. It is handed to the browser by a Convex query rather than baked
-into the bundle, so switching sandbox↔production is a server-side change
-requiring no rebuild.
+`VITE_MIDTRANS_CLIENT_KEY` is public by design and is read by the checkout
+page. Only `MIDTRANS_SERVER_KEY` is secret and must remain in the Convex
+environment.
 
 ### 6.3 Setting Convex secrets
 
 ```bash
 # Sandbox credentials from https://dashboard.sandbox.midtrans.com
 bunx convex env set MIDTRANS_SERVER_KEY "SB-Mid-server-xxxxxxxxxxxxxxxxxxxx"
-bunx convex env set MIDTRANS_CLIENT_KEY "SB-Mid-client-xxxxxxxxxxxxxxxxxxxx"
-bunx convex env set MIDTRANS_IS_PRODUCTION "false"
 
 # Inspect
 bunx convex env list
@@ -318,7 +304,10 @@ VITE_CONVEX_URL=
 
 # Mapbox public token (pk.*). Scope to styles:read + fonts:read and restrict by
 # URL. PUBLIC — embedded in the client bundle.
-VITE_MAPBOX_TOKEN=
+VITE_MAPBOX_ACCESS_TOKEN=
+
+# Midtrans Snap client key. PUBLIC — embedded in the client bundle.
+VITE_MIDTRANS_CLIENT_KEY=
 ```
 
 ---
@@ -362,13 +351,13 @@ cirquo/
 ├── android/                       ✅ Capacitor 8 native project (com.cirquo.app)
 ├── convex/                        ✅ Backend — Convex 1.43
 │   ├── _generated/                🔧 Generated by `convex dev`, gitignored
-│   ├── schema.ts                  ✅ 5 tables; 7 more planned
-│   ├── users.ts                   ✅ getByEmail (query only)
-│   ├── merchants.ts               ✅ getByOwner (query only)
-│   ├── surplusItems.ts            ✅ listByStatus (query only)
-│   ├── orders.ts                  ✅ listByUser (query only)
-│   ├── recoveryBatches.ts         ✅ listByStatus (query only)
-│   └── impact.ts                  ✅ getPlaceholderSummary (NOT ledger-derived)
+│   ├── schema.ts                  ✅ 10 tables, including sessions, ledger, payments
+│   ├── auth.ts                    ✅ registration, login, logout, current-session query
+│   ├── merchants.ts               ✅ profile creation and guarded owner lookup
+│   ├── surplusItems.ts            ✅ Merchant Rescue Item lifecycle + listMine
+│   ├── discovery.ts               ✅ active Consumer discovery queries
+│   ├── orders.ts                  ✅ reservation and Consumer order queries
+│   └── payments.ts / http.ts      ✅ Midtrans transaction and webhook handling
 ├── docs/                          ✅ This documentation system
 ├── public/
 │   ├── manifest.webmanifest       ✅ PWA manifest
@@ -808,7 +797,7 @@ it from a link rather than needing the Play Store."*
 | Schema push rejected | Existing rows violate a newly added required field | Add the field as `v.optional(...)`, backfill, then tighten — see [DATABASE.md](../domain/DATABASE.md) |
 | Convex function changes not taking effect | `convex dev` crashed silently | Check Terminal 1; restart it |
 | Mapbox container is blank | Missing `mapbox-gl` CSS import | `import 'mapbox-gl/dist/mapbox-gl.css'` once at app entry |
-| Mapbox 401 in the network tab | Token missing, wrong, or URL-restricted to a different origin | Check `VITE_MAPBOX_TOKEN`; add `http://localhost:5173` to the token's URL allowlist |
+| Mapbox 401 in the network tab | Token missing, wrong, or URL-restricted to a different origin | Check `VITE_MAPBOX_ACCESS_TOKEN`; add `http://localhost:5173` to the token's URL allowlist |
 | Map renders at zero height | Parent has no explicit height | Give the container `h-[60vh]` or `flex-1 min-h-0` |
 | Midtrans webhook never arrives locally | Midtrans cannot reach `localhost` | Deploy the `httpAction` to your Convex dev deployment and register **that public URL** — see §12.1 |
 | Payment succeeds in Snap but order stays `reserved` | Webhook not registered, or signature verification failing | Check Convex Logs for the httpAction; verify `MIDTRANS_SERVER_KEY` |
@@ -839,7 +828,7 @@ import { internal } from './_generated/api';
 const http = httpRouter();
 
 http.route({
-  path: '/midtrans/notification',
+  path: '/midtrans/webhook',
   method: 'POST',
   handler: httpAction(async (ctx, request) => {
     const body: unknown = await request.json();
@@ -854,7 +843,7 @@ export default http;
 ```
 
 The public URL is your deployment's HTTP domain, e.g.
-`https://<deployment-name>.convex.site/midtrans/notification`. Register that in
+`https://<deployment-name>.convex.site/midtrans/webhook`. Register that in
 the Midtrans Sandbox dashboard under **Settings → Configuration → Payment
 Notification URL**.
 

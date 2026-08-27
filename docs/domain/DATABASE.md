@@ -25,7 +25,9 @@
 
 ## 2. Current Schema (as implemented)
 
-`convex/schema.ts` currently defines five tables and ten indexes.
+`convex/schema.ts` currently defines ten tables: `users`, `sessions`,
+`authEvents`, `merchants`, `processors`, `surplusItems`,
+`materialFlowLedger`, `orders`, `recoveryBatches`, and `payments`.
 
 | Table | Fields | Indexes |
 |---|---|---|

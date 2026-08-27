@@ -396,7 +396,9 @@ The current codebase predates this document. Known divergences between code and 
 | No `materialFlowLedger` table | Material Flow Ledger | 📋 **Must be added** — the entire impact system depends on it |
 | No processor profile table | Processor Profile | 📋 **Must be added** — RB-2, RB-3 cannot be enforced without it |
 
-See [DATABASE.md](DATABASE.md) for the full target schema and the migration path from the current five tables.
+See [DATABASE.md](DATABASE.md) for the schema. `convex/schema.ts` currently
+defines ten tables; this document may also describe target fields and lifecycle
+work that have not shipped yet.
 
 ---
 

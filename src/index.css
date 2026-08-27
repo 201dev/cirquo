@@ -1,22 +1,23 @@
-@import '@fontsource-variable/geist';
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import "@fontsource-variable/geist";
+@import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  font-family: 'Geist Variable', system-ui, sans-serif;
+  font-family:
+    "Geist Variable", system-ui, sans-serif; /* impeccable-disable-line overused-font -- existing Cirquo design-system token */
   color: var(--foreground);
   background: var(--background);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   --radius: 0.75rem;
   --background: oklch(0.985 0.004 150);
-  --foreground: oklch(0.20 0.025 155);
+  --foreground: oklch(0.2 0.025 155);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.20 0.025 155);
+  --card-foreground: oklch(0.2 0.025 155);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.20 0.025 155);
+  --popover-foreground: oklch(0.2 0.025 155);
   --primary: oklch(0.43 0.11 155);
   --primary-foreground: oklch(0.985 0.004 150);
   --secondary: oklch(0.94 0.025 150);
@@ -29,13 +30,17 @@
   --border: oklch(0.88 0.018 150);
   --input: oklch(0.88 0.018 150);
   --ring: oklch(0.52 0.12 155);
+  --rescued: oklch(0.52 0.13 151);
+  --recovered: oklch(0.67 0.13 103);
+  --residual: oklch(0.62 0.07 64);
+  --in-progress: oklch(0.62 0.1 231);
   --chart-1: oklch(0.52 0.12 155);
   --chart-2: oklch(0.66 0.12 105);
   --chart-3: oklch(0.62 0.11 55);
-  --chart-4: oklch(0.58 0.10 225);
+  --chart-4: oklch(0.58 0.1 225);
   --chart-5: oklch(0.62 0.14 20);
   --sidebar: oklch(0.965 0.014 150);
-  --sidebar-foreground: oklch(0.20 0.025 155);
+  --sidebar-foreground: oklch(0.2 0.025 155);
   --sidebar-primary: oklch(0.43 0.11 155);
   --sidebar-primary-foreground: oklch(0.985 0.004 150);
   --sidebar-accent: oklch(0.91 0.055 150);
@@ -56,13 +61,17 @@
   --secondary: oklch(0.28 0.035 155);
   --secondary-foreground: oklch(0.94 0.014 150);
   --muted: oklch(0.25 0.02 155);
-  --muted-foreground: oklch(0.70 0.025 150);
+  --muted-foreground: oklch(0.7 0.025 150);
   --accent: oklch(0.31 0.045 155);
   --accent-foreground: oklch(0.94 0.014 150);
   --destructive: oklch(0.68 0.19 25);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
   --ring: oklch(0.66 0.12 150);
+  --rescued: oklch(0.71 0.13 150);
+  --recovered: oklch(0.76 0.12 103);
+  --residual: oklch(0.73 0.08 67);
+  --in-progress: oklch(0.72 0.1 231);
   --sidebar: oklch(0.19 0.02 155);
   --sidebar-foreground: oklch(0.94 0.014 150);
   --sidebar-primary: oklch(0.72 0.13 150);
@@ -74,7 +83,7 @@
 }
 
 @theme inline {
-  --font-sans: 'Geist Variable', system-ui, sans-serif;
+  --font-sans: "Geist Variable", system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -97,6 +106,10 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-rescued: var(--rescued);
+  --color-recovered: var(--recovered);
+  --color-residual: var(--residual);
+  --color-in-progress: var(--in-progress);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -122,8 +135,90 @@
     margin: 0;
   }
 
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 24%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+
   button,
   a {
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  .skip-link {
+    @apply fixed left-4 top-3 z-[100] -translate-y-20 rounded-md bg-foreground px-4 py-2 text-sm font-semibold text-background transition-transform focus:translate-y-0;
+  }
+
+  .surface-raised {
+    box-shadow: 0 12px 35px -22px
+      color-mix(in oklab, var(--foreground) 35%, transparent);
+  }
+
+  .hero-reveal {
+    animation: hero-reveal 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .welcome-enter > img {
+    animation: welcome-image 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .welcome-enter section {
+    animation: welcome-copy 700ms 80ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes hero-reveal {
+  from {
+    opacity: 1;
+    clip-path: inset(0 0 4% 0 round 1rem);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round 1rem);
+  }
+}
+
+@keyframes welcome-image {
+  from {
+    opacity: 0.82;
+    transform: scale(1.025);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes welcome-copy {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

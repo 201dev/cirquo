@@ -103,7 +103,7 @@ Thirteen event types. Each maps to exactly one transition in [STATE_MACHINE.md](
 | `RESERVED` | Consumer reserves | `0` | — | `quantity`, `unitPrice`, `orderId` |
 | `PAID` | Midtrans webhook | `0` | — | `amount`, `method`, `providerTransactionId` |
 | `RESCUED` | Merchant verifies pickup code | `−quantity × weightPerItemGrams` | ✅ | `quantity`, `totalPrice`, `pickupCode` |
-| `CANCELLED` | Consumer or hold expiry | `0` | — | `quantity` returned, `reason` |
+| `CANCELLED` | Consumer hold expiry or Merchant cancellation | `0` for a reservation/hold; `−remainingQuantity × weightPerItemGrams` when an active Rescue Item is cancelled by its Merchant | Merchant cancellation only | `quantity` returned, `reason`, `cancelledBy` |
 | `EXPIRED` | Scheduler | `0` | — | `remainingQuantity`, `pickupEndAt` |
 | `ROUTED` | Circular Routing | `0` | — | `processorId`, `rank`, `distanceMeters`, `attempt` |
 | `ROUTING_FAILED` | Circular Routing | `−unrouted weight` | ✅ | `attempts`, `declinedBy[]`, `reason` |

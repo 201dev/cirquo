@@ -6,38 +6,30 @@
 | **Status** | Draft v1.0 |
 | **Last updated** | 2026-08-06 |
 | **Applies to** | Convex backend (`convex/auth.ts`, `convex/lib/guards.ts`), React 19 client, Capacitor 8 Android shell (`com.cirquo.app`) |
-| **Implementation status** | 📋 **Planned — none of this is implemented yet.** See §0. |
+| **Implementation status** | ✅ Foundation implemented; password reset/refresh and other hardening remain planned. See §0. |
 
 ---
 
 ## 0. Current Reality (Read This First)
 
-Cirquo has **no authentication whatsoever** today. This is not a partially built system with gaps; it is an unbuilt system with a design.
+Cirquo has an implemented session-authentication foundation. This section
+distinguishes the current contract from the remaining hardening work.
 
 | Component | Status | Note |
 |---|---|---|
-| `sessions` table | 📋 Planned | Not in `convex/schema.ts` yet |
-| `users.passwordHash` | 📋 Planned | Field designed, no row ever written |
-| Password hashing | 📋 Planned | No hashing library installed |
-| `requireAuth` guard | 📋 Planned | `convex/lib/guards.ts` does not exist |
-| Login / register | 📋 Planned | **No mutations exist at all** — only 6 read-only queries |
-| Client token storage | 📋 Planned | No client auth code |
+| `sessions` table | ✅ | Stores `tokenHash`, expiry, and user reference |
+| `users.passwordHash` | ✅ | Written during registration |
+| Password hashing | ✅ | Implemented through internal auth actions |
+| Guards | ✅ | `convex/lib/guards.ts` resolves session, role, ownership, and verification |
+| Login / register | ✅ | Public actions return opaque session tokens |
+| Client token storage | ✅ | Capacitor Preferences on Android and `localStorage` on web |
 | Password reset | 📋 Planned | No email transport chosen |
 
-What actually exists is six unauthenticated read-only queries:
+Current exports and their validators are listed in [`../api/API_AUTH.md`](../api/API_AUTH.md).
+Internal lookups such as `users.getByEmail` are not callable by the client.
 
-| Function | Guard today | Guard required |
-|---|---|---|
-| `users.getByEmail` | ❌ none | 🔴 Must become internal — it confirms account existence to anyone |
-| `merchants.getByOwner` | ❌ none | 🟠 Scope to caller or admin |
-| `surplusItems.listByStatus` | ❌ none | 🟢 Public browse acceptable for `active` only |
-| `orders.listByUser` | ❌ none | 🔴 Reads **any** user's orders by ID — must scope to the caller |
-| `recoveryBatches.listByStatus` | ❌ none | 🟠 Processor / admin only |
-| `impact.getPlaceholderSummary` | ❌ none | 🟢 Aggregate, public |
-
-Two of those six are exploitable the moment real data exists. They were written to validate schema shape, not because the exposure was judged acceptable. Authentication lands in **milestone M1**, and `orders.listByUser` and `users.getByEmail` must be fixed in the same milestone.
-
-> **For reviewers:** every diagram and code block below specifies the intended M1 design. Treat this as a build specification, not documentation of running code.
+> **For reviewers:** sections marked 📋 describe target hardening. Treat the
+> source and current API reference as the running contract.
 
 ---
 

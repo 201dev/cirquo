@@ -9,8 +9,25 @@
 | **Payments** | Midtrans Snap — Sandbox |
 | **Maps** | Mapbox GL JS (client rendering; distance computed server-side by Haversine) |
 | **Status legend** | ✅ implemented · 📋 planned |
-| **Implemented today** | `orders.listByUser` ✅ — everything else 📋 |
+| **Implemented today** | Discovery, reservation, order detail/list queries, and the Midtrans transaction action are implemented. The remaining lifecycle, impact, notification, and dispute functions are planned. |
 | **Conventions** | [`API.md`](./API.md) §7 units · §9 errors · §10 reactivity |
+
+---
+
+> **Current implementation — 2026-08-27.** The compact reference below is
+> the current contract. Sections marked 📋 later in this document are target
+> contracts and may contain fields or functions that do not yet exist.
+
+## Current MVP function reference
+
+| Function | Kind | Access | Current contract |
+|---|---|---|
+| `discovery.listNearby` | query | Public | Requires `{ latitude, longitude, radiusMeters }`; supports one `materialType`, dietary tags, min/max price, and pickup bounds. Returns `{ results, totalMatched, truncated }`. |
+| `discovery.getListing` | query | Public | `{ id }`; returns only active, Consumer-visible Rescue Items from verified Merchants, or `null`. |
+| `orders.reserve` | mutation | Consumer | `{ surplusItemId, quantity, idempotencyKey?, sessionToken? }`; decrements stock, creates a reserved order, and appends `RESERVED` with zero weight. |
+| `orders.listMine` | query | Consumer | `{ sessionToken? }`; returns the authenticated Consumer's orders. |
+| `orders.get` | query | Consumer | `{ orderId, sessionToken? }`; returns only the owner's order and reveals the pickup code only after payment. |
+| `payments.createTransaction` | action | Consumer | `{ orderId, sessionToken? }`; checks ownership/reserved status, calls Midtrans Sandbox, and stores pending payment context. |
 
 ---
 
@@ -29,7 +46,7 @@ If the consumer never shows up, the material does **not** become Residual. It re
 
 ---
 
-## 2. Function reference
+## 2. Target function reference
 
 ### `discovery.listNearby` 📋
 **Type:** query · **Auth:** Public (enhanced when authenticated) · **PRD ref:** CON-01, CON-02
@@ -1415,14 +1432,14 @@ Rates a completed pickup. Explicitly **priority C** — it is not required for t
 
 | Function | Kind | Auth | Ledger event | Priority | Status |
 |---|---|---|---|---|---|
-| `discovery.listNearby` | query | Public | — | A | 📋 |
-| `discovery.getListing` | query | Public | — | A | 📋 |
+| `discovery.listNearby` | query | Public | — | A | ✅ |
+| `discovery.getListing` | query | Public | — | A | ✅ |
 | `discovery.getFilters` | query | Public | — | B | 📋 |
-| `orders.reserve` | mutation | Consumer | `RESERVED` | **A** | 📋 |
-| `payments.createTransaction` | action | Consumer (owner) | — (webhook writes `PAID`) | **A** | 📋 |
-| `orders.listMine` | query | Consumer | — | A | 📋 |
+| `orders.reserve` | mutation | Consumer | `RESERVED` | **A** | ✅ |
+| `payments.createTransaction` | action | Consumer (owner) | — (webhook writes `PAID`) | **A** | ✅ |
+| `orders.listMine` | query | Consumer | — | A | ✅ |
 | `orders.listByUser` | query | Consumer | — | — | ✅ |
-| `orders.get` | query | Consumer (owner) | — | A | 📋 |
+| `orders.get` | query | Consumer (owner) | — | A | ✅ |
 | `orders.cancel` | mutation | Consumer (owner) | `CANCELLED` | B | 📋 |
 | `orders.getPickupCode` | query | Consumer (owner, paid) | — | **A** | 📋 |
 | `impact.getConsumerSummary` | query | Consumer | — | B | 📋 |

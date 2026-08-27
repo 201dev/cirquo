@@ -1249,27 +1249,14 @@ tab. Exceeding it almost always means a missing index.
 The cheapest high-value automated check in the project.
 
 ```bash
-#!/usr/bin/env bash
-# scripts/check-ledger-immutability.sh
-set -euo pipefail
-
-echo "Checking Material Flow Ledger immutability..."
-
-if grep -rEn 'db\.(patch|delete|replace)\([^)]*materialFlowLedger' convex/; then
-  echo "FAIL: The Material Flow Ledger is append-only."
-  echo "Corrections must be compensating entries, never mutations."
-  exit 1
-fi
-
-if grep -rEn "ctx\.db\.(patch|delete|replace)\(\s*ledger" convex/; then
-  echo "FAIL: Detected a mutation on a ledger document reference."
-  exit 1
-fi
-
-echo "OK: no mutating operations against materialFlowLedger."
+bun scripts/check-ledger.ts
 ```
 
-Wired into CI — see [DEPLOYMENT.md](DEPLOYMENT.md).
+The repository check scans `convex/**/*.ts` for `patch`, `delete`, or `replace`
+calls targeting `materialFlowLedger` or a ledger document reference. Run it
+locally before a ledger-related change. A GitHub Actions workflow is documented
+as a template in [DEPLOYMENT.md](DEPLOYMENT.md); it is not committed in this
+repository yet.
 
 ### 9.5 Test data management
 

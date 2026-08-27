@@ -169,39 +169,41 @@ Only the Midtrans webhook row describes an address you can actually `curl`.
 
 Status: ✅ = exists in `convex/` today · 📋 = specified, not yet implemented.
 
-Exactly **six read-only queries** exist right now. Everything else is planned. We state this plainly rather than implying a finished backend.
+The table below is checked against `convex/` as of 2026-08-27. Function
+sections in the role documents marked 📋 remain target contracts; do not call
+them until the matching export exists in source.
 
 ### 5.1 Authentication & profiles → [`API_AUTH.md`](./API_AUTH.md)
 
 | Function | Kind | Auth | Status |
 |---|---|---|---|
-| `auth.register` | mutation | Public | 📋 |
-| `auth.login` | mutation | Public | 📋 |
-| `auth.logout` | mutation | Any session | 📋 |
-| `auth.getCurrentUser` | query | Any session | 📋 |
+| `auth.register` | action | Public | ✅ |
+| `auth.login` | action | Public | ✅ |
+| `auth.logout` | mutation | Any session | ✅ |
+| `auth.getCurrentUser` | query | Any session | ✅ |
 | `auth.refreshSession` | mutation | Any session | 📋 |
 | `auth.requestPasswordReset` | action | Public | 📋 |
 | `auth.resetPassword` | mutation | Reset token | 📋 |
 | `auth.changePassword` | mutation | Any session | 📋 |
 | `auth.getVerificationStatus` | query | Merchant/Processor | 📋 |
 | `users.getByEmail` | query | Internal-facing | ✅ |
-| `merchants.createProfile` | mutation | Merchant | 📋 |
+| `merchants.createProfile` | mutation | Merchant | ✅ |
 | `merchants.getByOwner` | query | Merchant | ✅ |
-| `processors.createProfile` | mutation | Processor | 📋 |
+| `processors.createProfile` | mutation | Processor | ✅ |
 | `profiles.update` | mutation | Owner | 📋 |
 
 ### 5.2 Consumer → [`API_CONSUMER.md`](./API_CONSUMER.md)
 
 | Function | Kind | Auth | Status |
 |---|---|---|---|
-| `discovery.listNearby` | query | Public / Consumer | 📋 |
-| `discovery.getListing` | query | Public | 📋 |
+| `discovery.listNearby` | query | Public | ✅ |
+| `discovery.getListing` | query | Public | ✅ |
 | `discovery.getFilters` | query | Public | 📋 |
-| `orders.reserve` | mutation | Consumer | 📋 |
-| `payments.createTransaction` | **action** | Consumer (owner) | 📋 |
-| `orders.listMine` | query | Consumer | 📋 |
+| `orders.reserve` | mutation | Consumer | ✅ |
+| `payments.createTransaction` | **action** | Consumer (owner) | ✅ |
+| `orders.listMine` | query | Consumer | ✅ |
 | `orders.listByUser` | query | Consumer | ✅ |
-| `orders.get` | query | Consumer (owner) | 📋 |
+| `orders.get` | query | Consumer (owner) | ✅ |
 | `orders.cancel` | mutation | Consumer (owner) | 📋 |
 | `orders.getPickupCode` | query | Consumer (owner) | 📋 |
 | `impact.getConsumerSummary` | query | Consumer | 📋 |
@@ -214,13 +216,13 @@ Exactly **six read-only queries** exist right now. Everything else is planned. W
 
 | Function | Kind | Auth | Status |
 |---|---|---|---|
-| `surplusItems.create` | mutation | Merchant (verified) | 📋 |
+| `surplusItems.create` | mutation | Merchant (verified) | ✅ |
 | `surplusItems.suggestPrice` | query | Merchant (verified) | 📋 |
-| `surplusItems.update` | mutation | Merchant (owner) | 📋 |
-| `surplusItems.publish` | mutation | Merchant (owner) | 📋 |
-| `surplusItems.cancel` | mutation | Merchant (owner) | 📋 |
+| `surplusItems.update` | mutation | Merchant (owner) | ✅ |
+| `surplusItems.publish` | mutation | Merchant (owner) | ✅ |
+| `surplusItems.cancel` | mutation | Merchant (owner) | ✅ |
 | `surplusItems.markProcessingOnly` | mutation | Merchant (owner) | 📋 |
-| `surplusItems.listMine` | query | Merchant | 📋 |
+| `surplusItems.listMine` | query | Merchant | ✅ |
 | `surplusItems.listByStatus` | query | Internal/Admin | ✅ |
 | `surplusItems.get` | query | Merchant (owner) | 📋 |
 | `orders.listForMerchant` | query | Merchant | 📋 |
@@ -1125,7 +1127,6 @@ npx convex logs --tail
 
 # Environment variables (never committed)
 npx convex env set MIDTRANS_SERVER_KEY "SB-Mid-server-XXXXXXXXXXXXXXXX"
-npx convex env set MIDTRANS_CLIENT_KEY "SB-Mid-client-XXXXXXXXXXXXXXXX"
 npx convex env list
 ```
 

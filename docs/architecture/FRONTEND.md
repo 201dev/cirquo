@@ -31,6 +31,12 @@ Scope of this document:
 
 Out of scope: backend function design (see [`BACKEND.md`](BACKEND.md)), realtime subscription semantics (see [`REALTIME.md`](REALTIME.md)), and visual design tokens (see [`../design/UI_GUIDE.md`](../design/UI_GUIDE.md)).
 
+> **Implementation status — 2026-08-27.** Authentication, route guards,
+> Merchant Rescue Item flows, Consumer discovery, Mapbox, reservation, and
+> checkout are now present in `src/`. Sections or examples marked 📋 remain
+> target architecture; inspect `src/app/router.tsx` and the referenced source
+> before treating a target example as a current contract.
+
 ---
 
 ## 2. Technology Baseline
@@ -68,9 +74,9 @@ Out of scope: backend function design (see [`BACKEND.md`](BACKEND.md)), realtime
 
 ---
 
-## 3. Folder Structure
+## 3. Target Folder Structure
 
-Status legend used throughout this document: **✅ exists in the repository today** · **📋 planned, not yet written**.
+Status legend used throughout this target structure: **✅ exists in the repository today** · **📋 planned, not yet written**. The tree is an architectural guide, not a generated inventory.
 
 ```
 src/
@@ -86,7 +92,7 @@ src/
 │   ├── processor/           ✅ empty (.gitkeep)
 │   └── admin/               ✅ empty (.gitkeep)
 ├── constants/
-│   └── mock-data.ts         ✅ placeholder fixtures for the 9 pages
+│   └── mock-data.ts         ✅ remaining placeholder fixtures
 ├── features/
 │   ├── auth/                ✅ empty (.gitkeep)
 │   ├── impact/              ✅ empty (.gitkeep)
@@ -99,15 +105,15 @@ src/
 ├── lib/
 │   ├── convex.ts            ✅ conditional client construction
 │   ├── utils.ts             ✅ cn()
-│   ├── pricing.ts           📋 suggestRescuePrice
+│   ├── pricing.ts           ✅ suggestRescuePrice
 │   ├── routing.ts           📋 rankEligibleProcessors
 │   ├── ranking.ts           📋 rankListings
 │   ├── impact.ts            📋 summariseLedger, estimateCo2e
 │   ├── geo.ts               📋 haversineMeters
 │   └── format.ts            📋 grams/IDR/WIB formatters
 ├── pages/
-│   ├── auth/                ✅ empty (.gitkeep)
-│   └── *.tsx                ✅ 9 placeholder pages
+│   ├── auth/                ✅ login, registration, and onboarding pages
+│   └── *.tsx                ✅ role pages; some remain placeholders
 ├── types/
 │   ├── domain.ts            ✅ mirrors the Convex schema
 │   └── navigation.ts        ✅ NavigationItem
@@ -128,7 +134,7 @@ src/
 | `hooks/` | Generic reusable hooks (`useGeolocation`, `useCountdown`, `useMediaQuery`). | Domain-specific hooks (those belong in `features/`) | ✅ empty |
 | `layouts/` | Chrome: header, nav, sidebar, `<Outlet />`. | Data fetching beyond the session/current user | ✅ |
 | `lib/` | **Framework-agnostic pure logic** and thin client factories. | React imports, Convex imports (in the algorithm files) | ✅ partial |
-| `pages/` | One component per route. Fetches data, composes components, owns page-level layout. | Reusable UI (extract to `components/`) | ✅ 9 placeholders |
+| `pages/` | One component per route. Fetches data, composes components, owns page-level layout. | Reusable UI (extract to `components/`) | ✅ role pages; some placeholders |
 | `types/` | Shared TypeScript types mirroring the domain. | Runtime values | ✅ |
 
 ### 3.2 The `lib/` Purity Rule
@@ -169,24 +175,24 @@ Justification for judges: pure logic is **unit-testable without a Convex runtime
 
 All routes are declared in `src/app/router.tsx` (✅). A single route table is intentional at this size: it is the fastest way for a reviewer to see the entire surface area of the product.
 
-### 4.1 Existing Routes
+### 4.1 Current Routes
 
-| Path | Page | Layout | Guard | Status |
-| --- | --- | --- | --- | --- |
-| `/` | `HomePage` | `ConsumerLayout` | none | ✅ |
-| `/explore` | `ExplorePage` | `ConsumerLayout` | none | ✅ |
-| `/orders` | `OrdersPage` | `ConsumerLayout` | none today, `RequireAuth` planned | ✅ |
-| `/merchant` | `MerchantDashboardPage` | `MerchantLayout` (RoleShell) | none today | ✅ |
-| `/merchant/surplus` | `MerchantSurplusPage` | `MerchantLayout` | none today | ✅ |
-| `/merchant/surplus/new` | `CreateSurplusPage` | `MerchantLayout` | none today | ✅ |
-| `/processor` | `ProcessorDashboardPage` | `ProcessorLayout` | none today | ✅ |
-| `/processor/recovery` | `ProcessorRecoveryPage` | `ProcessorLayout` | none today | ✅ |
-| `/admin` | `AdminDashboardPage` | `AdminLayout` | none today | ✅ |
-| `*` | `NotFoundPage` | none | none | ✅ |
+| Group | Routes | Guard |
+| --- | --- | --- |
+| Guest | `/welcome`, `/login`, `/admin/login`, `/register`, `/register/:role` | `GuestRoute` redirects authenticated users |
+| Onboarding | `/auth/continue`, `/merchant/onboarding`, `/processor/onboarding`, `/pending-verification` | `ProtectedRoute` |
+| Consumer | `/`, `/discover`, `/explore`, `/orders`, `/orders/:id`, `/checkout/:orderId`, `/item/:id`, `/impact`, `/profile` | `RoleRoute('consumer')` |
+| Merchant | `/merchant`, `/merchant/surplus`, `/merchant/impact` | `RoleRoute('merchant')` |
+| Verified Merchant | `/merchant/surplus/new`, `/merchant/surplus/:id`, `/merchant/pickup` | `RoleRoute('merchant', { requiresVerified: true })` |
+| Processor | `/processor`, `/processor/history` | `RoleRoute('processor')` |
+| Verified Processor | `/processor/recovery`, `/processor/recovery/:id` | `RoleRoute('processor', { requiresVerified: true })` |
+| Admin | `/admin`, `/admin/verifications`, `/admin/moderation`, `/admin/ledger`, `/admin/disputes` | `RoleRoute('admin')` |
 
-All nine pages currently read from `src/constants/mock-data.ts`. Six read-only Convex queries exist (`users.getByEmail`, `merchants.getByOwner`, `surplusItems.listByStatus`, `orders.listByUser`, `recoveryBatches.listByStatus`, `impact.getPlaceholderSummary`) but the pages are not yet wired to them.
+`AuthProvider` restores the persisted token, resolves `auth.getCurrentUser`, and
+keeps a neutral loading shell visible until the session is known. The guard is
+navigation UX only; Convex guards remain the authorization boundary.
 
-### 4.2 Planned Routes
+### 4.2 Target Routes
 
 | Path | Page | Layout | Guard | Notes |
 | --- | --- | --- | --- | --- |
@@ -211,7 +217,7 @@ All nine pages currently read from `src/constants/mock-data.ts`. Six read-only C
 | `/admin/ledger` | `AdminLedgerPage` | `AdminLayout` | `RequireRole("admin")` | Read-only **Material Flow Ledger** explorer |
 | `/admin/disputes` | `AdminDisputesPage` | `AdminLayout` | `RequireRole("admin")` | Resolve, refund, override |
 
-### 4.3 Route Protection Design
+### 4.3 Route Protection Design (target reference)
 
 ```tsx
 // src/features/auth/RequireAuth.tsx — 📋 planned
@@ -832,9 +838,13 @@ export function CreateSurplusPage() {
 
 ---
 
-## 10. Mapbox Integration Plan 📋
+## 10. Mapbox Integration
 
-No map code exists yet. This is the plan.
+The Explore route is lazy-loaded from `src/app/router.tsx`; its implementation
+in `src/pages/consumer/explore-page.tsx` reads
+`VITE_MAPBOX_ACCESS_TOKEN`, keeps one map for the mounted route, updates the
+source on data/filter changes, and removes the map on cleanup. The reference
+examples below remain useful when refactoring or extending that implementation.
 
 ### 10.1 Lazy Loading
 

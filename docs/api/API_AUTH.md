@@ -4,16 +4,38 @@
 |---|---|
 | **Document** | `docs/api/API_AUTH.md` |
 | **Scope** | Registration, login, sessions, password lifecycle, profile creation, verification gate |
-| **Backend** | Convex (`convex/auth.ts`, `convex/merchants.ts`, `convex/processors.ts`, `convex/profiles.ts`) |
+| **Backend** | Convex (`convex/auth.ts`, `convex/merchants.ts`, `convex/processors.ts`, `convex/lib/guards.ts`) |
 | **Roles covered** | Consumer · Merchant · Organic Processor · Admin (read-only note) |
 | **Auth model** | Opaque session token in a `sessions` table, verified per call |
 | **Status legend** | ✅ implemented · 📋 planned |
-| **Implemented today** | `users.getByEmail` ✅, `merchants.getByOwner` ✅ — everything else 📋 |
+| **Implemented today** | Registration, login, logout, current-session lookup, Merchant/Processor profile creation, and guards are implemented. Password reset/refresh and profile updates remain planned. |
 | **Conventions** | See [`API.md`](./API.md) §7 (units, ids) and §9 (error model) |
 
 ---
 
-## 1. Auth model overview
+> **Current implementation — 2026-08-27.** The exported functions below are
+> the current MVP contract. Sections marked 📋 later in this document describe
+> the target hardening contract and can be broader than the code currently
+> deployed.
+
+## Current MVP function reference
+
+| Function | Kind | Access | Current contract |
+|---|---|---|---|
+| `auth.register` | action | Public | `{ name, email, password, role }` for Consumer, Merchant, or Processor; returns an opaque session token and user summary. |
+| `auth.login` | action | Public | `{ email, password }`; returns the same session result or the generic `INVALID_CREDENTIALS` error. |
+| `auth.logout` | mutation | Session | `{ sessionToken }`; removes the matching hashed session row and always returns `{ success: true }`. |
+| `auth.getCurrentUser` | query | Optional session | `{ sessionToken? }`; returns the resolved user and Merchant/Processor profile summary, or `null`. |
+| `merchants.createProfile` | mutation | Merchant | Creates one pending Merchant profile from the authenticated session. |
+| `processors.createProfile` | mutation | Processor | Creates one pending Organic Processor profile from the authenticated session. |
+
+The client persists only the opaque token under `cirquo.session.token`: Capacitor
+Preferences on Android and `localStorage` on web. The server stores only
+`sessions.tokenHash`, indexed by `by_token_hash`.
+
+---
+
+## 1. Target auth model and hardening reference
 
 Cirquo does not use Convex Auth, Clerk, or Auth0. We implement session tokens directly for three reasons:
 
@@ -274,7 +296,7 @@ Corollaries we enforce in review:
 
 ---
 
-## 3. Function reference
+## 3. Target function reference
 
 ### `auth.register` 📋
 **Type:** mutation · **Auth:** Public · **PRD ref:** AUTH-01, AUTH-02
@@ -1205,22 +1227,22 @@ sequenceDiagram
 
 | Function | Status | Notes |
 |---|---|---|
-| `users.getByEmail` | ✅ | Exists in `convex/users.ts`; read-only lookup used by planned login |
-| `merchants.getByOwner` | ✅ | Exists in `convex/merchants.ts`; read-only |
-| `auth.register` | 📋 | Blocks all other auth work |
-| `auth.login` | 📋 | Depends on `lib/password.ts` |
-| `auth.logout` | 📋 | Trivial once sessions exist |
-| `auth.getCurrentUser` | 📋 | Required by every client route guard |
+| `users.getByEmail` | ✅ | Internal lookup used by registration and login |
+| `merchants.getByOwner` | ✅ | Guarded owner lookup |
+| `auth.register` | ✅ | Public action; creates user and opaque session |
+| `auth.login` | ✅ | Public action; returns a new opaque session |
+| `auth.logout` | ✅ | Removes the matching session when present |
+| `auth.getCurrentUser` | ✅ | Resolves the current user and profile summary |
 | `auth.refreshSession` | 📋 | Priority B |
 | `auth.requestPasswordReset` | 📋 | Priority B — needs an email provider key |
 | `auth.resetPassword` | 📋 | Priority B |
 | `auth.changePassword` | 📋 | Priority B |
 | `auth.getVerificationStatus` | 📋 | Priority A — gates the merchant/processor demo |
-| `merchants.createProfile` | 📋 | Priority A |
-| `processors.createProfile` | 📋 | Priority A |
+| `merchants.createProfile` | ✅ | Creates one Merchant profile with `pending` verification |
+| `processors.createProfile` | ✅ | Creates one Processor profile with `pending` verification |
 | `profiles.update` | 📋 | Priority C |
-| `lib/guards.ts` | 📋 | **Highest priority** — every other mutation depends on it |
-| `lib/password.ts` | 📋 | Highest priority |
+| `lib/guards.ts` | ✅ | Server-side session, role, ownership, and verification guards |
+| `authNode.ts` | ✅ | Internal password hashing and verification actions |
 | `passwordResets` table | 📋 | Schema addition needed beyond the current `DATABASE.md` set |
 | `rateLimits` table | 📋 | Schema addition needed |
 

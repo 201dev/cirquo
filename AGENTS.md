@@ -135,13 +135,13 @@ The full index is [`docs/README.md`](docs/README.md). 43 documents cover product
 
 ## Current State
 
-**Version 0.1.0 — scaffold only. Roughly 15% of the MVP.**
+**Implementation snapshot — 2026-08-27.** The source code and project configuration are authoritative; roadmap documents describe the target state, not a release-status tracker.
 
-✅ Exists: Vite + Bun + TypeScript toolchain, oxlint, React Router with four role layouts, 17 shadcn/ui primitives, three custom components (`PageHeader`, `SummaryCard`, `RoleShell`), a Convex schema with 5 tables, **6 internal read-only queries**, 9 placeholder pages rendering `src/constants/mock-data.ts`, Capacitor Android, PWA manifest, Tailwind v4 OKLCH tokens. The queries stay internal until M1 adds authentication guards.
+✅ Implemented foundations include a 10-table Convex schema, session authentication and role onboarding, route guards, the append-only `materialFlowLedger` helper, Merchant Rescue Item draft/publish/edit/cancel/list flows, Dynamic Rescue Pricing, Consumer discovery with Mapbox, reservation, order views, and a Midtrans Sandbox integration.
 
-📋 Does not exist: the `materialFlowLedger` table, **any mutation at all**, authentication, Mapbox, Midtrans, scheduled functions, impact calculation, notifications, QR pickup, admin tooling.
+🚧 The app still contains some placeholder dashboard and role surfaces. Processor intake/outcome, full Circular Routing, pickup confirmation, impact aggregation, notifications, and the Admin operational flows must not be represented as complete without verifying their source and UAT state.
 
-Every number on every dashboard today is hardcoded. Do not treat the placeholder UI as evidence that a feature works.
+Do not infer completion from a route or UI alone. Verify the guarded Convex function, ledger write where required, and the relevant UAT before calling a feature complete.
 
 ---
 
