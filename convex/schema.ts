@@ -210,6 +210,9 @@ export default defineSchema({
     rescuedWeightGrams: v.number(),
     pickupCode: v.string(),
     status: orderStatus,
+    // ponytail: legacy reservations have no explicit hold timestamp.
+    // New reservations always set this; backfill then make it required.
+    paymentHoldExpiresAt: v.optional(v.number()),
     idempotencyKey: v.optional(v.string()),
     createdAt: v.number(),
     pickedUpAt: v.optional(v.number()),

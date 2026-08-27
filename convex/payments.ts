@@ -25,6 +25,9 @@ export const createTransaction = action({
     if (orderData.status !== "reserved") {
       throw new ConvexError("Pesanan tidak dalam status reservasi.");
     }
+    if ((orderData.paymentHoldExpiresAt ?? orderData.createdAt + 15 * 60 * 1_000) <= Date.now()) {
+      throw new ConvexError("Waktu pembayaran telah habis.");
+    }
 
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
     if (!serverKey) {

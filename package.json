@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "bun test tests && bun run test:convex",
-    "test:convex": "vitest run --environment edge-runtime convex/surplusItems.test.ts",
+    "test:convex": "vitest run --environment edge-runtime convex/surplusItems.test.ts convex/orders.test.ts",
     "preview": "vite preview",
     "convex": "convex dev",
     "android:sync": "bun run build && cap sync android",
