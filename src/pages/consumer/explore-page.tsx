@@ -16,11 +16,10 @@ import {
 } from "@/components/ui/sheet";
 import type { RescueItemPreview } from "@/types/domain";
 import { formatIdr } from "@/constants/mock-data";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
 import { toast } from "sonner";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { FeatureCollection } from "geojson";
+import type { GeoJSONSource, Map as MapboxMap } from "mapbox-gl";
 
 const categories = [
   { value: "all", label: "Semua" },
@@ -53,7 +52,7 @@ export default function ExplorePage() {
   const [locationDenied, setLocationDenied] = useState(false);
   const [mapError, setMapError] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<MapboxMap | null>(null);
   
   const [selectedItemId, setSelectedItemId] = useState<Id<"surplusItems"> | null>(null);
 
@@ -160,95 +159,106 @@ export default function ExplorePage() {
 
   useEffect(() => {
     if (!location) return;
-    if (!import.meta.env.VITE_MAPBOX_ACCESS_TOKEN) {
+    const accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+    if (!accessToken) {
       setMapError(true);
       return;
     }
 
-    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+    let disposed = false;
+    void (async () => {
+      try {
+        const [{ default: mapboxgl }] = await Promise.all([
+          import("mapbox-gl"),
+          import("mapbox-gl/dist/mapbox-gl.css"),
+        ]);
+        if (disposed || !mapContainerRef.current || mapRef.current) return;
 
-    if (!mapContainerRef.current) return;
-
-    if (!mapRef.current) {
-      const map = new mapboxgl.Map({
-        container: mapContainerRef.current,
-        style: "mapbox://styles/mapbox/light-v11",
-        center: [location.lng, location.lat],
-        zoom: 13,
-        attributionControl: false,
-      });
-
-      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
-
-      map.on("load", () => {
-        map.addSource("rescue-items", {
-          type: "geojson",
-          data: {
-            type: "FeatureCollection",
-            features: []
-          },
-          cluster: true,
-          clusterMaxZoom: 14,
-          clusterRadius: 50
+        mapboxgl.accessToken = accessToken;
+        const map = new mapboxgl.Map({
+          container: mapContainerRef.current,
+          style: "mapbox://styles/mapbox/light-v11",
+          center: [location.lng, location.lat],
+          zoom: 13,
+          attributionControl: false,
         });
 
-        map.addLayer({
-          id: "clusters",
-          type: "circle",
-          source: "rescue-items",
-          filter: ["has", "point_count"],
-          paint: {
-            "circle-color": "#16a34a",
-            "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 50, 40]
-          }
+        map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+
+        map.on("load", () => {
+          map.addSource("rescue-items", {
+            type: "geojson",
+            data: {
+              type: "FeatureCollection",
+              features: []
+            },
+            cluster: true,
+            clusterMaxZoom: 14,
+            clusterRadius: 50
+          });
+
+          map.addLayer({
+            id: "clusters",
+            type: "circle",
+            source: "rescue-items",
+            filter: ["has", "point_count"],
+            paint: {
+              "circle-color": "#16a34a",
+              "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 50, 40]
+            }
+          });
+
+          map.addLayer({
+            id: "cluster-count",
+            type: "symbol",
+            source: "rescue-items",
+            filter: ["has", "point_count"],
+            layout: {
+              "text-field": "{point_count_abbreviated}",
+              "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+              "text-size": 12
+            },
+            paint: { "text-color": "#ffffff" }
+          });
+
+          map.addLayer({
+            id: "unclustered-point",
+            type: "circle",
+            source: "rescue-items",
+            filter: ["!", ["has", "point_count"]],
+            paint: {
+              "circle-color": "#16a34a",
+              "circle-radius": 8,
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "#fff"
+            }
+          });
+
+          map.on("click", "unclustered-point", (e) => {
+            if (!e.features || !e.features[0].properties) return;
+            const id = e.features[0].properties.id as Id<"surplusItems">;
+            setSelectedItemId(id);
+          });
+
+          map.on("mouseenter", "unclustered-point", () => {
+            map.getCanvas().style.cursor = "pointer";
+          });
+
+          map.on("mouseleave", "unclustered-point", () => {
+            map.getCanvas().style.cursor = "";
+          });
         });
 
-        map.addLayer({
-          id: "cluster-count",
-          type: "symbol",
-          source: "rescue-items",
-          filter: ["has", "point_count"],
-          layout: {
-            "text-field": "{point_count_abbreviated}",
-            "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-            "text-size": 12
-          },
-          paint: { "text-color": "#ffffff" }
-        });
-
-        map.addLayer({
-          id: "unclustered-point",
-          type: "circle",
-          source: "rescue-items",
-          filter: ["!", ["has", "point_count"]],
-          paint: {
-            "circle-color": "#16a34a",
-            "circle-radius": 8,
-            "circle-stroke-width": 2,
-            "circle-stroke-color": "#fff"
-          }
-        });
-
-        map.on("click", "unclustered-point", (e) => {
-          if (!e.features || !e.features[0].properties) return;
-          const id = e.features[0].properties.id as Id<"surplusItems">;
-          setSelectedItemId(id);
-        });
-
-        map.on("mouseenter", "unclustered-point", () => {
-          map.getCanvas().style.cursor = "pointer";
-        });
-
-        map.on("mouseleave", "unclustered-point", () => {
-          map.getCanvas().style.cursor = "";
-        });
-      });
-
-      mapRef.current = map;
-    }
+        mapRef.current = map;
+      } catch {
+        if (!disposed) setMapError(true);
+      }
+    })();
 
     return () => {
-      // Mapbox cleanup handled when component unmounts entirely
+      disposed = true;
+      mapRef.current?.remove();
+      mapRef.current = null;
     };
   }, [location]);
 
@@ -269,7 +279,7 @@ export default function ExplorePage() {
       }))
     };
 
-    const source = map.getSource("rescue-items") as mapboxgl.GeoJSONSource;
+    const source = map.getSource("rescue-items") as GeoJSONSource;
     if (source) {
       source.setData(geojsonData);
     }
