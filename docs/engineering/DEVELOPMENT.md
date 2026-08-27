@@ -828,7 +828,7 @@ import { internal } from './_generated/api';
 const http = httpRouter();
 
 http.route({
-  path: '/midtrans/notification',
+  path: '/midtrans/webhook',
   method: 'POST',
   handler: httpAction(async (ctx, request) => {
     const body: unknown = await request.json();
@@ -843,7 +843,7 @@ export default http;
 ```
 
 The public URL is your deployment's HTTP domain, e.g.
-`https://<deployment-name>.convex.site/midtrans/notification`. Register that in
+`https://<deployment-name>.convex.site/midtrans/webhook`. Register that in
 the Midtrans Sandbox dashboard under **Settings → Configuration → Payment
 Notification URL**.
 
