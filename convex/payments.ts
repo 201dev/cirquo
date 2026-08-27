@@ -2,19 +2,43 @@
 import { v, ConvexError } from "convex/values";
 import { action, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { requireRole } from "./lib/guards";
+
+const PAYMENT_HOLD_MS = 15 * 60 * 1_000;
+
+type PaymentOrder = {
+  userId: Id<"users">;
+  surplusItemId: Id<"surplusItems">;
+  totalPrice: number;
+  status: "reserved" | "paid" | "picked_up" | "cancelled" | "expired";
+  createdAt: number;
+  paymentHoldExpiresAt?: number;
+  itemName: string;
+};
+
+type CreateTransactionResult = {
+  snapToken: string;
+  redirectUrl: string;
+  orderReference: Id<"orders">;
+  amount: number;
+  paymentHoldExpiresAt: number;
+};
 
 export const createTransaction = action({
   args: {
     orderId: v.id("orders"),
     sessionToken: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<CreateTransactionResult> => {
     // Call an internal query to validate role and get user
     const user = await ctx.runQuery(internal.payments.getConsumerUser, { sessionToken: args.sessionToken });
     
     // Validate order via an internal query (since action can't read db directly without runQuery)
-    const orderData: any = await ctx.runQuery(internal.payments.getOrderForPayment, { orderId: args.orderId });
+    const orderData = await ctx.runQuery(
+      internal.payments.getOrderForPayment,
+      { orderId: args.orderId },
+    ) as PaymentOrder | null;
     
     if (!orderData) {
       throw new ConvexError("Pesanan tidak ditemukan.");
@@ -24,6 +48,10 @@ export const createTransaction = action({
     }
     if (orderData.status !== "reserved") {
       throw new ConvexError("Pesanan tidak dalam status reservasi.");
+    }
+    const paymentHoldExpiresAt = orderData.paymentHoldExpiresAt ?? orderData.createdAt + PAYMENT_HOLD_MS;
+    if (paymentHoldExpiresAt <= Date.now()) {
+      throw new ConvexError("Waktu pembayaran telah habis.");
     }
 
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
@@ -71,7 +99,10 @@ export const createTransaction = action({
       throw new ConvexError("Gagal membuat transaksi pembayaran.");
     }
 
-    const data: any = await response.json();
+    const data: { token?: unknown; redirect_url?: unknown } = await response.json();
+    if (typeof data.token !== "string" || typeof data.redirect_url !== "string") {
+      throw new ConvexError("Respons Midtrans tidak valid.");
+    }
 
     // Persist pending payment context
     await ctx.runMutation(internal.payments.savePendingTransaction, {
@@ -84,6 +115,7 @@ export const createTransaction = action({
       redirectUrl: data.redirect_url,
       orderReference: args.orderId,
       amount: orderData.totalPrice,
+      paymentHoldExpiresAt,
     };
   },
 });

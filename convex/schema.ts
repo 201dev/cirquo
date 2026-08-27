@@ -210,13 +210,17 @@ export default defineSchema({
     rescuedWeightGrams: v.number(),
     pickupCode: v.string(),
     status: orderStatus,
+    // ponytail: legacy reservations have no explicit hold timestamp.
+    // New reservations always set this; backfill then make it required.
+    paymentHoldExpiresAt: v.optional(v.number()),
     idempotencyKey: v.optional(v.string()),
     createdAt: v.number(),
     pickedUpAt: v.optional(v.number()),
   })
     .index('by_user', ['userId'])
     .index('by_item', ['surplusItemId'])
-    .index('by_idempotency_key', ['idempotencyKey'])
+    .index('by_user_item_status', ['userId', 'surplusItemId', 'status'])
+    .index('by_user_idempotency_key', ['userId', 'idempotencyKey'])
     .index('by_pickup_code', ['pickupCode']),
 
   recoveryBatches: defineTable({

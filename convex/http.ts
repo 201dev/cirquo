@@ -3,20 +3,18 @@ import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { recordLedgerEvent } from "./lib/ledger";
+import { isValidMidtransSignature, parseMidtransIdrAmount } from "./lib/midtrans";
 import { v } from "convex/values";
 
-// Utility to verify midtrans signature using Web Crypto API
-async function verifySignature(orderId: string, statusCode: string, grossAmount: string, serverKey: string, signatureKey: string) {
-  const payload = `${orderId}${statusCode}${grossAmount}${serverKey}`;
-
-  const encoder = new TextEncoder();
-  const data = encoder.encode(payload);
-  const hashBuffer = await crypto.subtle.digest('SHA-512', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-  return hashHex === signatureKey;
-}
+type MidtransWebhookPayload = {
+  order_id?: unknown;
+  status_code?: unknown;
+  gross_amount?: unknown;
+  signature_key?: unknown;
+  transaction_status?: unknown;
+  payment_type?: unknown;
+  transaction_id?: unknown;
+};
 
 const midtransWebhook = httpAction(async (ctx, request) => {
   const serverKey = process.env.MIDTRANS_SERVER_KEY;
@@ -24,7 +22,7 @@ const midtransWebhook = httpAction(async (ctx, request) => {
     return new Response("Server key not configured", { status: 500 });
   }
 
-  let payload;
+  let payload: MidtransWebhookPayload;
   try {
     payload = await request.json();
   } catch {
@@ -41,7 +39,18 @@ const midtransWebhook = httpAction(async (ctx, request) => {
     transaction_id: transactionId,
   } = payload;
 
-  const isValid = await verifySignature(orderId, statusCode, grossAmount, serverKey, signatureKey);
+  if (
+    typeof orderId !== "string" ||
+    typeof statusCode !== "string" ||
+    typeof grossAmount !== "string" ||
+    typeof signatureKey !== "string" ||
+    typeof transactionStatus !== "string" ||
+    typeof transactionId !== "string"
+  ) {
+    return new Response("Invalid webhook payload", { status: 400 });
+  }
+
+  const isValid = await isValidMidtransSignature(orderId, statusCode, grossAmount, serverKey, signatureKey);
 
   if (!isValid) {
     console.error("Invalid signature for order:", orderId);
@@ -49,9 +58,10 @@ const midtransWebhook = httpAction(async (ctx, request) => {
   }
   await ctx.runMutation(internal.http.handleWebhook, {
     orderId: orderId as Id<"orders">,
+    grossAmount,
     transactionStatus,
-    paymentType: paymentType || "unknown",
-    transactionId: transactionId || "unknown",
+    paymentType: typeof paymentType === "string" ? paymentType : "unknown",
+    transactionId,
     rawPayload: JSON.stringify(payload),
   });
 
@@ -71,6 +81,7 @@ export default http;
 export const handleWebhook = internalMutation({
   args: {
     orderId: v.string(), // accepting string because it comes from external payload, but we'll cast/verify it
+    grossAmount: v.string(),
     transactionStatus: v.string(),
     paymentType: v.string(),
     transactionId: v.string(),
@@ -89,8 +100,20 @@ export const handleWebhook = internalMutation({
       console.warn("Order not found:", args.orderId);
       return;
     }
+    if (parseMidtransIdrAmount(args.grossAmount) !== order.totalPrice) {
+      console.warn("Webhook amount does not match order:", args.orderId);
+      return;
+    }
 
-    // Upsert payment record
+    const paymentForProviderTransaction = await ctx.db
+      .query("payments")
+      .withIndex("by_provider_txn", (q) => q.eq("providerTxnId", args.transactionId))
+      .unique();
+    if (paymentForProviderTransaction && paymentForProviderTransaction.orderId !== normalizedOrderId) {
+      console.warn("Provider transaction already belongs to another order:", args.transactionId);
+      return;
+    }
+
     const payment = await ctx.db
       .query("payments")
       .withIndex("by_order", (q) => q.eq("orderId", normalizedOrderId))

@@ -653,7 +653,7 @@ import { internal } from './_generated/api';
 const http = httpRouter();
 
 http.route({
-  path: '/midtrans/notification',
+  path: '/midtrans/webhook',
   method: 'POST',
   handler: httpAction(async (ctx, request) => {
     const body: unknown = await request.json();
@@ -676,9 +676,9 @@ export default http;
 
 | Deployment | Notification URL |
 | --- | --- |
-| Personal dev | `https://<dev-name>-<n>.convex.site/midtrans/notification` |
-| Shared dev / staging | `https://<shared-dev-name>.convex.site/midtrans/notification` |
-| Production | `https://<prod-name>.convex.site/midtrans/notification` |
+| Personal dev | `https://<dev-name>-<n>.convex.site/midtrans/webhook` |
+| Shared dev / staging | `https://<shared-dev-name>.convex.site/midtrans/webhook` |
+| Production | `https://<prod-name>.convex.site/midtrans/webhook` |
 
 Note `.convex.site`, not `.convex.cloud`. `.convex.cloud` is the client API
 endpoint; `.convex.site` serves HTTP actions. Using the wrong one is a common and
@@ -768,7 +768,7 @@ verification before it can be documented as supported.
 
 **Preferred — use your Convex dev deployment's public HTTP endpoint.** It is
 already reachable from the internet. No tunnel, no extra dependency. Register
-`https://<your-dev>.convex.site/midtrans/notification` in the sandbox dashboard
+`https://<your-dev>.convex.site/midtrans/webhook` in the sandbox dashboard
 while you are the one working on payments.
 
 **Replay a notification without a real payment:**
@@ -790,7 +790,7 @@ bunx convex run payments:handleNotification '{
 **Or curl the endpoint directly:**
 
 ```bash
-curl -X POST https://<your-dev>.convex.site/midtrans/notification \
+curl -X POST https://<your-dev>.convex.site/midtrans/webhook \
   -H 'Content-Type: application/json' \
   -d '{ "order_id": "cirquo-order-abc123", "status_code": "200",
         "gross_amount": "12000.00", "signature_key": "<sig>",

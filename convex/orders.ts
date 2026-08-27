@@ -4,6 +4,14 @@ import { requireRole } from './lib/guards'
 import { recordLedgerEvent } from './lib/ledger'
 import { internal } from './_generated/api'
 
+const PAYMENT_HOLD_MS = 15 * 60 * 1000
+
+function generatePickupCode() {
+  const value = new Uint32Array(1)
+  crypto.getRandomValues(value)
+  return (value[0] % 1_000_000).toString().padStart(6, '0')
+}
+
 export const listByUser = internalQuery({
   args: { userId: v.id('users') },
   handler: async (ctx, { userId }) => ctx.db
@@ -21,6 +29,7 @@ export const reserve = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireRole(ctx, args.sessionToken, ['consumer'])
+    const now = Date.now()
     
     if (args.quantity <= 0 || !Number.isInteger(args.quantity)) {
       throw new ConvexError('Kuantitas tidak valid')
@@ -29,19 +38,42 @@ export const reserve = mutation({
     if (args.idempotencyKey) {
       const existing = await ctx.db
         .query('orders')
-        .withIndex('by_idempotency_key', (q) => q.eq('idempotencyKey', args.idempotencyKey))
+        .withIndex('by_user_idempotency_key', (q) =>
+          q.eq('userId', user._id).eq('idempotencyKey', args.idempotencyKey),
+        )
         .unique()
       if (existing) {
+        if (
+          existing.surplusItemId !== args.surplusItemId ||
+          existing.quantity !== args.quantity
+        ) {
+          throw new ConvexError('IDEMPOTENCY_CONFLICT')
+        }
         return existing._id
       }
     }
+
+    const openOrders = await Promise.all(
+      (['reserved', 'paid'] as const).map((status) =>
+        ctx.db
+          .query('orders')
+          .withIndex('by_user_item_status', (q) =>
+            q
+              .eq('userId', user._id)
+              .eq('surplusItemId', args.surplusItemId)
+              .eq('status', status),
+          )
+          .first(),
+      ),
+    )
+    if (openOrders.some(Boolean)) throw new ConvexError('ALREADY_RESERVED')
 
     const item = await ctx.db.get(args.surplusItemId)
     if (!item) throw new ConvexError('NOT_FOUND')
     if (item.status !== 'active') throw new ConvexError('Item tidak tersedia')
     if (item.processingOnly) throw new ConvexError('Item tidak tersedia untuk dibeli')
     if (item.remainingQuantity < args.quantity) throw new ConvexError('Kuantitas tidak mencukupi')
-    if (item.pickupEndAt <= Date.now()) throw new ConvexError('Waktu pickup sudah habis')
+    if (item.pickupEndAt <= now) throw new ConvexError('Waktu pickup sudah habis')
 
     const merchant = await ctx.db.get(item.merchantId)
     if (!merchant || merchant.verificationStatus !== 'verified') {
@@ -51,11 +83,13 @@ export const reserve = mutation({
     const totalPrice = item.currentPrice * args.quantity
     const rescuedWeightGrams = item.weightPerItemGrams * args.quantity
     
-    // Generate a 6-digit random code
-    const pickupCode = Math.floor(100000 + Math.random() * 900000).toString()
+    const remainingQuantity = item.remainingQuantity - args.quantity
+    const paymentHoldExpiresAt = now + PAYMENT_HOLD_MS
+    const pickupCode = generatePickupCode()
 
     await ctx.db.patch(item._id, {
-      remainingQuantity: item.remainingQuantity - args.quantity
+      remainingQuantity,
+      status: remainingQuantity === 0 ? 'sold_out' : 'active',
     })
 
     const orderId = await ctx.db.insert('orders', {
@@ -66,8 +100,9 @@ export const reserve = mutation({
       rescuedWeightGrams,
       pickupCode,
       status: 'reserved',
+      paymentHoldExpiresAt,
       idempotencyKey: args.idempotencyKey,
-      createdAt: Date.now(),
+      createdAt: now,
     })
 
     await recordLedgerEvent(ctx, {
@@ -79,8 +114,7 @@ export const reserve = mutation({
       actorRole: 'consumer',
     })
 
-    // Schedule hold expiry for 15 minutes
-    await ctx.scheduler.runAfter(15 * 60 * 1000, internal.orders.expireHold, { orderId })
+    await ctx.scheduler.runAt(paymentHoldExpiresAt, internal.orders.expireHold, { orderId })
 
     return orderId
   }
@@ -92,6 +126,8 @@ export const expireHold = internalMutation({
     const order = await ctx.db.get(args.orderId)
     if (!order) return
     if (order.status !== 'reserved') return
+    const paymentHoldExpiresAt = order.paymentHoldExpiresAt ?? order.createdAt + PAYMENT_HOLD_MS
+    if (paymentHoldExpiresAt > Date.now()) return
 
     const item = await ctx.db.get(order.surplusItemId)
     if (!item) return
@@ -101,7 +137,8 @@ export const expireHold = internalMutation({
     })
 
     await ctx.db.patch(item._id, {
-      remainingQuantity: item.remainingQuantity + order.quantity
+      remainingQuantity: item.remainingQuantity + order.quantity,
+      status: 'active',
     })
 
     await recordLedgerEvent(ctx, {
@@ -109,6 +146,7 @@ export const expireHold = internalMutation({
       orderId: order._id,
       eventType: 'CANCELLED',
       weightDeltaGrams: 0,
+      metadata: { reason: 'PAYMENT_HOLD_EXPIRED' },
     })
   }
 })
