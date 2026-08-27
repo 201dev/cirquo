@@ -1,6 +1,7 @@
 import { v, ConvexError } from 'convex/values'
 import { query } from './_generated/server'
 import { materialType } from './schema'
+import { isPublicDiscoveryItem, sortByDistanceThenUrgency } from '../src/lib/discovery'
 import { calculateHaversineDistanceMeters } from '../src/lib/geo'
 
 export const listNearby = query({
@@ -17,8 +18,12 @@ export const listNearby = query({
   },
   handler: async (ctx, args) => {
     // Validate inputs
-    if (args.latitude < -90 || args.latitude > 90) throw new ConvexError('Invalid latitude')
-    if (args.longitude < -180 || args.longitude > 180) throw new ConvexError('Invalid longitude')
+    if (!Number.isFinite(args.latitude) || args.latitude < -90 || args.latitude > 90) {
+      throw new ConvexError('Invalid latitude')
+    }
+    if (!Number.isFinite(args.longitude) || args.longitude < -180 || args.longitude > 180) {
+      throw new ConvexError('Invalid longitude')
+    }
     
     const radiusMeters = Math.max(500, Math.min(30000, args.radiusMeters))
 
@@ -38,13 +43,8 @@ export const listNearby = query({
     const merchantMap = new Map(merchants.map(m => [m._id, m]))
 
     for (const item of activeItems) {
-      if (item.processingOnly) continue
-      if (item.remainingQuantity <= 0) continue
-      if (item.pickupEndAt <= now) continue
-      
       const merchant = merchantMap.get(item.merchantId)
-      if (!merchant || merchant.verificationStatus !== 'verified') continue
-      if (merchant.latitude === undefined || merchant.longitude === undefined) continue
+      if (!isPublicDiscoveryItem(item, merchant, now)) continue
 
       if (args.materialType && item.materialType !== args.materialType) continue
       if (args.maxPrice !== undefined && item.currentPrice > args.maxPrice) continue
@@ -96,17 +96,11 @@ export const listNearby = query({
       })
     }
 
-    // Rank by distance and urgency (pickup start time)
-    candidates.sort((a, b) => {
-      if (a.distanceMeters !== b.distanceMeters) {
-        return a.distanceMeters - b.distanceMeters
-      }
-      return a.pickupStartAt - b.pickupStartAt
-    })
+    const rankedCandidates = sortByDistanceThenUrgency(candidates)
 
-    const totalMatched = candidates.length
+    const totalMatched = rankedCandidates.length
     const truncated = totalMatched > 200
-    const results = candidates.slice(0, 200)
+    const results = rankedCandidates.slice(0, 200)
 
     return {
       results,
@@ -121,12 +115,9 @@ export const getListing = query({
   handler: async (ctx, args) => {
     const item = await ctx.db.get(args.id)
     if (!item) return null
-    if (item.status !== 'active') return null
-    if (item.processingOnly) return null
     
     const merchant = await ctx.db.get(item.merchantId)
-    if (!merchant || merchant.verificationStatus !== 'verified') return null
-    if (merchant.latitude === undefined || merchant.longitude === undefined) return null
+    if (!isPublicDiscoveryItem(item, merchant, Date.now())) return null
 
     const discountPercentage = Math.round(((item.originalPrice - item.currentPrice) / item.originalPrice) * 100)
 

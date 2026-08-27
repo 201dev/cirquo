@@ -1,11 +1,12 @@
 import { Search, AlertCircle, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/common/page-header";
 import { RescueItemCard } from "@/components/common/rescue-item-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useQuery, useMutation } from "convex/react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import {
   Sheet,
@@ -15,12 +16,15 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { RescueItemPreview } from "@/types/domain";
-import { formatIdr } from "@/constants/mock-data";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
-import { toast } from "sonner";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { FeatureCollection } from "geojson";
+import type { GeoJSONSource, Map as MapboxMap } from "mapbox-gl";
+
+const formatIdr = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0,
+}).format;
 
 const categories = [
   { value: "all", label: "Semua" },
@@ -31,29 +35,76 @@ const categories = [
   { value: "protein", label: "Protein" },
   { value: "dry_goods", label: "Kering" },
   { value: "mixed", label: "Campur" },
-];
+] as const;
+
+type Category = (typeof categories)[number]["value"];
+
+function isCategory(value: string | null): value is Category {
+  return categories.some((category) => category.value === value);
+}
+
+function readFilter(
+  params: URLSearchParams,
+  key: string,
+  allowed: readonly string[],
+  fallback: string,
+) {
+  const value = params.get(key);
+  return value !== null && allowed.includes(value) ? value : fallback;
+}
+
+type MapItem = {
+  _id: string;
+  merchant: { latitude: number; longitude: number };
+};
+
+function formatDistance(distanceMeters: number) {
+  return distanceMeters < 1_000
+    ? `${distanceMeters.toLocaleString("id-ID")} m`
+    : `${(distanceMeters / 1_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} km`;
+}
+
+function updateMapSource(map: MapboxMap, items: readonly MapItem[]) {
+  const source = map.getSource("rescue-items") as GeoJSONSource | undefined;
+  source?.setData({
+    type: "FeatureCollection",
+    features: items.map((item) => ({
+      type: "Feature",
+      properties: { id: item._id },
+      geometry: {
+        type: "Point",
+        coordinates: [item.merchant.longitude, item.merchant.latitude],
+      },
+    })),
+  } satisfies FeatureCollection);
+}
 
 export default function ExplorePage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   
-  const [query, setQuery] = useState(params.get("q") ?? "");
-  const [category, setCategory] = useState<string>(() => {
-    const requestedCategory = params.get("category");
-    return categories.some((item) => item.value === requestedCategory)
-      ? (requestedCategory ?? "all")
-      : "all";
-  });
-  
-  const [maxDistance, setMaxDistance] = useState("30000"); // max 30km
-  const [maxPrice, setMaxPrice] = useState("all");
-  const [pickupWindow, setPickupWindow] = useState("all");
-  const [dietary, setDietary] = useState("all");
+  const query = params.get("q") ?? "";
+  const requestedCategory = params.get("category");
+  const category = isCategory(requestedCategory) ? requestedCategory : "all";
+  const maxDistance = readFilter(params, "distance", ["30000", "2000", "3000", "5000"], "30000");
+  const maxPrice = readFilter(params, "price", ["all", "15000", "20000", "30000"], "all");
+  const pickupWindow = readFilter(params, "pickup", ["all", "before_18", "after_18"], "all");
+  const dietary = readFilter(params, "dietary", ["all", "Vegetarian", "Vegan", "Tanpa babi"], "all");
+
+  const setFilter = (key: string, value: string, fallback: string) => {
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      if (value === fallback) next.delete(key);
+      else next.set(key, value);
+      return next;
+    }, { replace: true });
+  };
 
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationDenied, setLocationDenied] = useState(false);
   const [mapError, setMapError] = useState(false);
+  const [mapLoading, setMapLoading] = useState(true);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<MapboxMap | null>(null);
   
   const [selectedItemId, setSelectedItemId] = useState<Id<"surplusItems"> | null>(null);
 
@@ -107,9 +158,6 @@ export default function ExplorePage() {
     };
   }, []);
 
-  const reserveMutation = useMutation(api.orders.reserve);
-  const [isReserving, setIsReserving] = useState(false);
-
   // Convert dietary string to array
   const dietaryTags = dietary === "all" ? undefined : [dietary];
 
@@ -121,7 +169,7 @@ export default function ExplorePage() {
           latitude: location.lat,
           longitude: location.lng,
           radiusMeters: Number(maxDistance),
-          materialType: category === "all" ? undefined : (category as any),
+          materialType: category === "all" ? undefined : category,
           dietaryTags,
           maxPrice: maxPrice === "all" ? undefined : Number(maxPrice),
           // We can handle pickup time filtering using server or client, here server takes timestamps but our UI uses simple flags.
@@ -149,6 +197,12 @@ export default function ExplorePage() {
     return results;
   }, [nearbyData, query, pickupWindow]);
 
+  const filteredRef = useRef(filtered);
+  filteredRef.current = filtered;
+  const selectedDistanceMeters = filtered.find(
+    (item) => item._id === selectedItemId,
+  )?.distanceMeters;
+
   const activeFilterCount = [
     query,
     category !== "all",
@@ -160,119 +214,132 @@ export default function ExplorePage() {
 
   useEffect(() => {
     if (!location) return;
-    if (!import.meta.env.VITE_MAPBOX_ACCESS_TOKEN) {
+    const accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+    if (!accessToken) {
       setMapError(true);
+      setMapLoading(false);
       return;
     }
 
-    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+    let disposed = false;
+    setMapLoading(true);
+    void (async () => {
+      try {
+        const [{ default: mapboxgl }] = await Promise.all([
+          import("mapbox-gl"),
+          import("mapbox-gl/dist/mapbox-gl.css"),
+        ]);
+        if (disposed || !mapContainerRef.current || mapRef.current) return;
 
-    if (!mapContainerRef.current) return;
-
-    if (!mapRef.current) {
-      const map = new mapboxgl.Map({
-        container: mapContainerRef.current,
-        style: "mapbox://styles/mapbox/light-v11",
-        center: [location.lng, location.lat],
-        zoom: 13,
-        attributionControl: false,
-      });
-
-      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
-
-      map.on("load", () => {
-        map.addSource("rescue-items", {
-          type: "geojson",
-          data: {
-            type: "FeatureCollection",
-            features: []
-          },
-          cluster: true,
-          clusterMaxZoom: 14,
-          clusterRadius: 50
+        mapboxgl.accessToken = accessToken;
+        const map = new mapboxgl.Map({
+          container: mapContainerRef.current,
+          style: "mapbox://styles/mapbox/light-v11",
+          center: [location.lng, location.lat],
+          zoom: 13,
+          attributionControl: false,
         });
 
-        map.addLayer({
-          id: "clusters",
-          type: "circle",
-          source: "rescue-items",
-          filter: ["has", "point_count"],
-          paint: {
-            "circle-color": "#16a34a",
-            "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 50, 40]
-          }
+        map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+
+        map.on("load", () => {
+          map.addSource("rescue-items", {
+            type: "geojson",
+            data: {
+              type: "FeatureCollection",
+              features: []
+            },
+            cluster: true,
+            clusterMaxZoom: 14,
+            clusterRadius: 50
+          });
+
+          map.addLayer({
+            id: "clusters",
+            type: "circle",
+            source: "rescue-items",
+            filter: ["has", "point_count"],
+            paint: {
+              "circle-color": "#16a34a",
+              "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 50, 40]
+            }
+          });
+
+          map.addLayer({
+            id: "cluster-count",
+            type: "symbol",
+            source: "rescue-items",
+            filter: ["has", "point_count"],
+            layout: {
+              "text-field": "{point_count_abbreviated}",
+              "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+              "text-size": 12
+            },
+            paint: { "text-color": "#ffffff" }
+          });
+
+          map.addLayer({
+            id: "unclustered-point",
+            type: "circle",
+            source: "rescue-items",
+            filter: ["!", ["has", "point_count"]],
+            paint: {
+              "circle-color": "#16a34a",
+              "circle-radius": 8,
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "#fff"
+            }
+          });
+
+          map.on("click", "unclustered-point", (e) => {
+            if (!e.features || !e.features[0].properties) return;
+            const id = e.features[0].properties.id as Id<"surplusItems">;
+            setSelectedItemId(id);
+          });
+
+          map.on("mouseenter", "unclustered-point", () => {
+            map.getCanvas().style.cursor = "pointer";
+          });
+
+          map.on("mouseleave", "unclustered-point", () => {
+            map.getCanvas().style.cursor = "";
+          });
+
+          updateMapSource(map, filteredRef.current);
+          setMapLoading(false);
         });
 
-        map.addLayer({
-          id: "cluster-count",
-          type: "symbol",
-          source: "rescue-items",
-          filter: ["has", "point_count"],
-          layout: {
-            "text-field": "{point_count_abbreviated}",
-            "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-            "text-size": 12
-          },
-          paint: { "text-color": "#ffffff" }
+        map.on("error", () => {
+          if (disposed) return;
+          disposed = true;
+          map.remove();
+          if (mapRef.current === map) mapRef.current = null;
+          setMapLoading(false);
+          setMapError(true);
         });
 
-        map.addLayer({
-          id: "unclustered-point",
-          type: "circle",
-          source: "rescue-items",
-          filter: ["!", ["has", "point_count"]],
-          paint: {
-            "circle-color": "#16a34a",
-            "circle-radius": 8,
-            "circle-stroke-width": 2,
-            "circle-stroke-color": "#fff"
-          }
-        });
-
-        map.on("click", "unclustered-point", (e) => {
-          if (!e.features || !e.features[0].properties) return;
-          const id = e.features[0].properties.id as Id<"surplusItems">;
-          setSelectedItemId(id);
-        });
-
-        map.on("mouseenter", "unclustered-point", () => {
-          map.getCanvas().style.cursor = "pointer";
-        });
-
-        map.on("mouseleave", "unclustered-point", () => {
-          map.getCanvas().style.cursor = "";
-        });
-      });
-
-      mapRef.current = map;
-    }
+        mapRef.current = map;
+      } catch {
+        if (!disposed) {
+          setMapLoading(false);
+          setMapError(true);
+        }
+      }
+    })();
 
     return () => {
-      // Mapbox cleanup handled when component unmounts entirely
+      disposed = true;
+      mapRef.current?.remove();
+      mapRef.current = null;
     };
   }, [location]);
 
   // Update map source when filtered data changes
   useEffect(() => {
+    filteredRef.current = filtered;
     const map = mapRef.current;
-    if (!map || !map.isStyleLoaded() || !filtered) return;
-
-    const geojsonData: FeatureCollection = {
-      type: "FeatureCollection",
-      features: filtered.map(item => ({
-        type: "Feature",
-        properties: { id: item._id },
-        geometry: {
-          type: "Point",
-          coordinates: [item.merchant.longitude, item.merchant.latitude]
-        }
-      }))
-    };
-
-    const source = map.getSource("rescue-items") as mapboxgl.GeoJSONSource;
-    if (source) {
-      source.setData(geojsonData);
-    }
+    if (!map || !map.isStyleLoaded()) return;
+    updateMapSource(map, filtered);
   }, [filtered]);
 
   const selectedItemDetails = useQuery(
@@ -280,28 +347,7 @@ export default function ExplorePage() {
     selectedItemId ? { id: selectedItemId } : "skip"
   );
 
-  const handleReserve = async () => {
-    if (!selectedItemId) return;
-    try {
-      setIsReserving(true);
-      await reserveMutation({
-        surplusItemId: selectedItemId,
-        quantity: 1, // Defaulting to 1 for MVP
-        idempotencyKey: crypto.randomUUID(),
-        // sessionToken should be handled by Convex Auth or passed securely if custom
-      });
-      toast.success("Berhasil memesan! Silakan lanjutkan pembayaran.");
-      setSelectedItemId(null);
-      // Handoff to M3-05 (Checkout page would be navigated here)
-      // navigate(`/checkout/${selectedItemId}`); 
-    } catch (error: any) {
-      toast.error(error.message || "Gagal melakukan reservasi");
-    } finally {
-      setIsReserving(false);
-    }
-  };
-
-  const mapToPreview = (item: any): RescueItemPreview => {
+  const mapToPreview = (item: (typeof filtered)[number]): RescueItemPreview => {
     const start = new Date(item.pickupStartAt);
     const end = new Date(item.pickupEndAt);
     const formatTime = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -317,11 +363,10 @@ export default function ExplorePage() {
       pickupWindow: `${formatTime(start)} - ${formatTime(end)}`,
       status: "active",
       category: item.materialType === "bakery" ? "bakery" : (item.materialType === "produce" ? "produce" : "meal"),
-      description: item.description || "",
+      description: "",
       image: item.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800",
       address: item.merchant.address,
       distanceKm: Number((item.distanceMeters / 1000).toFixed(1)),
-      rating: 4.8, // Mocked rating since it's not in schema
       dietaryTags: item.dietaryTags,
       pickupDate: start.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
     };
@@ -354,7 +399,7 @@ export default function ExplorePage() {
             <Search className="absolute left-3 top-3.5 size-4 text-muted-foreground" />
             <Input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => setFilter("q", event.target.value, "")}
               className="pl-9"
               placeholder="Cari makanan atau merchant"
             />
@@ -370,7 +415,7 @@ export default function ExplorePage() {
               size="sm"
               variant={category === item.value ? "default" : "outline"}
               className="shrink-0"
-              onClick={() => setCategory(item.value)}
+              onClick={() => setFilter("category", item.value, "all")}
               aria-pressed={category === item.value}
             >
               {item.label}
@@ -381,7 +426,7 @@ export default function ExplorePage() {
           <FilterSelect
             label="Jarak"
             value={maxDistance}
-            onChange={setMaxDistance}
+            onChange={(value) => setFilter("distance", value, "30000")}
             options={[
               ["30000", "Semua jarak"],
               ["2000", "Maks. 2 km"],
@@ -392,7 +437,7 @@ export default function ExplorePage() {
           <FilterSelect
             label="Harga"
             value={maxPrice}
-            onChange={setMaxPrice}
+            onChange={(value) => setFilter("price", value, "all")}
             options={[
               ["all", "Semua harga"],
               ["15000", "Maks. Rp15 ribu"],
@@ -403,7 +448,7 @@ export default function ExplorePage() {
           <FilterSelect
             label="Pickup"
             value={pickupWindow}
-            onChange={setPickupWindow}
+            onChange={(value) => setFilter("pickup", value, "all")}
             options={[
               ["all", "Semua waktu"],
               ["before_18", "Mulai ≤18.00"],
@@ -413,7 +458,7 @@ export default function ExplorePage() {
           <FilterSelect
             label="Preferensi"
             value={dietary}
-            onChange={setDietary}
+            onChange={(value) => setFilter("dietary", value, "all")}
             options={[
               ["all", "Semua preferensi"],
               ["Vegetarian", "Vegetarian"],
@@ -445,15 +490,31 @@ export default function ExplorePage() {
             </p>
           </div>
           
-          {nearbyData !== undefined && filtered.length > 0 ? (
+          {nearbyData === undefined ? (
+            <div
+              className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2"
+              aria-label="Memuat Rescue Item"
+            >
+              {[0, 1, 2].map((index) => (
+                <div key={index} className="grid grid-cols-[7.5rem_1fr] gap-4 rounded-2xl border p-3">
+                  <Skeleton className="min-h-40" />
+                  <div className="space-y-3 py-2">
+                    <Skeleton className="h-3 w-2/5" />
+                    <Skeleton className="h-5 w-4/5" />
+                    <Skeleton className="mt-8 h-5 w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filtered.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-              {filtered.map((item: any) => (
-                <div key={item._id} onClick={() => setSelectedItemId(item._id)} className="cursor-pointer">
+              {filtered.map((item) => (
+                <div key={item._id}>
                   <RescueItemCard item={mapToPreview(item)} horizontal />
                 </div>
               ))}
             </div>
-          ) : nearbyData !== undefined ? (
+          ) : (
             <div className="rounded-xl bg-muted p-8 text-center">
               <Search className="mx-auto size-8 text-muted-foreground" />
               <h2 className="mt-4 font-semibold">Belum ada yang cocok</h2>
@@ -464,34 +525,45 @@ export default function ExplorePage() {
                 className="mt-5"
                 variant="outline"
                 onClick={() => {
-                  setQuery("");
-                  setCategory("all");
-                  setMaxDistance("30000");
-                  setMaxPrice("all");
-                  setPickupWindow("all");
-                  setDietary("all");
+                  setParams((current) => {
+                    const next = new URLSearchParams(current);
+                    ["q", "category", "distance", "price", "pickup", "dietary"].forEach((key) => next.delete(key));
+                    return next;
+                  }, { replace: true });
                 }}
               >
                 Atur ulang filter
               </Button>
             </div>
-          ) : null}
+          )}
         </section>
 
         <aside
-          className="sticky top-[14rem] h-[calc(100vh-16rem)] min-h-[300px] overflow-hidden rounded-xl border order-1 lg:order-2 bg-muted/20"
+          className="order-1 h-72 overflow-hidden rounded-xl border bg-muted/20 sm:h-96 lg:sticky lg:top-[14rem] lg:order-2 lg:h-[calc(100vh-16rem)] lg:min-h-[300px]"
           aria-label="Peta lokasi merchant"
         >
           {mapError ? (
-            <div className="flex h-full flex-col items-center justify-center p-6 text-center">
+            <div role="alert" className="flex h-full flex-col items-center justify-center p-6 text-center">
               <AlertCircle className="size-12 text-destructive opacity-80" />
               <h3 className="mt-4 font-semibold">Peta tidak tersedia</h3>
               <p className="mt-2 text-sm text-muted-foreground max-w-xs">
-                Mapbox access token belum dikonfigurasi. Tambahkan VITE_MAPBOX_ACCESS_TOKEN ke .env.local Anda.
+                Gunakan daftar Rescue Item untuk melanjutkan pencarian.
               </p>
             </div>
           ) : (
-            <div ref={mapContainerRef} className="h-full w-full relative" />
+            <div className="relative h-full w-full">
+              <div
+                ref={mapContainerRef}
+                role="application"
+                aria-label="Peta Rescue Item di sekitarmu"
+                className="h-full w-full"
+              />
+              {mapLoading ? (
+                <div className="pointer-events-none absolute inset-0 p-4" aria-label="Memuat peta">
+                  <Skeleton className="h-full w-full" />
+                </div>
+              ) : null}
+            </div>
           )}
         </aside>
       </div>
@@ -499,8 +571,11 @@ export default function ExplorePage() {
       <Sheet open={!!selectedItemId} onOpenChange={(open) => !open && setSelectedItemId(null)}>
         <SheetContent side="bottom" className="h-[85vh] sm:h-[600px] sm:max-w-md mx-auto rounded-t-2xl sm:rounded-2xl sm:bottom-4 sm:top-auto px-0 pb-0">
           {selectedItemDetails === undefined ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="space-y-5 p-6" aria-label="Memuat detail Rescue Item">
+              <Skeleton className="h-7 w-3/4" />
+              <Skeleton className="h-52 w-full" />
+              <Skeleton className="h-6 w-2/5" />
+              <Skeleton className="h-24 w-full" />
             </div>
           ) : selectedItemDetails === null ? (
             <div className="p-6 text-center text-muted-foreground">Item tidak ditemukan atau tidak tersedia.</div>
@@ -553,6 +628,12 @@ export default function ExplorePage() {
                       <span className="text-muted-foreground">Lokasi</span>
                       <span className="font-medium text-right max-w-[200px] truncate">{selectedItemDetails.merchant.address}</span>
                     </div>
+                    {selectedDistanceMeters !== undefined ? (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Jarak</span>
+                        <span className="font-medium">{formatDistance(selectedDistanceMeters)}</span>
+                      </div>
+                    ) : null}
                   </div>
                   
                   {selectedItemDetails.dietaryTags.length > 0 && (
@@ -567,16 +648,13 @@ export default function ExplorePage() {
                 </div>
               </div>
               
-              <div className="px-6 py-4 border-t bg-background flex-shrink-0">
-                <Button 
-                  className="w-full h-12 text-base font-semibold" 
-                  onClick={handleReserve}
-                  disabled={isReserving}
-                >
-                  {isReserving ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : null}
-                  Pesan sekarang
-                </Button>
-              </div>
+              {selectedItemId ? (
+                <div className="px-6 py-4 border-t bg-background flex-shrink-0">
+                  <Button asChild className="w-full h-12 text-base font-semibold">
+                    <Link to={`/item/${selectedItemId}`}>Pilih jumlah dan reservasi</Link>
+                  </Button>
+                </div>
+              ) : null}
             </div>
           )}
         </SheetContent>

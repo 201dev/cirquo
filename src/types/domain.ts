@@ -22,7 +22,7 @@ export interface RescueItemPreview {
   image: string;
   address: string;
   distanceKm: number;
-  rating: number;
+  rating?: number;
   dietaryTags: string[];
   pickupDate: string;
 }

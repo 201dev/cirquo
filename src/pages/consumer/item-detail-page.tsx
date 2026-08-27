@@ -8,17 +8,35 @@ import {
   ShieldCheck,
   Loader2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatIdr, formatKg } from "@/constants/mock-data";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useAuth } from "@/contexts/auth-context";
+import { getErrorMessage } from "@/lib/errors";
+import { calculateHaversineDistanceMeters } from "@/lib/geo";
+
+const formatIdr = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0,
+}).format;
+
+const formatKg = new Intl.NumberFormat("id-ID", {
+  maximumFractionDigits: 1,
+}).format;
+
+function formatDistance(distanceMeters: number) {
+  return distanceMeters < 1_000
+    ? `${distanceMeters.toLocaleString("id-ID")} m`
+    : `${(distanceMeters / 1_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} km`;
+}
 
 export default function ItemDetailPage() {
   const { id } = useParams();
@@ -30,11 +48,50 @@ export default function ItemDetailPage() {
   
   const [quantity, setQuantity] = useState(1);
   const [isReserving, setIsReserving] = useState(false);
+  const [distanceMeters, setDistanceMeters] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!item) {
+      setDistanceMeters(null);
+      return;
+    }
+
+    let mounted = true;
+    const fallbackLocation = { lat: -6.9932, lng: 110.4203 };
+    const updateDistance = (latitude: number, longitude: number) => {
+      if (!mounted) return;
+      setDistanceMeters(
+        calculateHaversineDistanceMeters(
+          latitude,
+          longitude,
+          item.merchant.latitude,
+          item.merchant.longitude,
+        ),
+      );
+    };
+
+    updateDistance(fallbackLocation.lat, fallbackLocation.lng);
+    navigator.geolocation?.getCurrentPosition(
+      (position) => updateDistance(position.coords.latitude, position.coords.longitude),
+      () => undefined,
+      { timeout: 8_000, maximumAge: 0 },
+    );
+
+    return () => {
+      mounted = false;
+    };
+  }, [item]);
 
   if (item === undefined) {
     return (
-      <div className="flex justify-center items-center py-32">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="mx-auto grid max-w-5xl gap-8 py-8 lg:grid-cols-2" aria-label="Memuat detail Rescue Item">
+        <Skeleton className="aspect-[4/3] w-full" />
+        <div className="space-y-5 py-3">
+          <Skeleton className="h-5 w-1/4" />
+          <Skeleton className="h-10 w-4/5" />
+          <Skeleton className="h-8 w-2/5" />
+          <Skeleton className="h-24 w-full" />
+        </div>
       </div>
     );
   }
@@ -70,8 +127,8 @@ export default function ItemDetailPage() {
       
       toast.success("Berhasil direservasi! Segera selesaikan pembayaran.");
       navigate(`/checkout/${orderId}`);
-    } catch (error: any) {
-      toast.error(error.message || "Gagal melakukan reservasi.");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Gagal melakukan reservasi."));
       setIsReserving(false);
     }
   };
@@ -136,7 +193,10 @@ export default function ItemDetailPage() {
               <MapPin className="mt-0.5 size-5 shrink-0 text-primary" />
               <span>
                 <strong className="block">Ambil di merchant</strong>
-                <span className="text-muted-foreground">{item.merchant.address}</span>
+                <span className="text-muted-foreground">
+                  {item.merchant.address}
+                  {distanceMeters !== null ? ` · ${formatDistance(distanceMeters)} dari lokasimu` : ""}
+                </span>
               </span>
             </p>
           </div>
@@ -162,7 +222,7 @@ export default function ItemDetailPage() {
               <p className="text-sm font-medium">Jumlah paket</p>
               <p className="text-xs text-muted-foreground">
                 {item.remainingQuantity} tersisa ·{" "}
-                {formatKg(item.weightPerItemGrams)} per paket
+                {formatKg(item.weightPerItemGrams / 1_000)} kg per paket
               </p>
             </div>
             {hasStock ? (

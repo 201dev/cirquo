@@ -1,9 +1,14 @@
 import { Clock3, MapPin, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { formatIdr } from "@/constants/mock-data";
 import { cn } from "@/lib/utils";
 import type { RescueItemPreview } from "@/types/domain";
+
+const formatIdr = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0,
+}).format;
 
 export function RescueItemCard({
   item,
@@ -45,13 +50,15 @@ export function RescueItemCard({
         <Badge className="absolute left-3 top-3 border-0 bg-primary text-primary-foreground shadow-none hover:bg-primary">
           Hemat {discount}%
         </Badge>
-        <span className="absolute bottom-3 right-3 inline-flex min-h-7 items-center gap-1 rounded-full bg-background px-2 text-xs font-semibold text-foreground shadow-sm">
-          <Star
-            className="size-3.5 fill-recovered text-recovered"
-            aria-hidden="true"
-          />
-          {item.rating}
-        </span>
+        {item.rating !== undefined ? (
+          <span className="absolute bottom-3 right-3 inline-flex min-h-7 items-center gap-1 rounded-full bg-background px-2 text-xs font-semibold text-foreground shadow-sm">
+            <Star
+              className="size-3.5 fill-recovered text-recovered"
+              aria-hidden="true"
+            />
+            {item.rating}
+          </span>
+        ) : null}
         {unavailable ? (
           <span className="absolute inset-0 grid place-items-center bg-foreground/50 text-sm font-semibold text-background">
             Sudah habis
