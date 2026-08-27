@@ -3,6 +3,7 @@ import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { recordLedgerEvent } from "./lib/ledger";
+import { isValidMidtransSignature, parseMidtransIdrAmount } from "./lib/midtrans";
 import { v } from "convex/values";
 
 type MidtransWebhookPayload = {
@@ -14,24 +15,6 @@ type MidtransWebhookPayload = {
   payment_type?: unknown;
   transaction_id?: unknown;
 };
-
-function parseIdrAmount(value: string) {
-  if (!/^\d+(?:\.00)?$/.test(value)) return null;
-  const amount = Number(value.split(".")[0]);
-  return Number.isSafeInteger(amount) ? amount : null;
-}
-
-async function verifySignature(orderId: string, statusCode: string, grossAmount: string, serverKey: string, signatureKey: string) {
-  const payload = `${orderId}${statusCode}${grossAmount}${serverKey}`;
-
-  const encoder = new TextEncoder();
-  const data = encoder.encode(payload);
-  const hashBuffer = await crypto.subtle.digest('SHA-512', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-  return hashHex === signatureKey;
-}
 
 const midtransWebhook = httpAction(async (ctx, request) => {
   const serverKey = process.env.MIDTRANS_SERVER_KEY;
@@ -67,7 +50,7 @@ const midtransWebhook = httpAction(async (ctx, request) => {
     return new Response("Invalid webhook payload", { status: 400 });
   }
 
-  const isValid = await verifySignature(orderId, statusCode, grossAmount, serverKey, signatureKey);
+  const isValid = await isValidMidtransSignature(orderId, statusCode, grossAmount, serverKey, signatureKey);
 
   if (!isValid) {
     console.error("Invalid signature for order:", orderId);
@@ -117,7 +100,7 @@ export const handleWebhook = internalMutation({
       console.warn("Order not found:", args.orderId);
       return;
     }
-    if (parseIdrAmount(args.grossAmount) !== order.totalPrice) {
+    if (parseMidtransIdrAmount(args.grossAmount) !== order.totalPrice) {
       console.warn("Webhook amount does not match order:", args.orderId);
       return;
     }
