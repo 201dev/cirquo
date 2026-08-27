@@ -15,11 +15,17 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { RescueItemPreview } from "@/types/domain";
-import { formatIdr } from "@/constants/mock-data";
 import { toast } from "sonner";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { FeatureCollection } from "geojson";
 import type { GeoJSONSource, Map as MapboxMap } from "mapbox-gl";
+import { getErrorMessage } from "@/lib/errors";
+
+const formatIdr = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0,
+}).format;
 
 const categories = [
   { value: "all", label: "Semua" },
@@ -30,17 +36,21 @@ const categories = [
   { value: "protein", label: "Protein" },
   { value: "dry_goods", label: "Kering" },
   { value: "mixed", label: "Campur" },
-];
+] as const;
+
+type Category = (typeof categories)[number]["value"];
+
+function isCategory(value: string | null): value is Category {
+  return categories.some((category) => category.value === value);
+}
 
 export default function ExplorePage() {
   const [params] = useSearchParams();
   
   const [query, setQuery] = useState(params.get("q") ?? "");
-  const [category, setCategory] = useState<string>(() => {
+  const [category, setCategory] = useState<Category>(() => {
     const requestedCategory = params.get("category");
-    return categories.some((item) => item.value === requestedCategory)
-      ? (requestedCategory ?? "all")
-      : "all";
+    return isCategory(requestedCategory) ? requestedCategory : "all";
   });
   
   const [maxDistance, setMaxDistance] = useState("30000"); // max 30km
@@ -120,7 +130,7 @@ export default function ExplorePage() {
           latitude: location.lat,
           longitude: location.lng,
           radiusMeters: Number(maxDistance),
-          materialType: category === "all" ? undefined : (category as any),
+          materialType: category === "all" ? undefined : category,
           dietaryTags,
           maxPrice: maxPrice === "all" ? undefined : Number(maxPrice),
           // We can handle pickup time filtering using server or client, here server takes timestamps but our UI uses simple flags.
@@ -304,14 +314,14 @@ export default function ExplorePage() {
       setSelectedItemId(null);
       // Handoff to M3-05 (Checkout page would be navigated here)
       // navigate(`/checkout/${selectedItemId}`); 
-    } catch (error: any) {
-      toast.error(error.message || "Gagal melakukan reservasi");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Gagal melakukan reservasi"));
     } finally {
       setIsReserving(false);
     }
   };
 
-  const mapToPreview = (item: any): RescueItemPreview => {
+  const mapToPreview = (item: (typeof filtered)[number]): RescueItemPreview => {
     const start = new Date(item.pickupStartAt);
     const end = new Date(item.pickupEndAt);
     const formatTime = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -327,11 +337,10 @@ export default function ExplorePage() {
       pickupWindow: `${formatTime(start)} - ${formatTime(end)}`,
       status: "active",
       category: item.materialType === "bakery" ? "bakery" : (item.materialType === "produce" ? "produce" : "meal"),
-      description: item.description || "",
+      description: "",
       image: item.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800",
       address: item.merchant.address,
       distanceKm: Number((item.distanceMeters / 1000).toFixed(1)),
-      rating: 4.8, // Mocked rating since it's not in schema
       dietaryTags: item.dietaryTags,
       pickupDate: start.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
     };
@@ -457,7 +466,7 @@ export default function ExplorePage() {
           
           {nearbyData !== undefined && filtered.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-              {filtered.map((item: any) => (
+              {filtered.map((item) => (
                 <div key={item._id} onClick={() => setSelectedItemId(item._id)} className="cursor-pointer">
                   <RescueItemCard item={mapToPreview(item)} horizontal />
                 </div>

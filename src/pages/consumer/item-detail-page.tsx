@@ -14,11 +14,21 @@ import { toast } from "sonner";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatIdr, formatKg } from "@/constants/mock-data";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useAuth } from "@/contexts/auth-context";
+import { getErrorMessage } from "@/lib/errors";
+
+const formatIdr = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0,
+}).format;
+
+const formatKg = new Intl.NumberFormat("id-ID", {
+  maximumFractionDigits: 1,
+}).format;
 
 export default function ItemDetailPage() {
   const { id } = useParams();
@@ -70,8 +80,8 @@ export default function ItemDetailPage() {
       
       toast.success("Berhasil direservasi! Segera selesaikan pembayaran.");
       navigate(`/checkout/${orderId}`);
-    } catch (error: any) {
-      toast.error(error.message || "Gagal melakukan reservasi.");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Gagal melakukan reservasi."));
       setIsReserving(false);
     }
   };
@@ -162,7 +172,7 @@ export default function ItemDetailPage() {
               <p className="text-sm font-medium">Jumlah paket</p>
               <p className="text-xs text-muted-foreground">
                 {item.remainingQuantity} tersisa ·{" "}
-                {formatKg(item.weightPerItemGrams)} per paket
+                {formatKg(item.weightPerItemGrams / 1_000)} kg per paket
               </p>
             </div>
             {hasStock ? (
