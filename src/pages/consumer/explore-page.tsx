@@ -44,19 +44,35 @@ function isCategory(value: string | null): value is Category {
   return categories.some((category) => category.value === value);
 }
 
+function readFilter(
+  params: URLSearchParams,
+  key: string,
+  allowed: readonly string[],
+  fallback: string,
+) {
+  const value = params.get(key);
+  return value !== null && allowed.includes(value) ? value : fallback;
+}
+
 export default function ExplorePage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   
-  const [query, setQuery] = useState(params.get("q") ?? "");
-  const [category, setCategory] = useState<Category>(() => {
-    const requestedCategory = params.get("category");
-    return isCategory(requestedCategory) ? requestedCategory : "all";
-  });
-  
-  const [maxDistance, setMaxDistance] = useState("30000"); // max 30km
-  const [maxPrice, setMaxPrice] = useState("all");
-  const [pickupWindow, setPickupWindow] = useState("all");
-  const [dietary, setDietary] = useState("all");
+  const query = params.get("q") ?? "";
+  const requestedCategory = params.get("category");
+  const category = isCategory(requestedCategory) ? requestedCategory : "all";
+  const maxDistance = readFilter(params, "distance", ["30000", "2000", "3000", "5000"], "30000");
+  const maxPrice = readFilter(params, "price", ["all", "15000", "20000", "30000"], "all");
+  const pickupWindow = readFilter(params, "pickup", ["all", "before_18", "after_18"], "all");
+  const dietary = readFilter(params, "dietary", ["all", "Vegetarian", "Vegan", "Tanpa babi"], "all");
+
+  const setFilter = (key: string, value: string, fallback: string) => {
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      if (value === fallback) next.delete(key);
+      else next.set(key, value);
+      return next;
+    }, { replace: true });
+  };
 
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationDenied, setLocationDenied] = useState(false);
@@ -373,7 +389,7 @@ export default function ExplorePage() {
             <Search className="absolute left-3 top-3.5 size-4 text-muted-foreground" />
             <Input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => setFilter("q", event.target.value, "")}
               className="pl-9"
               placeholder="Cari makanan atau merchant"
             />
@@ -389,7 +405,7 @@ export default function ExplorePage() {
               size="sm"
               variant={category === item.value ? "default" : "outline"}
               className="shrink-0"
-              onClick={() => setCategory(item.value)}
+              onClick={() => setFilter("category", item.value, "all")}
               aria-pressed={category === item.value}
             >
               {item.label}
@@ -400,7 +416,7 @@ export default function ExplorePage() {
           <FilterSelect
             label="Jarak"
             value={maxDistance}
-            onChange={setMaxDistance}
+            onChange={(value) => setFilter("distance", value, "30000")}
             options={[
               ["30000", "Semua jarak"],
               ["2000", "Maks. 2 km"],
@@ -411,7 +427,7 @@ export default function ExplorePage() {
           <FilterSelect
             label="Harga"
             value={maxPrice}
-            onChange={setMaxPrice}
+            onChange={(value) => setFilter("price", value, "all")}
             options={[
               ["all", "Semua harga"],
               ["15000", "Maks. Rp15 ribu"],
@@ -422,7 +438,7 @@ export default function ExplorePage() {
           <FilterSelect
             label="Pickup"
             value={pickupWindow}
-            onChange={setPickupWindow}
+            onChange={(value) => setFilter("pickup", value, "all")}
             options={[
               ["all", "Semua waktu"],
               ["before_18", "Mulai ≤18.00"],
@@ -432,7 +448,7 @@ export default function ExplorePage() {
           <FilterSelect
             label="Preferensi"
             value={dietary}
-            onChange={setDietary}
+            onChange={(value) => setFilter("dietary", value, "all")}
             options={[
               ["all", "Semua preferensi"],
               ["Vegetarian", "Vegetarian"],
@@ -483,12 +499,11 @@ export default function ExplorePage() {
                 className="mt-5"
                 variant="outline"
                 onClick={() => {
-                  setQuery("");
-                  setCategory("all");
-                  setMaxDistance("30000");
-                  setMaxPrice("all");
-                  setPickupWindow("all");
-                  setDietary("all");
+                  setParams((current) => {
+                    const next = new URLSearchParams(current);
+                    ["q", "category", "distance", "price", "pickup", "dietary"].forEach((key) => next.delete(key));
+                    return next;
+                  }, { replace: true });
                 }}
               >
                 Atur ulang filter
