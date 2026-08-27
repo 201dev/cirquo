@@ -1,5 +1,6 @@
 {
-  "buildCommand": "bunx convex codegen && bun run build",
+  "buildCommand": "bunx convex deploy --cmd-url-env-var-name VITE_CONVEX_URL --cmd 'bun
+    run build'",
   "outputDirectory": "dist",
   "installCommand": "bun install --frozen-lockfile",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
