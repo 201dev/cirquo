@@ -216,7 +216,8 @@ export default defineSchema({
   })
     .index('by_user', ['userId'])
     .index('by_item', ['surplusItemId'])
-    .index('by_idempotency_key', ['idempotencyKey'])
+    .index('by_user_item_status', ['userId', 'surplusItemId', 'status'])
+    .index('by_user_idempotency_key', ['userId', 'idempotencyKey'])
     .index('by_pickup_code', ['pickupCode']),
 
   recoveryBatches: defineTable({

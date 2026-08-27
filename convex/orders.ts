@@ -29,12 +29,35 @@ export const reserve = mutation({
     if (args.idempotencyKey) {
       const existing = await ctx.db
         .query('orders')
-        .withIndex('by_idempotency_key', (q) => q.eq('idempotencyKey', args.idempotencyKey))
+        .withIndex('by_user_idempotency_key', (q) =>
+          q.eq('userId', user._id).eq('idempotencyKey', args.idempotencyKey),
+        )
         .unique()
       if (existing) {
+        if (
+          existing.surplusItemId !== args.surplusItemId ||
+          existing.quantity !== args.quantity
+        ) {
+          throw new ConvexError('IDEMPOTENCY_CONFLICT')
+        }
         return existing._id
       }
     }
+
+    const openOrders = await Promise.all(
+      (['reserved', 'paid'] as const).map((status) =>
+        ctx.db
+          .query('orders')
+          .withIndex('by_user_item_status', (q) =>
+            q
+              .eq('userId', user._id)
+              .eq('surplusItemId', args.surplusItemId)
+              .eq('status', status),
+          )
+          .first(),
+      ),
+    )
+    if (openOrders.some(Boolean)) throw new ConvexError('ALREADY_RESERVED')
 
     const item = await ctx.db.get(args.surplusItemId)
     if (!item) throw new ConvexError('NOT_FOUND')
