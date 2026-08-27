@@ -5,7 +5,22 @@ import type { Id } from "./_generated/dataModel";
 import { recordLedgerEvent } from "./lib/ledger";
 import { v } from "convex/values";
 
-// Utility to verify midtrans signature using Web Crypto API
+type MidtransWebhookPayload = {
+  order_id?: unknown;
+  status_code?: unknown;
+  gross_amount?: unknown;
+  signature_key?: unknown;
+  transaction_status?: unknown;
+  payment_type?: unknown;
+  transaction_id?: unknown;
+};
+
+function parseIdrAmount(value: string) {
+  if (!/^\d+(?:\.00)?$/.test(value)) return null;
+  const amount = Number(value.split(".")[0]);
+  return Number.isSafeInteger(amount) ? amount : null;
+}
+
 async function verifySignature(orderId: string, statusCode: string, grossAmount: string, serverKey: string, signatureKey: string) {
   const payload = `${orderId}${statusCode}${grossAmount}${serverKey}`;
 
@@ -24,7 +39,7 @@ const midtransWebhook = httpAction(async (ctx, request) => {
     return new Response("Server key not configured", { status: 500 });
   }
 
-  let payload;
+  let payload: MidtransWebhookPayload;
   try {
     payload = await request.json();
   } catch {
@@ -41,6 +56,17 @@ const midtransWebhook = httpAction(async (ctx, request) => {
     transaction_id: transactionId,
   } = payload;
 
+  if (
+    typeof orderId !== "string" ||
+    typeof statusCode !== "string" ||
+    typeof grossAmount !== "string" ||
+    typeof signatureKey !== "string" ||
+    typeof transactionStatus !== "string" ||
+    typeof transactionId !== "string"
+  ) {
+    return new Response("Invalid webhook payload", { status: 400 });
+  }
+
   const isValid = await verifySignature(orderId, statusCode, grossAmount, serverKey, signatureKey);
 
   if (!isValid) {
@@ -49,9 +75,10 @@ const midtransWebhook = httpAction(async (ctx, request) => {
   }
   await ctx.runMutation(internal.http.handleWebhook, {
     orderId: orderId as Id<"orders">,
+    grossAmount,
     transactionStatus,
-    paymentType: paymentType || "unknown",
-    transactionId: transactionId || "unknown",
+    paymentType: typeof paymentType === "string" ? paymentType : "unknown",
+    transactionId,
     rawPayload: JSON.stringify(payload),
   });
 
@@ -71,6 +98,7 @@ export default http;
 export const handleWebhook = internalMutation({
   args: {
     orderId: v.string(), // accepting string because it comes from external payload, but we'll cast/verify it
+    grossAmount: v.string(),
     transactionStatus: v.string(),
     paymentType: v.string(),
     transactionId: v.string(),
@@ -89,8 +117,20 @@ export const handleWebhook = internalMutation({
       console.warn("Order not found:", args.orderId);
       return;
     }
+    if (parseIdrAmount(args.grossAmount) !== order.totalPrice) {
+      console.warn("Webhook amount does not match order:", args.orderId);
+      return;
+    }
 
-    // Upsert payment record
+    const paymentForProviderTransaction = await ctx.db
+      .query("payments")
+      .withIndex("by_provider_txn", (q) => q.eq("providerTxnId", args.transactionId))
+      .unique();
+    if (paymentForProviderTransaction && paymentForProviderTransaction.orderId !== normalizedOrderId) {
+      console.warn("Provider transaction already belongs to another order:", args.transactionId);
+      return;
+    }
+
     const payment = await ctx.db
       .query("payments")
       .withIndex("by_order", (q) => q.eq("orderId", normalizedOrderId))
