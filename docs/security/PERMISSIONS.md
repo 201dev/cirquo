@@ -3,11 +3,16 @@
 | Field | Value |
 |---|---|
 | **Document type** | Security / Authorization Enforcement |
-| **Status** | Draft v1.0 |
-| **Last updated** | 2026-08-06 |
+| **Status** | Guard foundation implemented; full capability matrix target documented |
+| **Last updated** | 2026-08-29 |
 | **Applies to** | Every Convex function in `convex/`, the guard library `convex/lib/guards.ts`, the React 19 / Capacitor 8 client |
 | **Depends on** | [AUTH.md](AUTH.md) — this document consumes `requireAuth` and assumes session tokens exist |
 | **Implementation status** | ✅ Guard foundations implemented; the full capability matrix remains target work. See §1.1. |
+
+> The source-backed current boundary is maintained in
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md). Validate a
+> capability against the relevant `convex/` export before treating this matrix
+> as implemented.
 
 ---
 
@@ -599,14 +604,14 @@ Every planned Convex function. `—` means not applicable. Functions marked `int
 | Function | Type | Required role | Ownership condition | Verification | Guard call |
 |---|---|---|---|---|---|
 | `orders.reserve` | `mutation` | consumer | `userId` from the guard | — | `requireRole('consumer')` + quantity decrement + `paymentHoldExpiresAt` |
-| `orders.get` | `query` | consumer / merchant / admin | party to the order | — | `requireOwnedOrder` |
+| `orders.get` | `query` | consumer | own order | — | `requireRole('consumer')`; missing/non-owned returns `null` |
 | `orders.listMine` | `query` | consumer | own orders | — | `requireRole('consumer')` + `by_user` index |
-| `orders.listForMerchant` | `query` | merchant | own merchant's orders | **required** | `requireVerifiedMerchant` + `by_merchant` index |
-| `orders.cancel` | `mutation` | consumer | own order | — | `requireOwnedOrder`, `relation === 'consumer'` |
-| `orders.confirmPickup` | `mutation` | merchant | own merchant's order | **required** | `requireOwnedOrder`, `relation === 'merchant'` + pickup code + window |
+| `orders.listForMerchant` | `query` | merchant | own merchant's orders | **required** | 📋 M4 target |
+| `orders.cancel` | `mutation` | consumer | own order | — | 📋 Later consumer lifecycle target |
+| `orders.confirmPickup` | `mutation` | merchant | own merchant's order | **required** | 📋 M4: code + window + atomic `RESCUED` |
 | `orders.adminOverridePickup` | `mutation` | admin | — | — | `requireAdmin` — bypasses the window only, never the code silently |
-| ~~`orders.listByUser`~~ | `query` | 🔴 **public IDOR today** | — | — | 🔴 **Delete; replace with `orders.listMine`** |
-| `internal.orders.expireUnpaid` | `internalMutation` | 🔒 server | — | — | cron — 15-minute payment-hold sweep |
+| `orders.listByUser` | `internalQuery` | 🔒 server | explicit user id | — | Internal helper only; not client-callable |
+| `internal.orders.expireHold` | `internalMutation` | 🔒 server | — | — | per-order `runAt` at the 15-minute hold deadline |
 
 ### 5.7 `payments.*`
 
@@ -1068,7 +1073,7 @@ Legality is two questions, both mandatory: **is the transition legal from the cu
 |---|---|---|---|---|---|
 | — | `reserved` | Consumer | `requireRole('consumer')` | quantity available → else `INSUFFICIENT_QUANTITY`; sets `paymentHoldExpiresAt = now + 15 min` | `RESERVED` |
 | `reserved` | `paid` | 🔒 Midtrans webhook | signature verification | amount matches; hold live → else `PAYMENT_HOLD_EXPIRED` | `PAID` |
-| `reserved` | `expired` | 🔒 cron | internal | hold elapsed; quantity restored | `EXPIRED` |
+| `reserved` | `expired` | 🔒 internal hold timer | internal | hold elapsed; quantity restored | `CANCELLED` (0 g; `PAYMENT_HOLD_EXPIRED`) |
 | `reserved` / `paid` | `cancelled` | Consumer (owner) | `requireOwnedOrder` (`consumer`) | before the pickup window closes | `CANCELLED` |
 | `paid` | `picked_up` | **Merchant (owner) only** | `requireOwnedOrder` (`merchant`) | code matches → else `INVALID_PICKUP_CODE`; inside window → else `PICKUP_WINDOW_CLOSED` | **`RESCUED`** |
 | `paid` | `picked_up` | **Admin override** | `requireAdmin` | window bypassed; override recorded in metadata | `RESCUED` |
@@ -1349,7 +1354,7 @@ Every pull request touching `convex/` must satisfy all of these. A reviewer may 
 
 ## 15. Negative Tests to Write First
 
-No automated suite exists yet ([../engineering/TESTING.md](../engineering/TESTING.md)). Positive tests confirm a feature works; **negative tests confirm it cannot be abused.** With limited time, negative tests are worth more. Write these before any happy-path test.
+Runnable Bun and Vitest checks exist (see [../engineering/TESTING.md](../engineering/TESTING.md)), but security-negative coverage below remains a required target. Positive tests confirm a feature works; **negative tests confirm it cannot be abused.** With limited time, negative tests are worth more. Write these before any happy-path test.
 
 ### 15.1 Highest priority — privilege escalation
 

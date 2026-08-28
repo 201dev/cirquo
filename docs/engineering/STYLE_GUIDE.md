@@ -3,14 +3,18 @@
 | Field | Value |
 | --- | --- |
 | **Document Type** | Engineering Standard |
-| **Status** | Draft v1.0 |
-| **Last Updated** | 2026-08-06 |
+| **Status** | Active engineering standard |
+| **Last Updated** | 2026-08-29 |
 | **Owner** | Cirquo Engineering |
 | **Applies To** | All TypeScript, TSX, CSS, and Convex source in this repository |
 
 ---
 
 ## 1. Purpose
+
+> For milestone completion and feature availability, use
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md); this guide
+> defines conventions, not release status.
 
 This document defines how code is written in Cirquo. It exists for three reasons:
 

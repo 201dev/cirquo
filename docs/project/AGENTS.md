@@ -2,7 +2,7 @@
 
 **Audience:** AI coding agents working on this repository  
 **Purpose:** Task-level instructions, context, and guidelines for autonomous development  
-**Last updated:** 2026-08-06
+**Last updated:** 2026-08-29
 
 ---
 
@@ -43,7 +43,7 @@ docs/
 
 ## Current Implementation Status
 
-**✅ Implemented foundations (snapshot 2026-08-27):**
+**✅ Implemented foundations (snapshot 2026-08-29):**
 
 - 10-table Convex schema, including `sessions`, `authEvents`, `materialFlowLedger`, and `payments`
 - Session-based registration, login, logout, `auth.getCurrentUser`, role onboarding, and server-side guards
@@ -59,7 +59,7 @@ docs/
 - Ledger-derived impact dashboards, notifications, and complete Admin operations
 - End-to-end web and Android verification for each implemented flow
 
-The current source, schema, and generated Convex API are authoritative. Design documents may describe the intended final contract beyond what is implemented.
+The current source, schema, and generated Convex API are authoritative. Design documents may describe the intended final contract beyond what is implemented. See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) before treating a route, schema field, or target contract as end-to-end complete.
 
 **❌ Explicitly out of MVP scope:**
 
@@ -158,11 +158,12 @@ export const createSurplus = mutation({
   handler: async (ctx, args) => {
     const id = await ctx.db.insert('surplusItems', { /* ... */ })
     // 🔴 CRITICAL: Also write to Material Flow Ledger here
-    await ctx.db.insert('materialFlowLedger', { 
-      rescueItemId: id,
-      event: 'created',
-      timestamp: Date.now(),
-      actorId: args.merchantId
+    await recordLedgerEvent(ctx, {
+      surplusItemId: id,
+      eventType: 'LISTED',
+      weightDeltaGrams: initialQuantity * weightPerItemGrams,
+      actorId: merchant.ownerId,
+      actorRole: 'merchant',
     })
     return id
   }
@@ -201,14 +202,14 @@ Every mutation that changes a Rescue Item's lifecycle must write to the ledger. 
 
 ## Testing Strategy
 
-**Unit tests:** Not required for competition MVP (tight timeline).
-
-**Integration tests:** Not required for competition MVP.
+**Runnable checks:** Every non-trivial change needs the smallest runnable check
+that would fail on regression. Existing Bun and Convex tests cover M1–M3
+invariants; use [TESTING.md](../engineering/TESTING.md) for the current suite.
 
 **Manual E2E testing:** Required. Test every user flow before marking a feature complete:
 
 1. Merchant creates surplus → see it in surplus list
-2. Consumer discovers on map → reserves → pays → gets pickup code
+2. Consumer discovers on map → reserves → verified Midtrans webhook → sees pickup code
 3. Merchant confirms pickup → order status updates
 4. Unclaimed item → expires → becomes recovery batch
 5. Processor accepts batch → logs outcome
@@ -250,35 +251,13 @@ Test every page at 375px width. Bottom nav for Consumer, hamburger menu for Merc
 
 Based on PRD Section 6 (MoSCoW priorities), implement in this order:
 
-### Phase 1: Core Infrastructure (Week 1-2)
-1. ✅ Schema + basic queries (done)
-2. Material Flow Ledger table + insert helpers
-3. Authentication (session-based, role selection)
-4. Merchant onboarding flow
-
-### Phase 2: Marketplace (Week 3-4)
-5. Merchant: Create Rescue Item (form → Convex mutation → ledger entry)
-6. Dynamic Rescue Pricing (time-based discount suggestion)
-7. Consumer: Discover on map (Mapbox integration)
-8. Consumer: Reserve + pay (Midtrans Sandbox)
-9. Merchant: Confirm pickup (QR code verification)
-
-### Phase 3: Circular Routing (Week 5-6)
-10. Scheduled job: Detect expired unclaimed items
-11. Circular Routing logic (match to processor by material type, location)
-12. Processor: View routed items queue
-13. Processor: Accept intake + log outcome
-
-### Phase 4: Impact (Week 7)
-14. Impact calculation module (kg rescued, kg diverted, circularity rate, CO2e estimation)
-15. Dashboards for Consumer, Merchant, Processor, Admin
-16. Material Flow Ledger viewer (Admin)
-
-### Phase 5: Polish (Week 8)
-17. Notifications (Convex scheduled functions → toast)
-18. Admin: Merchant/Processor verification
-19. Error handling + loading states
-20. Capacitor build + mobile testing
+| Priority | Scope | Current state |
+|---:|---|---|
+| 1 | M3 UAT: Sandbox webhook, hold expiry, ledger, and mobile evidence | 🧪 Required before M3 sign-off |
+| 2 | M4: pickup confirmation, Rescue Item expiry, and Circular Routing | 📋 Next feature milestone |
+| 3 | M5: Processor intake and outcome | 📋 Target |
+| 4 | M6: ledger-derived impact surfaces | 📋 Target |
+| 5 | M7–M8: Admin operations, notifications, Android/demo assets | 📋 Target |
 
 ---
 
@@ -426,7 +405,7 @@ All testable on both web and Capacitor Android build.
 
 **The Material Flow Ledger is the product differentiator.** If the ledger is incomplete or impact numbers are wrong, the entire circular-economy narrative falls apart. Protect it.
 
-**When in doubt, read the PRD.** [`docs/product/PRD.md`](../product/PRD.md) is the source of truth. If something conflicts with the PRD, the PRD wins.
+**When in doubt, read the PRD.** [`docs/product/PRD.md`](../product/PRD.md) is the source of truth. If something conflicts with the PRD, the PRD wins. For the current implementation boundary, consult [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) and then source.
 
 ---
 

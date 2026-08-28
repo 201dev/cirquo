@@ -1,12 +1,17 @@
 # Roadmap — Cirquo
 
 **Document type:** Delivery plan  
-**Status:** Draft v1.1  
-**Last updated:** 2026-08-08  
+**Status:** Delivery plan — source status tracked separately
+**Last updated:** 2026-08-29
 **Competition:** DSDC ANFORCOM 2026  
-**Preliminary deadline:** 31 August 2026 — **23 days remaining**
+**Preliminary deadline:** 31 August 2026
 
 > **How to read this:** This is a competition delivery plan, not a startup plan. Phase 1 is the only committed scope and it is sized against a hard external deadline. Everything after Phase 1 exists to answer a judge's "what next?" question, not as a promise. Priorities inside Phase 1 follow the MoSCoW ordering in [PRD.md](../product/PRD.md) §6.
+
+> **Current source boundary — 2026-08-29.** M1 and M2 source is available;
+> M3 source awaits Sandbox/mobile UAT. M4–M8 remain target work. The dates and
+> estimates below are the original planning baseline, not a live burndown. See
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 
@@ -113,7 +118,7 @@ The repository scaffold exists and is type-safe. This phase deliberately built *
 | Theming | OKLCH design tokens, Geist Variable font, light/dark variables defined |
 | Documentation | 43 documents across 11 categories |
 
-### What explicitly does NOT exist
+### What did not exist in the initial scaffold
 
 - ❌ No Material Flow Ledger table
 - ❌ No mutations — nothing can be written to the database
@@ -124,7 +129,7 @@ The repository scaffold exists and is type-safe. This phase deliberately built *
 - ❌ No impact calculation
 - ❌ All dashboard numbers are hardcoded placeholders
 
-> **Status note — 2026-08-27:** this roadmap is a delivery plan, not the live
+> **Status note — 2026-08-29:** this roadmap is a delivery plan, not the live
 > implementation tracker. M1/M2 foundations and portions of M3 now exist in
 > source; M4 onward remains target work. Use `convex/`, the route table, and UAT
 > evidence to assess completion.
@@ -214,14 +219,14 @@ The three highlighted milestones are the ones that earn marks. M1 makes impact n
 | Listing detail + reserve | Locks quantity and price | CON-03 |
 | Midtrans Sandbox checkout | Snap token via Convex action | [API_CONSUMER.md](../api/API_CONSUMER.md) |
 | Payment webhook handler | Verifies signature, updates order status | PAY-01, PAY-02 |
-| Pickup code / QR generation | Consumer-presentable | CON-05 |
+| Manual pickup-code generation | Consumer-presentable | CON-05 |
 | Order history | Active + past, live status | CON-06 |
 
 **Risk — this milestone carries the schedule.** Midtrans webhook delivery into a Convex `httpAction` is the single highest-uncertainty integration in the MVP, and it sits on the critical path.
 
 **Mitigation, in order:**
 1. Prototype the webhook in isolation on **day 1 of M3**, before any UI work.
-2. If it is not working by **day 3**, switch to the fallback: client-side payment confirmation calling a mutation, with the webhook documented as Phase 2. A judge will not test webhook reliability; they will test whether the payment flow completes.
+2. If it is not working by **day 3**, record a blocker and fix the verified webhook path. A client-side payment confirmation is not an acceptable fallback because the browser is never the authority for a paid order.
 3. Mapbox and payment are independent — parallelise across two developers if the team has three.
 
 ---

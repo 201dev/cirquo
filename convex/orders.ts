@@ -1,5 +1,5 @@
 import { v, ConvexError } from 'convex/values'
-import { internalQuery, internalMutation, mutation } from './_generated/server'
+import { internalQuery, internalMutation, mutation, query } from './_generated/server'
 import { requireRole } from './lib/guards'
 import { recordLedgerEvent } from './lib/ledger'
 import { internal } from './_generated/api'
@@ -151,8 +151,6 @@ export const expireHold = internalMutation({
   }
 })
 
-import { query } from './_generated/server'
-
 export const listMine = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, args) => {
@@ -167,10 +165,12 @@ export const listMine = query({
       orders.map(async (order) => {
         const item = await ctx.db.get(order.surplusItemId)
         if (!item) return null
-        
+
         const merchant = await ctx.db.get(item.merchantId)
         if (!merchant) return null
 
+        // Timestamps stay raw epoch ms UTC; WIB is applied by the client at
+        // render time. Formatting here would use the UTC server clock.
         return {
           _id: order._id,
           itemName: item.name,
@@ -178,9 +178,14 @@ export const listMine = query({
           totalPrice: order.totalPrice,
           status: order.status,
           quantity: order.quantity,
-          pickupWindow: `${new Date(item.pickupStartAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} - ${new Date(item.pickupEndAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`,
-          image: item.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800",
-          orderedAt: new Date(order.createdAt).toISOString(),
+          rescuedWeightGrams: order.rescuedWeightGrams,
+          materialType: item.materialType,
+          imageUrl: item.imageUrl,
+          pickupStartAt: item.pickupStartAt,
+          pickupEndAt: item.pickupEndAt,
+          paymentHoldExpiresAt: order.paymentHoldExpiresAt,
+          createdAt: order.createdAt,
+          pickedUpAt: order.pickedUpAt,
           // Explicitly NOT returning pickupCode here
         }
       })
@@ -217,11 +222,13 @@ export const get = query({
       status: order.status,
       quantity: order.quantity,
       rescuedWeightGrams: order.rescuedWeightGrams,
-      pickupWindow: `${new Date(item.pickupStartAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} - ${new Date(item.pickupEndAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`,
-      pickupDate: new Date(item.pickupStartAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-      image: item.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800",
-      orderedAt: new Date(order.createdAt).toISOString(),
+      materialType: item.materialType,
+      imageUrl: item.imageUrl,
+      pickupStartAt: item.pickupStartAt,
+      pickupEndAt: item.pickupEndAt,
+      paymentHoldExpiresAt: order.paymentHoldExpiresAt,
       createdAt: order.createdAt,
+      pickedUpAt: order.pickedUpAt,
       // Only reveal pickupCode if paid
       pickupCode: order.status === 'paid' ? order.pickupCode : undefined,
     }

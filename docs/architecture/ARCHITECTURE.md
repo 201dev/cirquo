@@ -4,8 +4,8 @@
 | --- | --- |
 | **Document Type** | Architecture Specification |
 | **Document ID** | `ARCH-001` |
-| **Status** | Draft v1.0 |
-| **Last Updated** | 2026-08-06 |
+| **Status** | Architecture reference — M1–M3 source snapshot plus target design |
+| **Last Updated** | 2026-08-29 |
 | **Owner** | Platform Architecture |
 | **Audience** | Engineers, technical judges, future maintainers |
 | **Related Domain** | Material Flow Orchestration |
@@ -53,32 +53,34 @@ These principles are load-bearing. Every decision later in this document traces 
 
 | # | Principle | Practical consequence | Status |
 | --- | --- | --- | --- |
-| P1 | **The ledger is the truth** | No mutable impact counters. All metrics are reductions over `materialFlowLedger`. | 📋 Planned |
-| P2 | **Ledger writes are transactional with the state change** | `recordLedgerEvent` is called inside the same Convex mutation that mutates state. Never from an action, never from the client. | 📋 Planned |
-| P3 | **Business logic is framework-agnostic** | Algorithms live in `src/lib/*.ts` with zero Convex imports. Convex functions load data, call the pure function, persist the result. | ✅ Directory exists, 📋 logic pending |
-| P4 | **Weight is an integer in grams; money is an integer in IDR; time is epoch milliseconds UTC** | No floats in persisted domain data. No `Date` objects in the database. WIB conversion happens only at render. | 📋 Planned |
-| P5 | **Server-side authorization is the only authorization** | Client route guards are a UX affordance. Every Convex function re-checks identity and role. | 📋 Planned |
-| P6 | **Append-only means append-only** | Ledger rows are never updated or deleted. Corrections are compensating events. | 📋 Planned |
+| P1 | **The ledger is the truth** | No mutable impact counters. All metrics are reductions over `materialFlowLedger`. | ✅ Ledger foundation; aggregation is M6 target |
+| P2 | **Ledger writes are transactional with the state change** | `recordLedgerEvent` is called inside the same Convex mutation that mutates state. Never from an action, never from the client. | ✅ Implemented M1–M3 transitions |
+| P3 | **Business logic is framework-agnostic** | Algorithms live in `src/lib/*.ts` with zero Convex imports. Convex functions load data, call the pure function, persist the result. | ✅ Pricing, geo, and discovery; routing/impact pending |
+| P4 | **Weight is an integer in grams; money is an integer in IDR; time is epoch milliseconds UTC** | No floats in persisted domain data. No `Date` objects in the database. WIB conversion happens only at render. | ✅ Implemented M1–M3 contracts |
+| P5 | **Server-side authorization is the only authorization** | Client route guards are a UX affordance. Every Convex function re-checks identity and role. | ✅ Implemented M1–M3 surfaces |
+| P6 | **Append-only means append-only** | Ledger rows are never updated or deleted. Corrections are compensating events. | ✅ Implemented ledger helper; later write paths pending |
 | P7 | **Prefer boring, reversible technology** | Where two options are close, pick the one with the cheaper exit. | ✅ Applied |
 | P8 | **Honesty over polish in documentation** | Every capability is marked ✅ implemented, 🚧 in progress, or 📋 planned. | ✅ Applied |
 
 ### 2.1 Honest Implementation Status
 
-The system today is a **read-only skeleton**. This is stated plainly because overclaiming is the fastest way to lose technical credibility.
+The system is a **partially implemented MVP**, not a completed circular loop.
+M1–M3 source is available; M3 still needs Sandbox/mobile UAT. M4 onward is
+target work. [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md)
+is the authoritative documentation snapshot.
 
 | Layer | Status | Detail |
 | --- | --- | --- |
-| Convex schema (12 tables) | ✅ Implemented | `users`, `sessions`, `merchants`, `processors`, `surplusItems`, `orders`, `payments`, `recoveryBatches`, `materialFlowLedger`, `notifications`, `disputes`, `impactSnapshots` |
-| Convex queries | ✅ 6 implemented | `users.getByEmail`, `merchants.getByOwner`, `surplusItems.listByStatus`, `orders.listByUser`, `recoveryBatches.listByStatus`, `impact.getPlaceholderSummary` |
-| Convex mutations | 📋 None | Zero mutations exist. All writes are planned. |
-| Convex actions / httpAction / crons | 📋 None | Midtrans and scheduler work is planned. |
-| React routes | ✅ 10 implemented | Consumer `/`, `/explore`, `/orders`; Merchant `/merchant`, `/merchant/surplus`, `/merchant/surplus/new`; Processor `/processor`, `/processor/recovery`; Admin `/admin`; `*` fallback |
+| Convex schema (10 tables) | ✅ Implemented | `users`, `sessions`, `authEvents`, `merchants`, `processors`, `surplusItems`, `orders`, `payments`, `recoveryBatches`, `materialFlowLedger` |
+| Convex queries and mutations | ✅ M1–M3 surfaces | Auth/profile, Merchant Rescue Item, discovery, Consumer order queries, and atomic reservation/hold-expiry mutations are present. |
+| Convex actions / httpAction | 🧪 M3 UAT | Midtrans Snap action and `/midtrans/webhook` source exist; recurring crons do not. |
+| React routes | ✅ M1–M3 plus later placeholders | Auth, Consumer, Merchant, Processor, and Admin route groups exist; later role routes are not proof of live backend flows. |
 | Layouts | ✅ Implemented | `ConsumerLayout`, `RoleShell` (used by Merchant/Processor/Admin layouts) |
 | UI primitives | ✅ 17 shadcn/ui components | new-york style, neutral base |
-| Pure-logic modules | 📋 Planned | `src/lib/pricing.ts`, `routing.ts`, `ranking.ts`, `impact.ts`, `geo.ts` |
-| Auth | 📋 Planned | `src/pages/auth` exists and is empty |
-| Mapbox | 📋 Planned | No SDK integration yet |
-| Midtrans | 📋 Planned | Sandbox credentials not yet wired |
+| Pure-logic modules | ✅ Partial | `pricing.ts`, `geo.ts`, `discovery.ts`, payment-hold, order grouping, formatting, and validation exist; routing/impact aggregation do not. |
+| Auth | ✅ Implemented | Registration, login, logout, session restoration, onboarding, and guards are present. |
+| Mapbox | ✅ Implemented | Consumer Mapbox discovery has a list fallback. |
+| Midtrans | 🧪 UAT required | Sandbox Snap and verified webhook source are present; deployment credentials/callback must be tested. |
 | Capacitor Android | ✅ Configured | `com.cirquo.app`, `webDir: dist`, sync/open/run scripts present |
 
 ---
@@ -140,7 +142,7 @@ graph TB
 | --- | --- | --- | --- | --- |
 | **Mapbox GL JS** | Client → Mapbox | HTTPS, browser SDK | Map blank; discovery degraded | List view is the fallback surface; map is an enhancement, never the only path to a listing |
 | **Mapbox Geocoding** | Client → Mapbox | HTTPS REST | Address autocomplete fails | Manual lat/lng entry with a map pin drag |
-| **Midtrans Snap (create)** | Convex action → Midtrans | HTTPS REST | Cannot start payment | Order stays `reserved`; the 15-minute payment hold sweep releases quantity |
+| **Midtrans Snap (create)** | Convex action → Midtrans | HTTPS REST | Cannot start payment | Order stays `reserved`; the M3 timer releases quantity at `paymentHoldExpiresAt` |
 | **Midtrans Notification** | Midtrans → Convex `httpAction` | HTTPS POST, SHA512 signature | Payment settles but order stays `reserved` | Signature-verified, idempotent handler; reconciliation query for admin |
 
 ---
@@ -164,7 +166,7 @@ graph TB
         AC["Actions<br/>external I/O, non-transactional"]
         HTTP["httpAction<br/>Midtrans webhook only"]
         CRON["Crons + Scheduler<br/>sweeps, routing, pricing"]
-        DB[("Convex Document DB<br/>12 tables · indexed")]
+        DB[("Convex Document DB<br/>10 tables · indexed")]
     end
 
     subgraph Ext["External"]
@@ -199,16 +201,16 @@ graph TB
 
 | Container | Technology | Responsibility | Deployment | Status |
 | --- | --- | --- | --- | --- |
-| **React SPA** | React 19.2, Vite 8, TS 6 | All UI, routing, forms, map | Static bundle on CDN | ✅ Skeleton |
-| **Pure Logic** | Plain TypeScript | Pricing, routing rank, listing rank, impact math, geo | Bundled into SPA and imported by Convex | 📋 Planned |
+| **React SPA** | React 19.2, Vite 8, TS 6 | UI, routing, forms, and Consumer map | Static bundle on CDN | ✅ M1–M3 source; later screens vary |
+| **Pure Logic** | Plain TypeScript | Pricing, discovery/ranking, geo, validation | Bundled into SPA and imported by Convex | ✅ Partial; routing/impact pending |
 | **Capacitor Shell** | Capacitor 8 | Android WebView host, native permissions | Play Store / APK | ✅ Configured |
 | **Service Worker** | Vanilla SW | Shell caching, PROD only | Served with the SPA | ✅ Registered |
-| **Convex Queries** | Convex 1.43 | Reactive reads | Convex cloud | ✅ 6 exist |
-| **Convex Mutations** | Convex 1.43 | Transactional writes + ledger | Convex cloud | 📋 Planned |
-| **Convex Actions** | Convex 1.43 | Midtrans Snap token creation | Convex cloud | 📋 Planned |
-| **httpAction** | Convex 1.43 | Midtrans notification endpoint | Convex cloud (public URL) | 📋 Planned |
-| **Crons** | Convex 1.43 | 10 scheduled jobs | Convex cloud | 📋 Planned |
-| **Document DB** | Convex storage | 12 tables | Convex cloud | ✅ Schema deployed |
+| **Convex Queries** | Convex 1.43 | Reactive reads | Convex cloud | ✅ M1–M3 queries exist |
+| **Convex Mutations** | Convex 1.43 | Transactional writes + ledger | Convex cloud | ✅ M1–M3 writes; M4+ pending |
+| **Convex Actions** | Convex 1.43 | Midtrans Snap transaction creation | Convex cloud | 🧪 UAT required |
+| **httpAction** | Convex 1.43 | Midtrans notification endpoint | Convex cloud (public URL) | 🧪 Source exists; UAT required |
+| **Crons** | Convex 1.43 | Recurring sweeps | Convex cloud | 📋 Planned; M3 has one-off hold scheduling only |
+| **Document DB** | Convex storage | 10 tables | Convex cloud | ✅ Schema source present |
 
 ### 4.3 Why the Backend Is a Single Container
 
@@ -438,7 +440,7 @@ sequenceDiagram
 
 | Detail | Rationale |
 | --- | --- |
-| **Quantity decrements at reservation, not payment** | Prevents two consumers paying for the same last portion. The cost is temporarily held inventory, released by the 15-minute payment-hold sweep. Overselling is a worse failure than a brief hold. |
+| **Quantity decrements at reservation, not payment** | Prevents two consumers paying for the same last portion. The cost is temporarily held inventory, released by the M3 per-order hold timer. Overselling is a worse failure than a brief hold. |
 | **`RESERVED` and `PAID` carry `weightDeltaGrams = 0`** | No material has moved yet. Only `RESCUED` records the actual outflow. This keeps the ledger's weight column honest. |
 | **The client payment result is never trusted** | Only the signature-verified webhook transitions the order to `paid`. |
 | **The Snap call is an action, not a mutation** | Actions can perform external I/O; mutations cannot. The action writes only by calling a mutation. |
@@ -466,7 +468,7 @@ sequenceDiagram
     MU->>DB: assert now within [pickupStartAt, pickupEndAt]
     MU->>DB: order.status = picked_up
     MU->>DB: if all quantity accounted → item.status = sold_out
-    MU->>L: recordLedgerEvent(RESCUED,<br/>weightDelta = +order.rescuedWeightGrams)
+    MU->>L: recordLedgerEvent(RESCUED,<br/>weightDelta = -order.rescuedWeightGrams)
     Note over MU: TRANSACTION COMMIT
     deactivate MU
     MU-->>Mr: success toast
@@ -630,7 +632,7 @@ At pilot scale — dozens of processors — this is irrelevant. If the processor
 | `PRICE_ADJUSTED` | Cron (15 min) | `0` | Dynamic Rescue Pricing recomputed **and the price changed** | Listing price updates live |
 | `RESERVED` | Consumer mutation | `0` | Reservation created | Quantity decremented, 15-min hold starts |
 | `PAID` | Webhook → mutation | `0` | Midtrans settlement verified | Order becomes collectable |
-| `RESCUED` | Merchant mutation | `+rescuedWeightGrams` | Pickup confirmed with code inside window | **Counts toward Rescued** |
+| `RESCUED` | Merchant mutation | `-rescuedWeightGrams` | Pickup confirmed with code inside window | **Counts toward Rescued** |
 | `CANCELLED` | Consumer mutation or cron | `0` | Consumer cancels, or payment hold lapses | Quantity restored |
 | `EXPIRED` | Cron (5 min) | `0` | Pickup window closed with material remaining | Item → `recovery_pending`, batch created |
 | `ROUTED` | Cron (10 min) | `0` | Batch offered to a ranked processor | 6h offer TTL starts |
@@ -841,10 +843,10 @@ The conditional-provider pattern is a deliberate resilience feature: a judge can
 | Aspect | Approach | Status |
 | --- | --- | --- |
 | Storage | `users` + `sessions` tables | ✅ Schema |
-| Mechanism | Session token, server-validated on every function call | 📋 Planned |
-| Client surface | `src/pages/auth` (empty), `src/features/auth` (empty) | 📋 Planned |
+| Mechanism | Session token, server-validated on every guarded function | ✅ Implemented |
+| Client surface | `src/pages/auth` and route/session guards | ✅ Implemented |
 | Roles | `consumer` / `merchant` / `processor` / `admin` on `users` | ✅ Schema |
-| Backend enforcement | `requireAuth` / `requireRole` / `requireOwnership` in `convex/lib/guards.ts` | 📋 Planned |
+| Backend enforcement | `requireAuth` / `requireRole` / `requireOwnership` in `convex/lib/guards.ts` | ✅ Implemented |
 
 Detail: [`../security/AUTH.md`](../security/AUTH.md).
 
@@ -959,8 +961,8 @@ Step 1 is free precisely because of §8. That is the entire point of the discipl
 | **ADR-02** | **Material Flow Ledger is the single source of truth for all impact metrics** | Impact claims must be auditable and reproducible for judges and partners | Mutable counters on entities; a separate analytics DB | Every metric is a reduction; no drift possible; read cost grows with history | Ledger exceeds ~10M rows |
 | **ADR-03** | **`recordLedgerEvent` is called inside the same mutation as the state change** | A state change without its ledger event corrupts every downstream metric | Write from an action; write from the client; async outbox | Transactional guarantee; **no sagas needed**; forbids ledger writes from actions | Never — this is foundational |
 | **ADR-04** | **Business logic lives in framework-agnostic `src/lib/*.ts`** | Algorithms must be testable, portable, and explainable | Logic inside Convex handlers; logic in React components | Fast unit tests, cheap migration, readable for judges; occasional over-fetching | Over-fetching becomes a measured bottleneck |
-| **ADR-05** | **Decrement quantity at reservation, not payment** | Two consumers must not pay for the same last portion | Decrement at payment; optimistic overselling with refunds | No overselling; requires the 15-min payment-hold sweep | Payment latency drops enough to make holds unnecessary |
-| **ADR-06** | **15-minute payment hold** | Balances consumer payment time against inventory lock-up | 5 min (too tight for bank transfer), 30 min (too much dead inventory) | Predictable release; one cron sweep per minute | Observed abandonment concentrates outside the window |
+| **ADR-05** | **Decrement quantity at reservation, not payment** | Two consumers must not pay for the same last portion | Decrement at payment; optimistic overselling with refunds | No overselling; requires the 15-min payment-hold timer | Payment latency drops enough to make holds unnecessary |
+| **ADR-06** | **15-minute payment hold** | Balances consumer payment time against inventory lock-up | 5 min (too tight for bank transfer), 30 min (too much dead inventory) | Predictable release; one `runAt` callback per reservation | Observed abandonment concentrates outside the window |
 | **ADR-07** | **Routing capped at 3 attempts with a 6h offer TTL** | Unbounded retries could hold material indefinitely | Unlimited retries; single attempt; 24h TTL | Bounded ≤18h resolution; honest `unroutable` outcome | Processor density changes the accept rate materially |
 | **ADR-08** | **Capacitor over Flutter/React Native** | Single team, single codebase, Android reach required | Flutter (second Dart codebase), React Native (shared knowledge, not shared code), PWA only | One build serves web and Android; **WebView performance ceiling accepted and disclosed** | Measured WebView performance blocks core usage |
 | **ADR-09** | **Mapbox over Leaflet** | Branded vector map, clustering, integrated geocoding, smooth on mid-range Android | Leaflet + OSM (free, raster), Google Maps (billing from request 1) | Better demo and UX; free-tier ceiling and key management | 40,000 map loads/month |

@@ -4,7 +4,7 @@
 | --- | --- |
 | **Document Type** | Release Record |
 | **Status** | Draft v1.0 |
-| **Last Updated** | 2026-08-06 |
+| **Last Updated** | 2026-08-29 |
 | **Owner** | Cirquo Engineering |
 | **Format** | [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) |
 | **Versioning** | [Semantic Versioning](https://semver.org/spec/v2.0.0.html) |
@@ -266,7 +266,9 @@ Work planned across milestones M1–M8. Nothing here has shipped.
 - **M6**: add `impactSnapshots`
 - **M7**: add `notifications`, `disputes`
 
-Target schema on completion: **12 tables**, from the 5 that exist today.
+Historical planning target: **12 tables**, from the 5-table scaffold that
+existed at that time. The current source has 10 tables; see
+[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
 
 ### Impact Methodology
 - **M6**: establish `impact-v1` — the initial methodology version. Emission

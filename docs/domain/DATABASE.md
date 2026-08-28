@@ -2,10 +2,15 @@
 
 **Document type:** Technical reference  
 **Backend:** Convex  
-**Status:** Draft v1.0  
-**Last updated:** 2026-08-06
+**Status:** Living schema reference — source snapshot plus target migration
+**Last updated:** 2026-08-29
 
-> This document is the **target schema**. It is not what `convex/schema.ts` contains today. §2 lists what exists, §3 gives the complete target, §7 gives the migration path. Conceptual relationships are in [DATA_MODEL.md](DATA_MODEL.md); lifecycle rules are in [STATE_MACHINE.md](STATE_MACHINE.md).
+> §2 is the living source snapshot from `convex/schema.ts`; §3 is the broader
+> target schema for M4–M8. Do not infer that a field or index in §3 exists
+> until it appears in source. See
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md) for milestone
+> boundaries. Conceptual relationships are in [DATA_MODEL.md](DATA_MODEL.md);
+> lifecycle rules are in [STATE_MACHINE.md](STATE_MACHINE.md).
 
 ---
 
@@ -31,27 +36,27 @@
 
 | Table | Fields | Indexes |
 |---|---|---|
-| `users` | name, email, role, createdAt | `by_email` |
-| `merchants` | ownerId, name, description?, address, latitude?, longitude?, isVerified, createdAt | `by_owner` |
-| `surplusItems` | merchantId, name, description?, imageUrl?, originalPrice, currentPrice, initialQuantity, remainingQuantity, weightPerItemGrams, pickupStartAt, pickupEndAt, dietaryTags, status, createdAt | `by_merchant`, `by_status` |
-| `orders` | userId, surplusItemId, quantity, totalPrice, rescuedWeightGrams, pickupCode, status, createdAt, pickedUpAt? | `by_user`, `by_item`, `by_pickup_code` |
-| `recoveryBatches` | merchantId, surplusItemId, processorId?, offeredWeightGrams, acceptedWeightGrams?, residualWeightGrams?, status, createdAt, completedAt? | `by_merchant`, `by_processor`, `by_status` |
+| `users` | name, email, passwordHash, role, phone?, status, createdAt | `by_email` |
+| `sessions` | userId, tokenHash, expiresAt, createdAt, userAgent?, platform? | `by_token_hash`, `by_user`, `by_expires_at` |
+| `authEvents` | userId?, email, type, success, occurredAt | `by_user`, `by_email` |
+| `merchants` | ownerId, name, address, verificationStatus, profile/routing fields | `by_owner` |
+| `processors` | ownerId, name, verificationStatus, profile/routing fields | `by_owner` |
+| `surplusItems` | merchantId, prices incl. floor, quantities, grams, pickup window, material/dietary data, status | `by_merchant`, `by_status` |
+| `materialFlowLedger` | Rescue Item, optional order/batch, event, signed grams, actor, metadata, methodology, timestamp | `by_rescue_item`, `by_occurred_at`, `by_actor`, `by_event_type`, `by_order` |
+| `orders` | userId, Rescue Item, quantity, total/weight snapshots, pickup code, hold, idempotency key, status | `by_user`, `by_item`, `by_user_item_status`, `by_user_idempotency_key`, `by_pickup_code` |
+| `recoveryBatches` | merchantId, Rescue Item, processorId?, offered/accepted/residual grams, status | `by_merchant`, `by_processor`, `by_status` |
+| `payments` | orderId, Midtrans amount/status/method/transaction/raw payload timestamps | `by_order`, `by_provider_txn` |
 
 **Assessment:** The shape is sound. The gaps are additive, not structural — no existing table needs to be redesigned.
 
-### Critical gaps
+### Remaining target gaps
 
 | Gap | Blocks |
 |---|---|
-| No `materialFlowLedger` | **Everything.** All of Impact Tracking, the platform's differentiator |
-| No `processors` table | Routing eligibility — `processorId` points at `users`, carrying no capacity or material-type constraints |
-| No `floorPrice` | Pricing invariant RI-2; the engine could suggest a price below the merchant's minimum |
-| No `materialType` | Routing eligibility RB-2 |
-| No `processingOnly` | Requirement MER-07 |
-| Missing item statuses | `recovered` and `residual` are absent, so circularity rate cannot be computed |
-| Missing order statuses | `disputed`, `refunded` absent — ADM-05 and PAY-03 have nowhere to record outcomes |
-| Missing batch statuses | `rejected` conflates "this processor declined" with "nobody can take it" |
-| No `payments`, `sessions`, `notifications`, `disputes` | Midtrans reconciliation, persistent auth, NOT-*, ADM-05 |
+| Partial Rescue Item status model | Current source uses `draft`, `active`, `sold_out`, `expired`, `recovery_pending`, and `closed`; M4–M6 decide whether the target `recovered`, `residual`, and `moderated` states are required. |
+| Partial order state model | `disputed` and `refunded` are absent; they are needed only with dispute/refund work. |
+| Recovery workflow fields | Offer/retry/TTL and measured-output fields are not present; M4–M5 own them. |
+| `notifications`, `disputes`, `impactSnapshots` | Not present. They remain M6–M7 work, not evidence of a missing M1–M3 foundation. |
 
 ---
 
@@ -399,7 +404,7 @@ Convex indexes are ordered field prefixes. Each index below exists for a specifi
 |---|---|---|
 | `surplusItems.by_status_pickup_end` | Expiry sweep (RI-T7) | Filter to `active` first, then range-scan `pickupEndAt < now`. Without the compound index this is a full table scan every minute |
 | `surplusItems.by_merchant_status` | Merchant dashboard tabs | Merchant is the high-cardinality filter; status narrows within it |
-| `orders.by_status_hold_expiry` | Payment hold sweep (OR-T3) | Same pattern — status prefix, timestamp range |
+| `orders.by_status_hold_expiry` | 📋 Not in the current schema | M3 uses one scheduled `runAt` callback per order rather than a range sweep |
 | `orders.by_pickup_code` | Pickup verification (OR-T5) | Single-field exact lookup on the hot path; must not scan |
 | `orders.by_merchant_status` | Merchant pending-pickup list | Avoids resolving orders through `surplusItems` |
 | `recoveryBatches.by_processor_status` | Processor queue (PRC-01) | Processor first, then status to split pending/accepted tabs |

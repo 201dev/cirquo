@@ -3,11 +3,17 @@
 | Field | Value |
 | --- | --- |
 | **Document type** | Design strategy / principles |
-| **Status** | Draft v1.0 |
-| **Last updated** | 2026-08-06 |
+| **Status** | Design target with implemented M1–M3 Consumer/Merchant subset |
+| **Last updated** | 2026-08-29 |
 | **Owner** | Design & Frontend |
 | **Applies to** | All four role surfaces (Consumer, Merchant, Organic Processor, Admin) |
 | **Source of truth for tokens** | `src/index.css` |
+
+> **Implementation boundary.** The Consumer discovery, Rescue Item detail,
+> reservation/checkout, and owned order surfaces are source-backed. Merchant
+> listing is source-backed. Processor, Admin, impact, and pickup confirmation
+> screens are still target or placeholder surfaces. See
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 
@@ -207,13 +213,14 @@ graph TD
 
 | Level | Screen | Route | Status | Purpose |
 | --- | --- | --- | --- | --- |
-| 1 | Beranda | `/` | ✅ exists (placeholder) | Nearby Rescue Items, personal impact snapshot, entry to explore |
-| 1 | Jelajahi | `/explore` | ✅ exists (placeholder) | Map-first discovery with list toggle and `FilterSheet` |
-| 1 | Pesanan | `/orders` | ✅ exists (placeholder) | Active reservations with pickup code, plus history |
-| 2 | Detail Rescue Item | `/item/:id` | 📋 planned | Photo, price, pickup window, dietary tags, merchant, reserve CTA |
-| 2 | Detail Pesanan | `/orders/:id` | 📋 planned | `OrderTimeline`, `PickupCodeCard`, ledger link |
-| 2 | Dampak Saya | `/impact` | 📋 planned | Personal `ImpactBreakdownBar`, estimated CO2e |
-| 2 | Profil | `/profile` | 📋 planned | Dietary preferences, location, language |
+| 1 | Beranda | `/` | 🚧 placeholder | Nearby Rescue Items, personal impact snapshot, entry to explore |
+| 1 | Jelajahi | `/explore` | ✅ source-backed | Map-first discovery with list toggle and filters |
+| 1 | Pesanan | `/orders` | ✅ source-backed | Active/past history; codes stay out of cards |
+| 2 | Detail Rescue Item | `/item/:id` | ✅ source-backed | Photo, price, pickup window, dietary tags, merchant, reserve CTA |
+| 2 | Checkout | `/checkout/:orderId` | 🧪 UAT required | Midtrans Sandbox checkout for owned reserved order |
+| 2 | Detail Pesanan | `/orders/:id` | ✅ source-backed | Owned detail; pickup code only after verified payment |
+| 2 | Dampak Saya | `/impact` | 🚧 placeholder | Personal `ImpactBreakdownBar`, estimated CO2e |
+| 2 | Profil | `/profile` | 🚧 placeholder | Dietary preferences, location, language |
 
 **Depth rule:** no consumer task exceeds three taps from `/`. Reserve = Beranda → item → reserve.
 
@@ -222,8 +229,8 @@ graph TD
 | Level | Screen | Route | Status | Purpose |
 | --- | --- | --- | --- | --- |
 | 1 | Dasbor | `/merchant` | ✅ exists (placeholder) | `SummaryCard` row, today's pickups, impact bar |
-| 1 | Daftar Surplus | `/merchant/surplus` | ✅ exists (placeholder) | Table of all Rescue Items by status |
-| 2 | Buat Surplus | `/merchant/surplus/new` | ✅ exists (placeholder) | The 120-second form |
+| 1 | Daftar Surplus | `/merchant/surplus` | ✅ source-backed | Table of own Rescue Items by status |
+| 2 | Buat Surplus | `/merchant/surplus/new` | ✅ source-backed | Merchant form with validation |
 | 2 | Detail Surplus | `/merchant/surplus/:id` | 📋 planned | Item state, orders, ledger |
 | 2 | Verifikasi Kode | `/merchant/pickup` | 📋 planned | `PickupCodeInput` — the counter-side moment |
 | 2 | Dampak | `/merchant/impact` | 📋 planned | Business-level circularity and revenue recovered |
@@ -279,7 +286,7 @@ graph TD
 
 Roles do not share a navigation shell. A user with two roles switches via an explicit role switcher in the profile/account menu, which performs a full route change (`/` ⇄ `/merchant`). We do **not** build a unified nav that mixes consumer and merchant destinations — it invites mis-taps at the counter, and the mental models are different.
 
-`RoleGuard` (📋 planned) wraps route groups and redirects unauthorised roles rather than hiding items, so a wrong-role deep link never renders a half-populated shell.
+`RoleRoute` wraps route groups and redirects unauthorised roles rather than hiding items, so a wrong-role deep link never renders a half-populated shell.
 
 ---
 
@@ -320,7 +327,7 @@ Mobile-first. Base styles target a 390 px viewport; every breakpoint is additive
 | Icon-only buttons named | `aria-label` in Bahasa Indonesia on every icon-only control | 📋 planned |
 | Form error association | React Hook Form + `FormMessage` wires `aria-describedby` and `aria-invalid` automatically | ✅ exists in `CreateSurplusPage` |
 | Reduced motion | All transitions wrapped in `motion-safe:`; countdown updates are text-only, never animated rings | 📋 planned |
-| Colour never sole carrier | Every `StatusBadge` renders a text label alongside its colour | 📋 planned (component not built) |
+| Colour never sole carrier | Every `StatusBadge` renders a text label alongside its colour | ✅ component exists; audit later status surfaces during M7 |
 | Keyboard traps | Radix/base-ui `Dialog` and `Sheet` manage focus trapping and restoration | ✅ inherited from primitives |
 | Language attribute | `<html lang="id">` | 📋 needs verification |
 | Screen-reader live regions | Sonner toasts; countdown announces at 30/10/5-minute thresholds only, not every second | 📋 planned |
@@ -362,7 +369,7 @@ Exact strings. Do not paraphrase in the UI.
 | Impact Tracking | Pelacakan Dampak | Dampak | — |
 | Circularity rate | Tingkat Sirkularitas | Sirkularitas | Always with `%` and one decimal |
 | Pickup window | Jendela Pengambilan | Waktu ambil | Displayed as a WIB range |
-| Pickup code | Kode Pengambilan | Kode | 6 characters, shown large |
+| Pickup code | Kode Pengambilan | Kode | 6 digits, shown large |
 | Dietary preference filtering | Filter Preferensi Diet | Preferensi | Never "filter alergi" |
 | Organic Processor | Pengolah Organik | Pengolah | — |
 | Merchant | Mitra Usaha | Mitra | — |
@@ -567,14 +574,11 @@ Known, accepted, tracked. Recorded honestly rather than hidden.
 | **DD-01** | Palette in `src/index.css` is fully achromatic — every token is `oklch(L 0 0)` — while `RoleShell`, `ConsumerLayout`, `SummaryCard` and `HomePage` hardcode `emerald-700` / `emerald-800` / `emerald-50` | Brand colour cannot be themed, dark mode is inconsistent, no single source of truth for green | **High** | Add the `--brand-50…950` OKLCH ramp (hue ≈ 162), repoint `--primary` and the sidebar tokens at it, replace every hardcoded emerald class with a token utility. Full spec in `UI_GUIDE.md` §3. | M2 |
 | **DD-02** | `--font-sans` is set to `'Geist Variable'` and `@fontsource-variable/geist` is imported, but `body` still declares an Inter fallback stack | The shipped typeface may not be the intended one; type metrics and spacing were designed for Geist | **High** | Change `body` to `font-family: var(--font-sans)` and delete the Inter stack. Spec in `UI_GUIDE.md` §6. | M1 |
 | **DD-03** | `public/manifest.webmanifest` ships a single SVG icon | Android maskable/adaptive icons and splash screens degrade; Capacitor 8 packaging needs raster sizes | Medium | Generate 192/512 PNG plus a maskable variant; add `purpose: "maskable"`. Align `theme_color` with the new `--brand-700` rather than the literal `#047857`. | M3 |
-| **DD-04** | No authentication screens designed or built for any role | Every role flow starts mid-session; demo cannot show onboarding or role selection | **High** | Design login, register, role-select, verification-pending. Frames enumerated in `FIGMA.md` §8. | M2 |
-| **DD-05** | All 9 pages read `src/constants/mock-data.ts`; dashboard figures are hardcoded | Impact numbers are not ledger-derived, directly contradicting Measured Honesty | **Critical** | Wire every impact figure to Convex queries over the Material Flow Ledger. No number ships to the demo unless it is computed. | M4 |
-| **DD-06** | `StatusBadge` does not exist; statuses render as plain text | 26 status values across 3 enums have no consistent visual treatment | Medium | Build the discriminated-union `StatusBadge`; mapping tables in `UI_GUIDE.md` §4. | M2 |
+| **DD-05** | Later-role and impact pages still use placeholder data or hardcoded figures | Any displayed impact number would not be ledger-derived | **Critical** | Wire every impact figure to Convex queries over the Material Flow Ledger. No number ships to the demo unless it is computed. | M6 |
 | **DD-07** | `SummaryCard` hardcodes an emerald icon chip | Blocks DD-01; card cannot express non-brand semantics (residual, warning) | Medium | Add `variant?: 'brand' \| 'recovered' \| 'residual' \| 'neutral'` driven by tokens. | M2 |
 | **DD-08** | Role component directories (`consumer/`, `merchant/`, `processor/`, `admin/`) are empty | No role-specific composites exist; pages will accrete inline markup | Medium | Populate per the priority table in `COMPONENTS.md` §9. | M2–M5 |
 | **DD-09** | No `aria-label` audit performed on icon-only controls | Screen-reader users cannot identify the hamburger or map controls | Medium | Audit and label every icon-only button. | M3 |
 | **DD-10** | No manual assistive-technology testing has been done | Accessibility claims are unsupported | Medium | TalkBack pass on the consumer flow at minimum; document findings honestly. | M6 |
-| **DD-11** | Consumer detail routes (`/item/:id`, `/orders/:id`) do not exist | Reservation flow is unreachable end-to-end | **High** | Add routes and screens. | M3 |
 | **DD-12** | `prefers-reduced-motion` not implemented | Vestibular-sensitive users get unguarded motion | Low | Wrap transitions in `motion-safe:`. | M5 |
 | **DD-13** | English localisation not scoped; strings are inline Bahasa Indonesia | Judges or partners requiring English see none | Low | Extract strings to a dictionary before adding a second locale. Do not add i18n tooling before M7. | M7 |
 

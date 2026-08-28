@@ -1,141 +1,248 @@
 import {
   ArrowRight,
+  BadgePercent,
   Clock3,
   MapPin,
   Recycle,
   Search,
-  ShoppingBag,
-  Sprout,
+  ShieldCheck,
+  Store,
 } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import bakeryImage from "@/assets/rescue-bakery.webp";
 import heroImage from "@/assets/cirquo-hero.webp";
-import mealImage from "@/assets/rescue-meal.webp";
-import produceImage from "@/assets/rescue-produce.webp";
-import { ImpactBreakdown } from "@/components/common/impact-breakdown";
+import { MerchantCard } from "@/components/common/merchant-card";
+import { QueryErrorBoundary } from "@/components/common/query-error-boundary";
 import { RescueItemCard } from "@/components/common/rescue-item-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { demoImpact, rescueItems } from "@/constants/mock-data";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
+import { useNearbyRescueItems } from "@/features/discovery/use-nearby-rescue-items";
+import { groupByMerchant, toRescueItemPreview } from "@/lib/discovery";
+import {
+  MATERIAL_CATEGORIES,
+  rescueItemImageForMaterialType,
+} from "@/lib/rescue-item-images";
 
-const categoryShortcuts = [
+/**
+ * Shortcuts into `/explore` with the filter pre-applied. These used to exist
+ * twice on this page — once as tall icon cards, once as a chip row that always
+ * drew the first chip as "active" no matter what the URL said. One row now,
+ * and nothing here claims to be a filter of the grid below it.
+ */
+const shortcuts = [
+  { label: "Dekat saya", hint: "maks. 2 km", to: "/explore?distance=2000", icon: MapPin },
+  { label: "Paling hemat", hint: "maks. Rp15.000", to: "/explore?price=15000", icon: BadgePercent },
+  { label: "Pickup segera", hint: "mulai sebelum 18.00", to: "/explore?pickup=before_18", icon: Clock3 },
+  { label: "Vegetarian", hint: "tanpa daging", to: "/explore?dietary=Vegetarian", icon: Recycle },
+];
+
+const HOW_IT_WORKS = [
   {
-    label: "Roti & pastry",
-    description: "Paket bakery hari ini",
-    image: bakeryImage,
-    href: "/discover?category=bakery",
+    icon: ShieldCheck,
+    title: "Pickup langsung di lokasi",
+    body: "Reservasi lewat Cirquo, tunjukkan kode pickup enam digit di Mitra Usaha. Tidak ada pengantaran.",
   },
   {
-    label: "Siap santap",
-    description: "Menu makan lengkap",
-    image: mealImage,
-    href: "/discover?category=meal",
+    icon: BadgePercent,
+    title: "Harga turun, mutu tetap",
+    body: "Surplus dijual di bawah harga normal karena window pickup-nya pendek, bukan karena kualitasnya turun.",
   },
   {
-    label: "Sayur & buah",
-    description: "Segar dan layak konsumsi",
-    image: produceImage,
-    href: "/discover?category=produce",
+    icon: Recycle,
+    title: "Sisanya tetap tercatat",
+    body: "Yang tidak terambil bisa masuk Circular Routing ke Mitra Pengolah, dan setiap perpindahan masuk Material Flow Ledger.",
   },
 ];
+
+function ItemGridSkeleton({ label }: { label: string }) {
+  return (
+    <div
+      role="status"
+      aria-label={label}
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+    >
+      {Array.from({ length: 8 }, (_, index) => (
+        <div key={index} className="overflow-hidden rounded-xl border bg-card">
+          <Skeleton className="aspect-[4/3] rounded-none" />
+          <div className="space-y-2 p-3">
+            <Skeleton className="h-3 w-2/5" />
+            <Skeleton className="h-5 w-4/5" />
+            <Skeleton className="h-5 w-1/2" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NearbyRescueItems() {
+  const nearbyData = useNearbyRescueItems();
+  const items = useMemo(
+    () =>
+      nearbyData?.results
+        .slice(0, 8)
+        .map((item) =>
+          toRescueItemPreview(
+            item,
+            rescueItemImageForMaterialType(item.materialType),
+          ),
+        ),
+    [nearbyData],
+  );
+
+  if (items === undefined) {
+    return <ItemGridSkeleton label="Memuat Rescue Item di dekatmu" />;
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="rounded-xl border bg-card px-5 py-10 text-center">
+        <Search className="mx-auto size-9 text-muted-foreground" aria-hidden="true" />
+        <h3 className="mt-4 text-lg font-semibold">Belum ada Rescue Item aktif</h3>
+        <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+          Semua window pickup dalam radius 30 km sudah lewat. Coba lagi saat
+          Mitra Usaha menambahkan surplus.
+        </p>
+        <Button asChild variant="outline" className="mt-5">
+          <Link to="/explore">Buka halaman jelajah</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {items.map((item) => (
+        <RescueItemCard key={item.id} item={item} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Same query as the grid above — the Convex client keeps one subscription for
+ * identical args, so this is a second view of the same data, not a second read.
+ */
+function NearbyMerchants() {
+  const nearbyData = useNearbyRescueItems();
+  const merchants = useMemo(
+    () => (nearbyData ? groupByMerchant(nearbyData.results).slice(0, 6) : undefined),
+    [nearbyData],
+  );
+
+  if (merchants === undefined) {
+    return (
+      <div
+        role="status"
+        aria-label="Memuat Mitra Usaha di dekatmu"
+        className="grid gap-3 lg:grid-cols-2"
+      >
+        {Array.from({ length: 4 }, (_, index) => (
+          <div
+            key={index}
+            className="grid grid-cols-[4.5rem_1fr] items-center gap-3 rounded-xl border bg-card p-3 sm:grid-cols-[5.5rem_1fr] sm:gap-4"
+          >
+            <Skeleton className="aspect-square rounded-lg" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-3/5" />
+              <Skeleton className="h-3 w-4/5" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (merchants.length === 0) return null;
+
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      {merchants.map((merchant) => (
+        <MerchantCard key={merchant.id} merchant={merchant} />
+      ))}
+    </div>
+  );
+}
 
 export default function ConsumerHomePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [query, setQuery] = useState("");
-  const rawFirstName = user?.name.trim().split(/\s+/)[0];
-  const firstName =
-    rawFirstName && rawFirstName.length > 20
-      ? `${rawFirstName.slice(0, 20)}…`
-      : rawFirstName;
+  const firstName = user?.name.trim().split(/\s+/)[0]?.slice(0, 20);
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    navigate(`/discover${query ? `?q=${encodeURIComponent(query)}` : ""}`);
+    const value = query.trim();
+    navigate(`/explore${value ? `?q=${encodeURIComponent(value)}` : ""}`);
   }
 
   return (
-    <div className="space-y-11 sm:space-y-14">
-      <section className="relative isolate overflow-hidden rounded-2xl bg-primary px-5 py-7 text-primary-foreground sm:px-8 sm:py-9 lg:px-10">
-        <img
-          src={heroImage}
-          alt=""
-          width="1600"
-          height="863"
-          className="absolute inset-y-0 right-0 hidden h-full w-[42%] object-cover object-[72%_center] opacity-20 lg:block [mask-image:linear-gradient(to_right,transparent,black_35%)]"
-        />
-        <div className="relative max-w-2xl">
-          <p className="flex items-center gap-2 text-sm font-medium text-primary-foreground/75">
+    <div className="space-y-10 sm:space-y-14">
+      <section className="grid overflow-hidden rounded-xl bg-brand-green text-brand-charcoal lg:grid-cols-[1.15fr_.85fr]">
+        <div className="flex flex-col justify-center px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
+          <p className="flex items-center gap-2 text-sm font-medium text-brand-charcoal/75">
             <MapPin className="size-4" aria-hidden="true" />
-            Tembalang, Semarang
+            Tembalang, Semarang · radius 30 km
           </p>
-          <h1 className="mt-3 break-words text-3xl font-semibold tracking-[-0.035em] text-balance sm:text-4xl">
-            {firstName ? `Halo, ${firstName}. ` : ""}Mau selamatkan apa hari
-            ini?
+          <h1 className="mt-3 max-w-2xl text-3xl font-bold leading-tight tracking-[-0.025em] sm:text-4xl">
+            {firstName ? `Halo, ${firstName}. ` : ""}Makanan baik di dekatmu,
+            siap diselamatkan.
           </h1>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-primary-foreground/75 sm:text-base">
-            Pilih makanan yang masih baik, lalu ambil langsung pada waktunya.
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-brand-charcoal/75 sm:text-base">
+            Pilih Rescue Item, reservasi, lalu ambil langsung di Mitra Usaha.
           </p>
           <form
             onSubmit={handleSearch}
-            className="mt-6 flex max-w-xl items-center gap-1 rounded-full bg-background p-1.5 text-foreground shadow-[0_18px_38px_-24px_rgba(0,0,0,.65)]"
+            className="mt-6 flex max-w-xl items-center rounded-lg bg-card p-1.5 text-card-foreground shadow-raised"
             role="search"
           >
-            <Search
-              className="ml-3 size-5 shrink-0 text-muted-foreground"
-              aria-hidden="true"
-            />
+            <Search className="ml-3 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className="h-11 min-w-0 border-0 bg-transparent shadow-none focus-visible:ring-0"
-              placeholder="Cari makanan atau merchant"
+              placeholder="Cari makanan atau Mitra Usaha"
               aria-label="Cari Rescue Item"
             />
-            <Button
-              type="submit"
-              className="size-11 shrink-0 rounded-full px-0"
-              aria-label="Cari"
-            >
+            <Button type="submit" className="h-11 shrink-0 rounded-md px-4">
+              <span className="hidden sm:inline">Cari</span>
               <ArrowRight aria-hidden="true" />
             </Button>
           </form>
         </div>
-      </section>
-
-      <section aria-labelledby="category-title">
-        <div className="mb-5">
-          <h2
-            id="category-title"
-            className="text-2xl font-semibold tracking-[-0.025em]"
-          >
-            Mulai dari yang kamu suka
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Pilih kategori untuk mempersempit pencarianmu.
-          </p>
+        <div className="relative hidden min-h-80 lg:block">
+          <img
+            src={heroImage}
+            alt="Makanan surplus yang masih baik dan siap diselamatkan"
+            width="1600"
+            height="863"
+            className="absolute inset-0 size-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-brand-green via-brand-green/20 to-transparent" />
         </div>
-        <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
-          {categoryShortcuts.map((category) => (
+      </section>
+      <section aria-labelledby="shortcut-title">
+        <h2 id="shortcut-title" className="text-lg font-semibold sm:text-xl">
+          Lagi cari apa?
+        </h2>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {shortcuts.map(({ label, hint, to, icon: Icon }) => (
             <Link
-              key={category.label}
-              to={category.href}
-              className="group grid min-w-[15.5rem] snap-start grid-cols-[5.25rem_1fr] items-center gap-4 rounded-2xl border bg-card p-2.5 transition-[transform,border-color] hover:-translate-y-0.5 hover:border-primary/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-w-0"
+              key={label}
+              to={to}
+              className="group flex items-center gap-3 rounded-xl border bg-card p-3 shadow-card transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-leaf-300 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <img
-                src={category.image}
-                alt=""
-                width="160"
-                height="160"
-                loading="lazy"
-                className="aspect-square size-[5.25rem] rounded-xl object-cover"
-              />
-              <span className="min-w-0 pr-2">
-                <strong className="block font-semibold">{category.label}</strong>
-                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                  {category.description}
+              <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-leaf-100 text-leaf-700 transition-transform group-hover:scale-105">
+                <Icon className="size-5" strokeWidth={1.8} aria-hidden="true" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold">{label}</span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {hint}
                 </span>
               </span>
             </Link>
@@ -143,99 +250,99 @@ export default function ConsumerHomePage() {
         </div>
       </section>
 
-      <section aria-labelledby="nearby-title">
-        <div className="mb-5 flex items-end justify-between gap-4">
-          <div>
-            <h2
-              id="nearby-title"
-              className="text-2xl font-semibold tracking-[-0.025em]"
+      <section aria-labelledby="category-title">
+        <h2 id="category-title" className="text-lg font-semibold sm:text-xl">
+          Pilih berdasarkan kategori
+        </h2>
+        <div className="-mx-4 mt-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-7 sm:px-0">
+          {MATERIAL_CATEGORIES.map((category) => (
+            <Link
+              key={category.type}
+              to={`/category/${category.type}`}
+              className="group flex min-w-20 snap-start flex-col items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              Dekat kamu hari ini
+              <span className="overflow-hidden rounded-full border bg-muted">
+                <img
+                  src={category.image}
+                  alt=""
+                  width="160"
+                  height="160"
+                  loading="lazy"
+                  className="size-20 object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+              </span>
+              <span className="text-center text-xs font-medium">{category.label}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+      <section aria-labelledby="nearby-title">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 id="nearby-title" className="text-xl font-bold sm:text-2xl">
+              Pilihan bagus di dekatmu
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Rescue Item aktif dengan pickup terdekat.
+              Rescue Item aktif yang bisa direservasi dan diambil hari ini.
             </p>
           </div>
-          <Button asChild variant="ghost" className="hidden sm:inline-flex">
-            <Link to="/discover">
+          <Button asChild variant="ghost" className="shrink-0">
+            <Link to="/explore">
               Lihat semua <ArrowRight aria-hidden="true" />
             </Link>
           </Button>
         </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {rescueItems
-            .filter((item) => item.status === "active")
-            .map((item) => (
-              <RescueItemCard key={item.id} item={item} />
-            ))}
+        <div className="mt-4">
+          <QueryErrorBoundary title="Rescue Item di dekatmu tidak dapat dimuat">
+            <NearbyRescueItems />
+          </QueryErrorBoundary>
         </div>
-        <Button asChild variant="outline" className="mt-5 w-full sm:hidden">
-          <Link to="/discover">
-            Lihat semua Rescue Item <ArrowRight aria-hidden="true" />
-          </Link>
-        </Button>
       </section>
 
-      <section
-        aria-labelledby="flow-title"
-        className="grid gap-8 rounded-2xl bg-secondary p-6 sm:p-8 lg:grid-cols-[.8fr_1.2fr] lg:p-10"
-      >
-        <div>
-          <p className="text-sm font-semibold text-primary">
-            Bukan sekadar diskon
-          </p>
-          <h2
-            id="flow-title"
-            className="mt-2 text-3xl font-semibold tracking-[-0.035em]"
-          >
-            Satu alur, tiga kesempatan.
-          </h2>
-          <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
-            Yang tidak terserap konsumen masuk Circular Routing menuju Organic
-            Processor. Setiap hasil akhirnya tetap tercatat.
-          </p>
-          <Button asChild variant="outline" className="mt-6 bg-background">
-            <Link to="/impact">
-              Lihat dampakmu <ArrowRight aria-hidden="true" />
+      <section aria-labelledby="merchant-title">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 id="merchant-title" className="text-xl font-bold sm:text-2xl">
+              Mitra Usaha terdekat
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Tempat pickup yang sedang punya surplus, diurutkan dari yang
+              terdekat.
+            </p>
+          </div>
+          <Button asChild variant="ghost" className="shrink-0">
+            <Link to="/explore">
+              <Store aria-hidden="true" /> Lihat di peta
             </Link>
           </Button>
         </div>
-        <ol className="grid gap-5 sm:grid-cols-3">
-          {[
-            {
-              icon: ShoppingBag,
-              title: "Temukan",
-              copy: "Pilih Rescue Item yang masih baik di dekatmu.",
-            },
-            {
-              icon: Sprout,
-              title: "Selamatkan",
-              copy: "Reservasi dan ambil langsung saat pickup window.",
-            },
-            {
-              icon: Recycle,
-              title: "Pulihkan",
-              copy: "Surplus tersisa diarahkan ke pengolahan organik.",
-            },
-          ].map(({ icon: Icon, title, copy }) => (
-            <li key={title} className="border-t border-primary/15 pt-4">
-              <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
-                <Icon className="size-5" aria-hidden="true" />
-              </span>
-              <h3 className="mt-4 font-semibold">{title}</h3>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                {copy}
-              </p>
-            </li>
-          ))}
-        </ol>
+        <div className="mt-4">
+          <QueryErrorBoundary title="Daftar Mitra Usaha tidak dapat dimuat">
+            <NearbyMerchants />
+          </QueryErrorBoundary>
+        </div>
       </section>
-
-      <ImpactBreakdown {...demoImpact} />
-      <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-        <Clock3 className="size-3.5" aria-hidden="true" />
-        Cirquo memakai pickup langsung, tanpa layanan pengantaran.
-      </p>
+      <section
+        aria-labelledby="how-title"
+        className="rounded-xl border bg-leaf-50 p-5 sm:p-7 dark:bg-card"
+      >
+        <h2 id="how-title" className="text-xl font-bold sm:text-2xl">
+          Kenapa lewat Cirquo?
+        </h2>
+        <div className="mt-5 grid gap-5 sm:grid-cols-3">
+          {HOW_IT_WORKS.map(({ icon: Icon, title, body }) => (
+            <div key={title}>
+              <span className="grid size-10 place-items-center rounded-lg bg-leaf-100 text-leaf-700 dark:bg-leaf-900 dark:text-leaf-200">
+                <Icon className="size-5" strokeWidth={1.8} aria-hidden="true" />
+              </span>
+              <h3 className="mt-3 font-semibold">{title}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                {body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

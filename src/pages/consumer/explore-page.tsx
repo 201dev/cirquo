@@ -15,26 +15,20 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import type { RescueItemPreview } from "@/types/domain";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { FeatureCollection } from "geojson";
 import type { GeoJSONSource, Map as MapboxMap } from "mapbox-gl";
+import { toRescueItemPreview } from "@/lib/discovery";
+import { formatDistance, formatIdr } from "@/lib/format";
+import {
+  MATERIAL_CATEGORIES,
+  rescueItemImageForMaterialType,
+} from "@/lib/rescue-item-images";
 
-const formatIdr = new Intl.NumberFormat("id-ID", {
-  style: "currency",
-  currency: "IDR",
-  maximumFractionDigits: 0,
-}).format;
-
+/** The shared category map plus an "all" escape hatch this page alone needs. */
 const categories = [
   { value: "all", label: "Semua" },
-  { value: "prepared_food", label: "Makanan siap santap" },
-  { value: "bakery", label: "Roti & pastry" },
-  { value: "produce", label: "Sayur & buah" },
-  { value: "dairy", label: "Susu & olahan" },
-  { value: "protein", label: "Protein" },
-  { value: "dry_goods", label: "Kering" },
-  { value: "mixed", label: "Campur" },
+  ...MATERIAL_CATEGORIES.map(({ type, label }) => ({ value: type, label })),
 ] as const;
 
 type Category = (typeof categories)[number]["value"];
@@ -57,12 +51,6 @@ type MapItem = {
   _id: string;
   merchant: { latitude: number; longitude: number };
 };
-
-function formatDistance(distanceMeters: number) {
-  return distanceMeters < 1_000
-    ? `${distanceMeters.toLocaleString("id-ID")} m`
-    : `${(distanceMeters / 1_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} km`;
-}
 
 function updateMapSource(map: MapboxMap, items: readonly MapItem[]) {
   const source = map.getSource("rescue-items") as GeoJSONSource | undefined;
@@ -260,7 +248,7 @@ export default function ExplorePage() {
             source: "rescue-items",
             filter: ["has", "point_count"],
             paint: {
-              "circle-color": "#16a34a",
+              "circle-color": "#1BAC4B",
               "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 50, 40]
             }
           });
@@ -275,7 +263,7 @@ export default function ExplorePage() {
               "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
               "text-size": 12
             },
-            paint: { "text-color": "#ffffff" }
+            paint: { "text-color": "#272727" }
           });
 
           map.addLayer({
@@ -284,7 +272,7 @@ export default function ExplorePage() {
             source: "rescue-items",
             filter: ["!", ["has", "point_count"]],
             paint: {
-              "circle-color": "#16a34a",
+              "circle-color": "#1BAC4B",
               "circle-radius": 8,
               "circle-stroke-width": 2,
               "circle-stroke-color": "#fff"
@@ -347,31 +335,6 @@ export default function ExplorePage() {
     selectedItemId ? { id: selectedItemId } : "skip"
   );
 
-  const mapToPreview = (item: (typeof filtered)[number]): RescueItemPreview => {
-    const start = new Date(item.pickupStartAt);
-    const end = new Date(item.pickupEndAt);
-    const formatTime = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    
-    return {
-      id: item._id,
-      name: item.name,
-      merchantName: item.merchant.name,
-      currentPrice: item.currentPrice,
-      originalPrice: item.originalPrice,
-      remainingQuantity: item.remainingQuantity,
-      weightPerItemGrams: item.weightPerItemGrams,
-      pickupWindow: `${formatTime(start)} - ${formatTime(end)}`,
-      status: "active",
-      category: item.materialType === "bakery" ? "bakery" : (item.materialType === "produce" ? "produce" : "meal"),
-      description: "",
-      image: item.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800",
-      address: item.merchant.address,
-      distanceKm: Number((item.distanceMeters / 1000).toFixed(1)),
-      dietaryTags: item.dietaryTags,
-      pickupDate: start.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
-    };
-  };
-
   return (
     <>
       <PageHeader
@@ -380,14 +343,16 @@ export default function ExplorePage() {
       />
 
       {locationDenied && (
-        <div className="mx-4 sm:mx-0 mt-4 rounded-md bg-yellow-50 p-4 border border-yellow-200">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <AlertCircle className="h-5 w-5 text-yellow-400" aria-hidden="true" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-yellow-800">Lokasi tidak diizinkan. Menampilkan area Semarang.</h3>
-            </div>
+        <div className="-mx-4 mt-4 flex gap-3 border-y border-warning-border bg-warning p-4 text-warning-foreground sm:mx-0 sm:rounded-xl sm:border">
+          <AlertCircle className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+          <div>
+            <h2 className="text-sm font-semibold">
+              Lokasi tidak diizinkan, menampilkan area Semarang
+            </h2>
+            <p className="mt-0.5 text-xs leading-relaxed">
+              Jarak dihitung dari Tembalang, bukan dari posisimu. Izinkan akses
+              lokasi di browser untuk jarak yang akurat.
+            </p>
           </div>
         </div>
       )}
@@ -476,7 +441,7 @@ export default function ExplorePage() {
       </div>
 
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_30rem]">
-        <section aria-label="Hasil pencarian" className="order-2 lg:order-1">
+        <section aria-label="Hasil pencarian">
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               {nearbyData === undefined ? (
@@ -510,7 +475,13 @@ export default function ExplorePage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
               {filtered.map((item) => (
                 <div key={item._id}>
-                  <RescueItemCard item={mapToPreview(item)} horizontal />
+                  <RescueItemCard
+                    item={toRescueItemPreview(
+                      item,
+                      rescueItemImageForMaterialType(item.materialType),
+                    )}
+                    horizontal
+                  />
                 </div>
               ))}
             </div>
@@ -539,7 +510,7 @@ export default function ExplorePage() {
         </section>
 
         <aside
-          className="order-1 h-72 overflow-hidden rounded-xl border bg-muted/20 sm:h-96 lg:sticky lg:top-[14rem] lg:order-2 lg:h-[calc(100vh-16rem)] lg:min-h-[300px]"
+          className="h-72 overflow-hidden rounded-xl border bg-muted/20 sm:h-96 lg:sticky lg:top-[14rem] lg:h-[calc(100vh-16rem)] lg:min-h-[300px]"
           aria-label="Peta lokasi merchant"
         >
           {mapError ? (
@@ -591,10 +562,13 @@ export default function ExplorePage() {
               </div>
               
               <div className="flex-1 overflow-y-auto px-6 py-4">
-                <img 
-                  src={selectedItemDetails.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800"} 
+                <img
+                  src={
+                    selectedItemDetails.imageUrl ||
+                    rescueItemImageForMaterialType(selectedItemDetails.materialType)
+                  }
                   alt={selectedItemDetails.name}
-                  className="w-full h-48 object-cover rounded-xl mb-6" 
+                  className="w-full h-48 object-cover rounded-xl mb-6"
                 />
                 
                 <div className="space-y-4">

@@ -3,8 +3,8 @@
 | Field | Value |
 | --- | --- |
 | **Document Type** | Architecture Specification |
-| **Status** | Draft v1.0 |
-| **Last Updated** | 2026-08-06 |
+| **Status** | Target backend architecture with implemented M1–M3 subset |
+| **Last Updated** | 2026-08-29 |
 | **Owner** | Backend Engineering |
 | **Platform** | Convex 1.43 |
 | **Audience** | Engineers, reviewers, DSDC ANFORCOM 2026 judges |
@@ -17,7 +17,7 @@ The Cirquo backend has exactly one non-negotiable responsibility: **every kilogr
 
 This document specifies how Convex functions are organised, when to use each function type, how transactions guarantee that a quantity decrement and a **Material Flow Ledger** write can never diverge, how authorisation is enforced, how pure logic is kept out of the database layer, and how external systems (Midtrans, Mapbox) are integrated safely.
 
-**Current state — 2026-08-27.** The backend now has a 10-table schema, session
+**Current state — 2026-08-29.** The backend now has a 10-table schema, session
 authentication and guards, Material Flow Ledger writes, Merchant Rescue Item
 lifecycle mutations, Consumer discovery/reservation, and a Midtrans Sandbox
 `httpAction`. Sections marked 📋 in this document remain target architecture;
@@ -30,24 +30,24 @@ verify `convex/` before treating them as implemented.
 ```
 convex/
 ├── schema.ts             ✅ tables, indexes, validators
-├── auth.ts               📋 register, login, logout, currentUser
-├── users.ts              ✅ getByEmail  |  📋 profile mutations
-├── merchants.ts          ✅ getByOwner  |  📋 create, update, verify
-├── processors.ts         📋 create, update, verify, capacity queries
-├── surplusItems.ts       ✅ listByStatus  |  📋 create, publish, update, listNearby
-├── orders.ts             📋 reserve, confirmPickup, cancel, expire, listForMerchant
-├── payments.ts           📋 createSnapToken (action), recordSettlement (internalMutation)
-├── recoveryBatches.ts    ✅ listByStatus  |  📋 route, accept, decline, logIntake, logOutcome
+├── auth.ts               ✅ register, login, logout, currentUser
+├── users.ts              ✅ internal email lookup
+├── merchants.ts          ✅ profile create + owner lookup
+├── processors.ts         ✅ profile create; 📋 recovery operations
+├── surplusItems.ts       ✅ create, publish, update, cancel, listMine
+├── orders.ts             ✅ reserve, expireHold, listMine, get; 📋 pickup/cancel
+├── payments.ts           🧪 Snap transaction + pending payment context
+├── recoveryBatches.ts    ✅ internal status lookup; 📋 route, accept, decline, intake, outcome
 ├── ledger.ts             📋 read-only ledger queries (append-only; no public writes)
 ├── impact.ts             ✅ getPlaceholderSummary  |  📋 real ledger-derived summaries
 ├── notifications.ts      📋 listMine, markRead, internal create/fanOut
 ├── disputes.ts           📋 open, resolve
 ├── admin.ts              📋 verification queue, moderation, overrides, integrity report
 ├── crons.ts              📋 all scheduled job registrations
-├── http.ts               📋 Midtrans webhook httpAction only
+├── http.ts               🧪 Midtrans webhook httpAction only
 └── lib/
-    ├── guards.ts         📋 requireAuth, requireRole, requireOwnership
-    ├── ledger.ts         📋 recordLedgerEvent
+    ├── guards.ts         ✅ requireAuth, requireRole, requireOwnership
+    ├── ledger.ts         ✅ recordLedgerEvent
     └── validators.ts     📋 shared v.* unions, id validators, business assertions
 ```
 
@@ -56,13 +56,13 @@ convex/
 | File | Responsibility | Must not contain | Status |
 | --- | --- | --- | --- |
 | `schema.ts` | Table definitions, field validators, index declarations. The single source of structural truth. | Business logic | ✅ |
-| `auth.ts` | Session lifecycle: register, login, logout, `currentUser`. Password hashing via an action. | Role checks (those live in `lib/guards.ts`) | 📋 |
+| `auth.ts` | Session lifecycle: register, login, logout, `currentUser`. Password hashing via an action. | Role checks (those live in `lib/guards.ts`) | ✅ |
 | `users.ts` | User document reads and profile updates. | Role escalation paths | ✅ partial |
 | `merchants.ts` | Merchant profile CRUD, verification status reads. | Listing logic | ✅ partial |
-| `processors.ts` | Processor profile CRUD, capacity and acceptance-criteria reads. | Routing algorithm (lives in `src/lib/routing.ts`) | 📋 |
-| `surplusItems.ts` | Rescue Item lifecycle: create, publish, update, price adjustment, expiry, nearby discovery. | Order logic | ✅ partial |
-| `orders.ts` | Reservation, pickup confirmation, cancellation, expiry. **The most transaction-critical file.** | Payment provider calls (actions only) | 📋 |
-| `payments.ts` | Midtrans Snap token creation (action) and settlement recording (internalMutation). | Direct DB writes from the action | 📋 |
+| `processors.ts` | Processor profile creation. | Routing algorithm and recovery operations | ✅ partial |
+| `surplusItems.ts` | Rescue Item lifecycle: create, publish, update, cancel, and own-list reads. | Order logic and routing | ✅ M2 |
+| `orders.ts` | Reservation, hold expiry, owned list/detail reads. **The most transaction-critical file.** | Payment provider calls, pickup confirmation, and cancellation | ✅ M3 subset |
+| `payments.ts` | Midtrans Snap token creation (action) and pending payment context. | Direct DB writes from the action | 🧪 M3 UAT |
 | `recoveryBatches.ts` | Circular Routing lifecycle: create, offer, accept, decline, intake, outcome. | Ranking algorithm (lives in `src/lib/routing.ts`) | ✅ partial |
 | `ledger.ts` | Read-only ledger queries: per item, per order, per actor, per event type. | Any public write function | 📋 |
 | `impact.ts` | Aggregation queries built on `summariseLedger` and `estimateCo2e`. | Its own arithmetic (delegates to `src/lib/impact.ts`) | ✅ placeholder |
@@ -70,9 +70,9 @@ convex/
 | `disputes.ts` | Dispute opening and resolution. | Refund execution (delegates to payments) | 📋 |
 | `admin.ts` | Verification queue, moderation, admin overrides, integrity reports. | Anything callable without `requireRole(ctx, "admin")` | 📋 |
 | `crons.ts` | Cron registrations only. Every handler is an `internalMutation` elsewhere. | Handler implementations | 📋 |
-| `http.ts` | **Exactly one route:** the Midtrans webhook. | Any other public HTTP surface | 📋 |
-| `lib/guards.ts` | `requireAuth`, `requireRole`, `requireOwnership`. | Table-specific logic | 📋 |
-| `lib/ledger.ts` | `recordLedgerEvent` — the only ledger writer. | Public exports | 📋 |
+| `http.ts` | **Exactly one route:** the Midtrans webhook. | Any other public HTTP surface | 🧪 M3 UAT |
+| `lib/guards.ts` | `requireAuth`, `requireRole`, `requireOwnership`. | Table-specific logic | ✅ |
+| `lib/ledger.ts` | `recordLedgerEvent` — the only ledger writer. | Public exports | ✅ |
 | `lib/validators.ts` | Shared `v.*` unions and business-rule assertion helpers. | I/O | 📋 |
 
 ### 2.2 The `convex/lib/` vs `src/lib/` Split
@@ -192,24 +192,17 @@ export const createSnapToken = action({
 });
 ```
 
-**`internalMutation` — cron handler, not client-callable.**
+**`internalMutation` — M3 per-order timer, not client-callable.**
 
 ```ts
 // convex/orders.ts
-export const sweepExpiredHolds = internalMutation({
-  args: {},
+export const expireHold = internalMutation({
+  args: { orderId: v.id("orders") },
   handler: async (ctx) => {
-    const now = Date.now();
-    const stale = await ctx.db
-      .query("orders")
-      .withIndex("by_status_hold_expiry", (q) =>
-        q.eq("status", "reserved").lt("paymentHoldExpiresAt", now))
-      .take(100);
-
-    for (const order of stale) {
-      await releaseReservation(ctx, order, now, "hold_expired");
-    }
-    return { swept: stale.length };
+    const order = await ctx.db.get(args.orderId);
+    if (!order || order.status !== "reserved") return;
+    if ((order.paymentHoldExpiresAt ?? 0) > Date.now()) return;
+    // Restore stock, mark order expired, and write CANCELLED (0 g) atomically.
   },
 });
 ```
@@ -369,7 +362,7 @@ Convex's cross-table transaction collapses the problem:
 | --- | --- | --- |
 | Partial failure | Compensating transactions | Impossible — rollback is automatic |
 | Ordering | Message-ordering guarantees required | Sequential code in one handler |
-| Duplicate events | Consumer-side dedupe required | No republication exists |
+| Duplicate events | Consumer-side dedupe required | Webhook transaction/order guards prevent duplicate `PAID` events |
 | Retry on contention | Manual backoff | Convex OCC retries automatically |
 | Code required | Orchestrator, compensations, dedupe keys, monitoring | Zero |
 
@@ -554,10 +547,10 @@ const weight = order.rescuedWeightGrams;  // frozen at reservation
 | --- | --- | --- | --- |
 | `LISTED` | `surplusItems.publish` | `+ initialQuantity × weightPerItemGrams` | No |
 | `PRICE_ADJUSTED` | `surplusItems.applyPriceTick` (cron) | `0` | No |
-| `RESERVED` | `orders.reserve` | `+ rescuedWeightGrams` | No |
+| `RESERVED` | `orders.reserve` | `0` | No |
 | `PAID` | `payments.recordSettlement` (webhook) | `0` | No |
-| `RESCUED` | `orders.confirmPickup` | `+ order.rescuedWeightGrams` | **Yes** |
-| `CANCELLED` | `orders.cancel`, `orders.sweepExpiredHolds` | `- order.rescuedWeightGrams` | No |
+| `RESCUED` | `orders.confirmPickup` | `- order.rescuedWeightGrams` | **Yes** |
+| `CANCELLED` | `orders.expireHold` (payment hold) | `0` | No |
 | `EXPIRED` | `surplusItems.sweepPickupWindow` | `- unclaimed grams` | No |
 | `ROUTED` | `recoveryBatches.runRouting` (cron) | `0` | No |
 | `ROUTING_FAILED` | `recoveryBatches.sweepOfferTtl` | `0` | **Yes** |
@@ -1000,7 +993,7 @@ export const confirmPickup = mutation({
       surplusItemId: order.surplusItemId,
       orderId: order._id,
       eventType: "RESCUED",
-      weightDeltaGrams: order.rescuedWeightGrams,  // snapshot, never recomputed
+      weightDeltaGrams: -order.rescuedWeightGrams, // snapshot, never recomputed
       actorId: actor._id,
       actorRole: isAdmin ? "admin" : "merchant",
       metadata: { quantity: order.quantity, totalPrice: order.totalPrice, override: isAdmin },
@@ -1012,7 +1005,7 @@ export const confirmPickup = mutation({
 });
 ```
 
-**Why every sweep must be safe to run twice.** Crons can overlap under load, a deploy can replay a tick, and an operator will occasionally trigger a handler manually during a demo. The invariant that makes all of this safe is that each sweep's query *is* its own idempotency filter: `sweepExpiredHolds` selects only orders whose status is still `reserved`, so a second run finds an empty set. No sweep ever uses a "last run at" cursor, because a cursor is state that can drift out of sync with the documents it describes.
+**Why every transition must be safe to run twice.** A scheduled callback can replay. `expireHold` guards `status === 'reserved'`, so a second callback is a no-op; its first execution records `CANCELLED` with zero grams. M4 cron handlers need the same state-guard pattern without reintroducing a payment-hold sweep.
 
 ### 9.2 Midtrans Webhook
 
@@ -1190,7 +1183,7 @@ export const recordSettlement = internalMutation({
 });
 ```
 
-**Late-settlement race.** If the 1-minute hold sweep cancels an order microseconds before a settlement webhook arrives, the order is already `cancelled`; the settlement is recorded but the order is not promoted to `paid`, and a refund task is queued. Both paths are covered by tests. The alternative — extending the hold "just in case" — would weaken the anti-overselling guarantee, which is the more valuable property.
+**Late-settlement race.** If the M3 hold timer expires an order before a settlement webhook arrives, the order is already `expired`; the webhook may update payment context but never promotes a non-`reserved` order to `paid`. Financial remediation is outside the current order-state contract. Extending the hold "just in case" would weaken the anti-overselling guarantee.
 
 ---
 
@@ -1389,7 +1382,7 @@ Every index exists to serve a named access pattern. An index without a pattern i
 | `orders` | `by_item` | `surplusItemId` | Per-item order rollup; unclaimed-weight calculation |
 | `orders` | `by_merchant_status` | `merchantId`, `status` | Merchant pending-pickup queue |
 | `orders` | `by_pickup_code` | `pickupCode` | **Pickup verification** — direct code lookup |
-| `orders` | `by_status_hold_expiry` | `status`, `paymentHoldExpiresAt` | **Payment-hold sweep** — range scan on hold expiry |
+| `orders` | — | — | M3 uses a per-order `runAt` callback; no hold-expiry scan index exists or is needed |
 | `recoveryBatches` | `by_merchant` | `merchantId` | Merchant recovery history |
 | `recoveryBatches` | `by_processor_status` | `processorId`, `status` | Processor queue by status |
 | `recoveryBatches` | `by_status` | `status` | Routing engine pickup of `pending` batches |
@@ -1515,7 +1508,7 @@ We are deliberately at step 0. Step 3 is a genuine architectural migration and w
 
 **Why the decrement happens at reservation, not payment.** If quantity were decremented at payment, both A and B would receive "reserved" and both would be sent to Midtrans. Whoever paid second would pay for a portion that does not exist, and we would owe a refund plus an apology. Decrementing at reservation converts a *refund problem* into an *availability message* — "someone got there first" is a normal marketplace experience; "we took your money for food that does not exist" is not.
 
-**The cost of this choice, stated honestly.** A consumer can hold the last unit for up to 15 minutes without paying, making it invisible to everyone else. That is why the payment-hold sweep runs **every minute** rather than every five: worst-case dead time on a contended item is roughly 16 minutes, and typical dead time is well under that. See [`SCHEDULER.md`](SCHEDULER.md).
+**The cost of this choice, stated honestly.** A consumer can hold the last unit for up to 15 minutes without paying, making it invisible to everyone else. M3 schedules one `runAt(paymentHoldExpiresAt)` callback per reservation; the handler is idempotent when payment wins the race. See [`SCHEDULER.md`](SCHEDULER.md).
 
 **Other contended paths.**
 
@@ -1523,7 +1516,7 @@ We are deliberately at step 0. Step 3 is a genuine architectural migration and w
 | --- | --- | --- |
 | Two processors accept the same batch | `recoveryBatches` | OCC; the loser sees `BATCH_ALREADY_ACCEPTED` |
 | Price tick versus reservation | `surplusItems` | OCC retry; the reservation re-reads and uses the new `currentPrice` |
-| Hold sweep versus late settlement | `orders` | Sequential; settlement observes `cancelled` and queues a refund |
+| Hold timer versus late settlement | `orders` | Sequential; settlement observes `expired` and cannot promote the order to `paid` |
 | Merchant edit versus reservation | `surplusItems` | Editing is blocked outright once any unit is reserved (`ITEM_LOCKED_BY_RESERVATION`) |
 
 ---
@@ -1699,7 +1692,6 @@ The frontend already degrades gracefully: `src/app/providers.tsx` conditionally 
 
 ```bash
 bunx convex run surplusItems:applyPriceTick '{}'
-bunx convex run orders:sweepExpiredHolds '{}'
 bunx convex run recoveryBatches:runRouting '{}'
 ```
 

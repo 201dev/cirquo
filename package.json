@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "bun test tests && bun run test:convex",
+    "test": "bun test tests/auth-validations.test.ts tests/discovery.test.ts tests/orders.test.ts tests/payment-hold.test.ts && bun run test:convex",
     "test:convex": "vitest run --environment edge-runtime convex/surplusItems.test.ts convex/orders.test.ts convex/payments.test.ts",
     "preview": "vite preview",
     "convex": "convex dev",

@@ -3,8 +3,8 @@
 **Cirquo** is a Circular Food Recovery Platform that connects food businesses, consumers, and organic processors into a single circular ecosystem. The primary objective is reducing food waste while maximizing resource recovery.
 
 **Competition:** DSDC ANFORCOM 2026  
-**Status:** MVP in development  
-**Last updated:** 2026-08-06
+**Status:** MVP in development — source snapshot verified 2026-08-29
+**Last updated:** 2026-08-29
 
 ---
 
@@ -13,6 +13,7 @@
 ### Start Here
 
 - **[AGENTS.md](project/AGENTS.md)** — AI agent guide for developing this project
+- **[IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md)** — source-backed M1–M8 status and M4 handoff
 - **[PRD.md](product/PRD.md)** — Product Requirements Document (source of truth)
 - **[README.md](../README.md)** — Repository root README
 
@@ -114,6 +115,7 @@ Development workflow, testing, deployment.
 Version history, contribution workflow.
 
 - [AGENTS.md](project/AGENTS.md) — AI agent guide for working on this project
+- [IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md) — verified source snapshot and planned milestone boundaries
 - [CHANGELOG.md](project/CHANGELOG.md) — Semantic versioning + release notes
 - [CONTRIBUTING.md](project/CONTRIBUTING.md) — Branch strategy, PR checklist, development workflow
 
@@ -134,7 +136,7 @@ Version history, contribution workflow.
 
 ## For Developers
 
-**Current implementation status (2026-08-27):** the codebase now includes a 10-table Convex schema, session authentication and role guards, the Material Flow Ledger, Merchant Rescue Item lifecycle work, Consumer discovery/reservation, Mapbox, and Midtrans Sandbox integration. Some dashboards, Processor workflows, Circular Routing, pickup confirmation, and Admin operations remain incomplete. See [DEVELOPMENT.md](engineering/DEVELOPMENT.md) for local setup and the source for the current contract.
+**Current implementation status (2026-08-29):** source includes the M1/M2 foundations and M3 Consumer surfaces: a 10-table Convex schema, session authentication and role guards, Material Flow Ledger writes, Merchant Rescue Item lifecycle, Mapbox discovery, reservation/payment-hold logic, Midtrans Sandbox webhook code, and Consumer order history. Midtrans and mobile end-to-end UAT remain required; M4 pickup/routing, M5 Processor workflow, M6 ledger-derived dashboards, and M7 Admin operations remain target work. See [IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md) before representing a feature as complete.
 
 **Next priorities:**
 1. Complete pickup confirmation and Circular Routing

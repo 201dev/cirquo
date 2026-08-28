@@ -27,7 +27,7 @@ dist-ssr
 graphify-out/
 
 # Convex-generated bindings and local deployment selection
-convex/_generated/
+# convex/_generated/
 
 # Capacitor/Android local build output
 android/.gradle/
@@ -38,7 +38,6 @@ android/local.properties
 
 # AI Agent Configs
 .agents/
-AGENTS.md
 CLAUDE.md
 GEMINI.md
 .claude/
