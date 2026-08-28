@@ -4,6 +4,37 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Fixed ramps. These do not flip between light and dark — a component picks
+ * the step it wants. Semantic tokens (--primary, --warning, …) are the ones
+ * that flip. Before reaching for an opacity modifier like `bg-primary/10`,
+ * check whether a ramp step already says what you mean.
+ */
+:root {
+  --leaf-50: #f0faf3;
+  --leaf-100: #dcf5e5;
+  --leaf-200: #bbeaca;
+  --leaf-300: #8adaa6;
+  --leaf-400: #4fc27b;
+  --leaf-500: #1bac4b; /* brand green */
+  --leaf-600: #148c3c;
+  --leaf-700: #107333; /* action green, AA with white text */
+  --leaf-800: #0e5b2b;
+  --leaf-900: #0b4a25;
+  --leaf-950: #052a15;
+
+  --ink-50: #f7faf8;
+  --ink-100: #f0f3f1;
+  --ink-200: #e3e8e5;
+  --ink-300: #d9dedb;
+  --ink-400: #cbd3ce;
+  --ink-500: #9aa5a0;
+  --ink-600: #6e7873;
+  --ink-700: #4f5854;
+  --ink-800: #34393a;
+  --ink-900: #272727;
+}
+
 :root {
   font-family:
     "Geist Variable", system-ui, sans-serif; /* impeccable-disable-line overused-font -- existing Cirquo design-system token */
@@ -34,6 +65,12 @@
   --accent: #e2f8e9;
   --accent-foreground: var(--brand-charcoal);
   --destructive: oklch(0.58 0.22 27);
+  /* Caution surfaces (nearly-expired pickup, demo-data notices). Raw
+     yellow-* utilities were used here before and stayed light in dark mode. */
+  --warning: #fff6da;
+  --warning-foreground: #6b4e00;
+  --warning-border: #f3dc99;
+  --warning-solid: var(--brand-yellow);
   --border: #d9dedb;
   --input: #cbd3ce;
   --ring: var(--brand-green);
@@ -72,6 +109,10 @@
   --accent: #3a3940;
   --accent-foreground: #f4f7f5;
   --destructive: oklch(0.68 0.19 25);
+  --warning: #3b2f0d;
+  --warning-foreground: #ffe08a;
+  --warning-border: #6d5817;
+  --warning-solid: var(--brand-yellow);
   --border: #4f4c57;
   --input: #625e6b;
   --ring: var(--brand-mint);
@@ -95,6 +136,40 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Card elevation. Three named steps instead of one-off shadow-[…] values. */
+  --shadow-card: 0 1px 2px
+    color-mix(in oklab, var(--ink-900) 6%, transparent);
+  --shadow-card-hover: 0 8px 24px -12px
+    color-mix(in oklab, var(--ink-900) 28%, transparent);
+  --shadow-raised: 0 16px 34px -24px
+    color-mix(in oklab, var(--ink-900) 55%, transparent);
+
+  --color-leaf-50: var(--leaf-50);
+  --color-leaf-100: var(--leaf-100);
+  --color-leaf-200: var(--leaf-200);
+  --color-leaf-300: var(--leaf-300);
+  --color-leaf-400: var(--leaf-400);
+  --color-leaf-500: var(--leaf-500);
+  --color-leaf-600: var(--leaf-600);
+  --color-leaf-700: var(--leaf-700);
+  --color-leaf-800: var(--leaf-800);
+  --color-leaf-900: var(--leaf-900);
+  --color-leaf-950: var(--leaf-950);
+  --color-ink-50: var(--ink-50);
+  --color-ink-100: var(--ink-100);
+  --color-ink-200: var(--ink-200);
+  --color-ink-300: var(--ink-300);
+  --color-ink-400: var(--ink-400);
+  --color-ink-500: var(--ink-500);
+  --color-ink-600: var(--ink-600);
+  --color-ink-700: var(--ink-700);
+  --color-ink-800: var(--ink-800);
+  --color-ink-900: var(--ink-900);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-border: var(--warning-border);
+  --color-warning-solid: var(--warning-solid);
   --color-brand-green: var(--brand-green);
   --color-brand-plum: var(--brand-plum);
   --color-brand-mint: var(--brand-mint);
