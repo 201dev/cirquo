@@ -14,7 +14,7 @@
 
 ---
 
-> **Current implementation — 2026-08-27.** The compact reference below is
+> **Current implementation — 2026-08-29.** The compact reference below is
 > the current contract. Sections marked 📋 later in this document are target
 > contracts and may contain fields or functions that do not yet exist.
 
@@ -40,7 +40,8 @@ A Consumer never receives a delivery. Cirquo is not a delivery platform. The con
 3. opens a listing and reserves a quantity — **the quantity is decremented at this moment**, and a 15-minute payment hold begins;
 4. pays through Midtrans Snap within that hold;
 5. walks to the merchant during the **pickup window** and reads out a 6-digit **pickup code**;
-6. the merchant confirms → the order becomes `picked_up` and the material is recorded as **Rescued**.
+6. **M4 target:** the merchant verifies the presented code → the order becomes
+   `picked_up` and the material is recorded as **Rescued**.
 
 If the consumer never shows up, the material does **not** become Residual. It re-enters **Circular Routing** and is offered to an Organic Processor. This distinction is the platform's entire thesis and is enforced in `orders.reportNoShow` (see [`API_MERCHANT.md`](./API_MERCHANT.md)).
 
@@ -475,7 +476,7 @@ type ReserveResult = {
 | `orders` | Insert `{ userId, surplusItemId, merchantId, quantity, unitPrice, totalPrice, rescuedWeightGrams, platformFeeAmount, pickupCode, status: 'reserved', createdAt, paymentHoldExpiresAt }` |
 | `materialFlowLedger` | Insert `RESERVED` — **same transaction** |
 | `notifications` | Merchant: "New reservation" |
-| Scheduler | `internal.orders.expireUnpaidHolds` at `paymentHoldExpiresAt` |
+| Scheduler | `internal.orders.expireHold` at `paymentHoldExpiresAt` |
 
 **Ledger events**
 
@@ -628,7 +629,7 @@ export const reserve = mutation({
     })
 
     await ctx.scheduler.runAt(paymentHoldExpiresAt,
-      internal.orders.expireUnpaidHolds, { orderId })
+      internal.orders.expireHold, { orderId })
 
     return {
       orderId, pickupCode, quantity: args.quantity, unitPrice, totalPrice,
@@ -955,7 +956,7 @@ sequenceDiagram
     participant MT as Midtrans Sandbox
     participant WH as POST /midtrans/webhook (httpAction)
     participant APP as internal.payments.applyWebhook (mutation)
-    participant CRON as internal.orders.expireUnpaidHolds
+    participant TIMER as internal.orders.expireHold
     participant M as Merchant client
 
     C->>CL: Tap "Reserve 1"
@@ -966,7 +967,7 @@ sequenceDiagram
     RES->>DB: insert order { status: 'reserved', unitPrice locked,<br/>rescuedWeightGrams snapshot, pickupCode }
     RES->>L: RESERVED (weightDelta = 0)
     RES->>DB: notify merchant
-    RES->>DB: scheduler.runAt(now + 15min, expireUnpaidHolds)
+    RES->>DB: scheduler.runAt(now + 15min, expireHold)
     Note over RES,L: ── COMMIT ──
     deactivate RES
     RES-->>CL: { orderId, pickupCode, paymentHoldExpiresAt }
@@ -1013,7 +1014,7 @@ sequenceDiagram
     alt Consumer never paid within 15 minutes
         CRON->>DB: patch order { status: 'expired', cancelledAt }
         CRON->>DB: restore remainingQuantity += quantity, status -> 'active'
-        CRON->>L: EXPIRED (weightDelta = 0, metadata.reason = 'PAYMENT_HOLD_EXPIRED')
+        CRON->>L: CANCELLED (weightDelta = 0, metadata.reason = 'PAYMENT_HOLD_EXPIRED')
         CRON-->>CL: reactive push: "Your reservation expired"
     end
 ```
@@ -1487,7 +1488,7 @@ Full transition rules, including the merchant and processor sides, are authorita
 | User stories | [`../spec/USER_STORIES.md`](../spec/USER_STORIES.md) | CON-01 … CON-16 |
 | User flow | [`../spec/USER_FLOW.md`](../spec/USER_FLOW.md) | Discovery → pickup journey |
 | Realtime | [`../architecture/REALTIME.md`](../architecture/REALTIME.md) | Subscription behaviour on the map |
-| Scheduler | [`../architecture/SCHEDULER.md`](../architecture/SCHEDULER.md) | `expireUnpaidHolds` cron |
+| Scheduler | [`../architecture/SCHEDULER.md`](../architecture/SCHEDULER.md) | `expireHold` per-order timer |
 | UI guide | [`../design/UI_GUIDE.md`](../design/UI_GUIDE.md) | Pickup code and countdown presentation |
 
 ---

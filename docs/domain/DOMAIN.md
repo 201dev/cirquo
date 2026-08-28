@@ -1,10 +1,16 @@
 # Domain Model — Cirquo
 
 **Document type:** Domain reference  
-**Status:** Draft v1.0  
-**Last updated:** 2026-08-06
+**Status:** Living domain reference — target model plus source snapshot
+**Last updated:** 2026-08-29
 
 > This document defines the **ubiquitous language** of Cirquo. Every other document, every variable name, every UI string, and every database field should use these terms exactly as defined here. When code and this document disagree, one of them is a bug.
+
+> **Implementation boundary — 2026-08-29.** M1–M3 source implements the
+> identity, Merchant, discovery, reservation, payment-hold, and payment parts
+> of this model. Pickup, Circular Routing, processor outcomes, and impact
+> aggregation remain target work. See
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 
@@ -391,10 +397,10 @@ The current codebase predates this document. Known divergences between code and 
 | `recoveryBatches` table | Recovery Batch | ✅ Aligned |
 | `SurplusStatus` type | Rescue Item status | Acceptable — internal type name |
 | `weightPerItemGrams` | Weight per unit | ✅ Aligned in intent |
-| No `floorPrice` field | Floor price | 📋 **Must be added** — RI-2 cannot be enforced without it |
-| No `materialType` field | Material type | 📋 **Must be added** — RB-2 cannot be enforced without it |
-| No `materialFlowLedger` table | Material Flow Ledger | 📋 **Must be added** — the entire impact system depends on it |
-| No processor profile table | Processor Profile | 📋 **Must be added** — RB-2, RB-3 cannot be enforced without it |
+| `floorPrice` field | Floor price | ✅ Present and validated on current Merchant writes |
+| `materialType` field | Material type | ✅ Present; routing use remains M4 target work |
+| `materialFlowLedger` table | Material Flow Ledger | ✅ Present and written by implemented M1–M3 state transitions |
+| `processors` profile table | Processor Profile | ✅ Present; recovery workflow remains M4–M5 target work |
 
 See [DATABASE.md](DATABASE.md) for the schema. `convex/schema.ts` currently
 defines ten tables; this document may also describe target fields and lifecycle

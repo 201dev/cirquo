@@ -4,7 +4,7 @@
 |---|---|
 | **Doc type** | Security architecture & threat model |
 | **Status** | Draft v1.0 |
-| **Last updated** | 2026-08-06 |
+| **Last updated** | 2026-08-29 |
 | **Owner** | Platform engineering |
 | **Audience** | All engineers, judges, reviewers |
 
@@ -15,11 +15,12 @@ threat tables are **target hardening priorities**, not a generated release
 status. The implementation snapshot is maintained in §21 and source remains
 authoritative.
 
-> **Current posture — 2026-08-27:** session authentication, server-side role
+> **Current posture — 2026-08-29:** session authentication, server-side role
 > guards, Merchant verification checks, Material Flow Ledger writes, and
 > Midtrans Sandbox code exist. Sections marked as future hardening remain design
-> work; see [Section 21](#21-current-security-posture-honest) and `convex/` for
-> the current scope.
+> work; see [Section 21](#21-current-security-posture-honest),
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md), and `convex/`
+> for the current scope.
 
 ---
 
@@ -67,7 +68,7 @@ What we hold, how sensitive it is, where it lives, and what happens if it leaks.
 | **Sessions** | Token hashes, expiry (`sessions`) | High | Convex table, hashes only | Session hijacking |
 | **Merchant & processor records** | Business identity, address, **geo coordinates**, capacity, operating hours (`merchants`, `processors`) | High (geo = personal-adjacent data under UU PDP) | Convex table | Stalking/physical-risk exposure, competitive scraping |
 | **Orders & payments** | Order totals, fee split, pickup codes, payment references (`orders`, `payments`) | High | Convex table (Midtrans refs only — no PAN/CVV ever) | Order fraud, refund abuse |
-| **Pickup codes** | 6-char one-time handover codes | High (short-lived) | Convex table, client after reservation | Theft of food, fraud |
+| **Pickup codes** | 6-digit one-time handover codes | High (short-lived) | Convex table; owned paid detail only | Theft of food, fraud |
 | **Recovery batches** | Routing offers, processor-measured weights (`recoveryBatches`) | Medium | Convex table | Faked recovery metrics |
 | **Notifications & disputes** | User-generated messages, dispute claims | Medium | Convex table | Harassment, UU PDP breach |
 | **Midtrans server key / Convex deployment key** | API secrets | **Critical** | **Convex env vars only — never `VITE_`** | Full payment/webhook compromise |
@@ -106,7 +107,7 @@ flowchart LR
 **The client is entirely untrusted.** It is a compiled bundle distributed to anyone who installs the APK; its behavior can be modified by decompiling, by an intercepting proxy during development, or by a scripted attacker who never opens the app at all. Therefore:
 
 1. **Every non-internal Convex function is callable by any client that knows its name.** Authorization cannot live in the frontend; it must be enforced inside every function (see `PERMISSIONS.md`).
-2. **No secret may be compiled into the client.** The `VITE_` prefix means "public". Only `VITE_CONVEX_URL` exists today.
+2. **No secret may be compiled into the client.** The `VITE_` prefix means "public". Current public variables are `VITE_CONVEX_URL`, `VITE_MAPBOX_ACCESS_TOKEN`, and `VITE_MIDTRANS_CLIENT_KEY`; the Midtrans server key never uses `VITE_`.
 3. **The client may propose values; the server disposes of them.** Prices, weights, quantities, statuses, and pickup codes are all re-derived or re-validated server-side.
 4. **The webhook trust anchor is the SHA512 signature**, not the network address of the caller.
 
@@ -185,7 +186,7 @@ How each OWASP item applies to a Convex/React application specifically, and what
 | A04 | Insecure Design | Trusting the client for prices/weights/roles; trusting webhook sender IP | Server-side re-validation of every business value; SHA512 webhook signature; role and `verificationStatus` never client-settable | 📋 M1 |
 | A05 | Security Misconfiguration | Default settings, debug flags, over-broad CORS, verbose errors | Convex defaults; `ConvexError` messages designed to be user-safe (no stack traces to client); no CORS surface (Convex handles); production env separate from dev | 📋 M1 |
 | A06 | Vulnerable and Outdated Components | Vite 8 / React 19 / Bun / Convex 1.43 ecosystem moves fast | Lockfile committed; `bun audit` in CI; explicit version bumps reviewed; supply-chain policy in Section 12 | 📋 Phase 2 (CI audit) |
-| A07 | Identification and Authentication Failures | No auth exists at all today | Full session-token auth per AUTH.md, milestone M1 | 📋 M1 |
+| A07 | Identification and Authentication Failures | Session/auth foundations exist; reset, refresh, and further hardening remain | Opaque session tokens, hashed storage, role guards; target hardening per AUTH.md | 🚧 M1 foundation |
 | A08 | Software and Data Integrity Failures | Unverified webhook payloads; client trusting itself | SHA512 webhook verification + idempotency; ledger integrity checks; CI grep guard | 📋 M1 |
 | A09 | Security Logging and Monitoring Failures | No logs today | Auth event audit table; admin action audit; ledger as the impact audit trail; alert on webhook signature failures | 📋 M1 (minimal) / Phase 2 (alerting) |
 | A10 | Server-Side Request Forgery (SSRF) | Minimal surface — Convex functions make outbound calls only to fixed Midtrans endpoints | URL allowlist (Midtrans sandbox base URL only); no user-controlled URLs ever fetched server-side | 📋 M1 |
@@ -199,7 +200,7 @@ These are the attacks that actually threaten *this* product. A generic checklist
 | # | Abuse case | Attack sketch | Impact if successful | Detection & mitigation | Status |
 |---|---|---|---|---|---|
 | 1 | **Fake merchant listing** | Attacker registers a merchant, passes verification (fake identity), lists "Rescue Items" that don't exist; consumers pay and travel to collect nothing | Consumer fraud, food waste of trust, platform liability | Verification requires business-type matching + manual/photo check; consumer disputes route to refund; repeat-pattern flagging (many items, zero confirmations) | 📋 M1 (basic) / Phase 2 (scoring) |
-| 2 | **Pickup-code brute force** | Attacker at the shop tries codes until one matches to grab the item | Stolen food, "rescued" event falsely closed, consumer loses order | Codes drawn from a 6-character set with adequate entropy (36⁶ ≈ 2.1 billion — infeasible to brute force per-window); short window; server rate-limit on `verifyPickupCode`; order closed after a single successful match | 📋 M1 |
+| 2 | **Pickup-code brute force** | Attacker at the shop tries codes until one matches to grab the item | Stolen food, "rescued" event falsely closed, consumer loses order | 6-digit codes are verified only for a paid order owned by the Merchant; M4 must rate-limit failed attempts and close the order after one successful match | 📋 M4 |
 | 3 | **Merchant inflating declared weight** | Merchant lists `weightPerItemGrams` 2× reality; system derives `rescuedWeightGrams` and recovery offers from it | Inflated circularity metrics (PRD-04, IMP-03) | `offeredWeightGrams` is merchant-declared and *explicitly* less trusted; processor-measured `acceptedWeightGrams` is the authoritative number for recovery; weight-conservation reconciliation query flags discrepancies | 📋 M1 |
 | 4 | **Processor over-reporting recovered output** | Processor logs `outputWeightGrams` > plausible conversion from `acceptedWeightGrams` | Fabricated recovery impact | `outputWeightGrams` asserted ≤ a conversion envelope per facility type; ledger records both sides of the batch; completeness checks compare sum of outcomes to intake | 📋 M1 |
 | 5 | **Consumer claims non-delivery for refund** | Consumer received the food but disputes to get money back | Refund fraud, merchant distrust | Midtrans refund flow goes through merchant/Midtrans, not Cirquo; dispute requires evidence; pickup code verified-close is the strong anti-fraud record (code matched + in-window) | 📋 M1 |
@@ -212,6 +213,10 @@ These are the attacks that actually threaten *this* product. A generic checklist
 ---
 
 ## 8. Ledger integrity threats
+
+> Rows below preserve the target threat model. The M1–M3 source already has the
+> append-only helper and domain write paths; M4–M7 controls remain planned. See
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 The ledger is append-only and immutable in practice. Threats target the *paths into and out of it*.
 

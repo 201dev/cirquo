@@ -13,7 +13,7 @@
 
 ---
 
-> **Current implementation — 2026-08-27.** The compact reference below is
+> **Current implementation — 2026-08-29.** The compact reference below is
 > the current MVP contract. Sections marked 📋 later in this document are target
 > contracts and may contain fields or functions that do not yet exist.
 
@@ -37,9 +37,11 @@ A Merchant is the origin of every gram of material Cirquo tracks. They:
 2. optionally consult **Dynamic Rescue Pricing** for a suggested `currentPrice`;
 3. publish the listing, which writes the `LISTED` ledger event — **the first entry in that item's material chain**;
 4. receive reservations; the quantity decrements automatically at reservation, not at payment;
-5. verify a consumer's **pickup code** inside the pickup window and confirm collection → `RESCUED`;
-6. report a no-show if the consumer never arrives — which sends the material into **Circular Routing**, not to waste;
-7. watch their impact accumulate, derived entirely from the ledger.
+5. **M4 target:** verify a consumer's **pickup code** inside the pickup window
+   and confirm collection → `RESCUED`;
+6. **M4 target:** report a no-show so the material enters **Circular Routing**,
+   not waste;
+7. **M6 target:** watch impact accumulated from the ledger.
 
 Three invariants dominate this file:
 
@@ -1362,11 +1364,11 @@ stateDiagram-v2
     active --> moderated: admin.moderateListing → MODERATED
 
     reserved_partial --> sold_out: orders.reserve → RESERVED
-    reserved_partial --> active: hold expires, quantity restored → EXPIRED
+    reserved_partial --> active: hold expires, quantity restored → CANCELLED
     reserved_partial --> expired: cron expireListings → EXPIRED
 
     sold_out --> closed: orders.confirmPickup (all orders) → RESCUED
-    sold_out --> active: hold expires, quantity restored → EXPIRED
+    sold_out --> active: hold expires, quantity restored → CANCELLED
     sold_out --> recovery_pending: orders.reportNoShow → EXPIRED + ROUTED
 
     expired --> recovery_pending: cron routing sweep → ROUTED

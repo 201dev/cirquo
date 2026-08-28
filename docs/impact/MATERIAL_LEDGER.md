@@ -1,11 +1,18 @@
 # Material Flow Ledger — Cirquo
 
 **Document type:** Technical specification  
-**Status:** Draft v1.0  
-**Last updated:** 2026-08-06  
-**Implementation status:** 📋 Not yet built — highest-priority MVP addition
+**Status:** Living ledger contract — implemented M1–M3 writes plus target paths
+**Last updated:** 2026-08-29
+**Implementation status:** ✅ M1–M3 write paths available; M4–M7 paths and aggregation pending
 
 > The Material Flow Ledger is Cirquo's core differentiator. Every impact number the product displays is derived from it and from nothing else. If the ledger has gaps, the platform's central claim — *we know where every kilogram went* — is false.
+
+> **Implementation boundary.** `materialFlowLedger` and
+> `recordLedgerEvent()` exist in source. M1–M3 currently emit `LISTED`,
+> `PRICE_ADJUSTED`, `RESERVED`, `PAID`, and zero-delta `CANCELLED` events on
+> their implemented paths. `RESCUED`, routing, recovery, aggregation, and Admin
+> integrity queries remain M4–M7 target work. See
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 

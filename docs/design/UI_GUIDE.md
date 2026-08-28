@@ -3,11 +3,14 @@
 | Field | Value |
 | --- | --- |
 | **Document type** | Design system reference |
-| **Status** | Draft v1.0 |
-| **Last updated** | 2026-08-06 |
+| **Status** | Design system reference — tokens live in source |
+| **Last updated** | 2026-08-29 |
 | **Owner** | Design & Frontend |
 | **Source of truth** | `src/index.css` |
 | **Framework** | Tailwind CSS v4 (CSS-first) + shadcn/ui new-york + base-ui/radix |
+
+> This guide specifies the visual system. For current feature availability and
+> target boundaries, see [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 

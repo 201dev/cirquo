@@ -3,11 +3,15 @@
 | Field | Value |
 | --- | --- |
 | **Document type** | Component contracts & catalogue |
-| **Status** | Draft v1.0 |
-| **Last updated** | 2026-08-06 |
+| **Status** | Component catalogue — implemented M1–M3 subset and target contracts |
+| **Last updated** | 2026-08-29 |
 | **Owner** | Frontend |
 | **Library base** | shadcn/ui (new-york, neutral, `cssVariables: true`) on radix-ui + @base-ui/react |
 | **Alias** | `@` → `./src` |
+
+> Component availability follows the source snapshot in
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md). Later-role
+> contracts in this catalogue remain target work.
 
 ---
 
@@ -168,7 +172,7 @@ All 17 exist today.
 | `select` | Single-select dropdown | `CreateSurplusPage` (category) | Use for 5+ options; segmented buttons below that. |
 | `separator` | Divider | `RoleShell` | Use instead of `border-b` on list items. Supports `orientation`. |
 | `sheet` | Edge drawer | `RoleShell` mobile nav | The mobile overlay of choice. Sides: `top`, `right`, `bottom`, `left`. Use `bottom` for thumb-reachable content. |
-| `skeleton` | Loading placeholder | Not yet used | Base for all `LoadingSkeleton` variants. |
+| `skeleton` | Loading placeholder | Used by source-backed Consumer pages | Base for repeated `LoadingSkeleton` variants. |
 | `sonner` | Toast host | Mounted at app root | Configure `position`, `richColors`, `closeButton` once at the root. |
 | `table` | Data table | `SurplusListPage`, `RecoveryRequestsPage` | Parts: `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`, `TableCaption`. Must be wrapped for mobile stacking. |
 | `tabs` | View switching | `OrderHistoryPage` | Triggers accept `render`. Keep to ≤ 4 tabs on mobile. |
@@ -843,12 +847,11 @@ The consumer's proof of purchase, read across a counter in a dim shop.
 
 ```tsx
 export interface PickupCodeCardProps {
-  code: string;              // 6 chars, e.g. "K7M2X9"
+  code: string;              // 6 digits, e.g. "482901"
   orderId: string;
   merchantName: string;
   pickupEndMs: number;
   variant?: "full" | "compact";
-  showQr?: boolean;          // default true
 }
 ```
 
@@ -856,14 +859,14 @@ export interface PickupCodeCardProps {
 | --- | --- |
 | Maximum legibility | `text-4xl font-mono font-bold tracking-[0.15em]` |
 | High contrast in both themes | Forces `bg-background text-foreground` with `border-2 border-foreground` — the one place we deliberately break the 1px border rule, because a camera and a tired human both need a hard edge |
-| Grouped for reading aloud | `K7M 2X9` — visual grouping only; the copied string has no space |
-| QR fallback | QR encodes `cirquo:pickup:{orderId}:{code}`; if generation fails the numeric code alone is fully sufficient |
-| Screen brightness | Prompts `Naikkan kecerahan layar untuk memudahkan pemindaian` on mobile |
+| Grouped for reading aloud | `482 901` — visual grouping only; the copied string has no space |
+| Manual credential only | The server-generated code is the sole credential; there is no QR image or scanner dependency in the MVP |
+| Screen brightness | Prompts `Naikkan kecerahan layar agar kode mudah dibaca` on mobile |
 | Countdown | `CountdownTimer` to `pickupEndMs` below the code |
 | Copy action | `Salin kode` with a Sonner confirmation |
 | Never screenshot-hostile | No anti-capture measures; users legitimately screenshot codes |
 
-**Accessibility:** the code is announced character by character via `aria-label="Kode pengambilan: K, 7, M, 2, X, 9"`. Reading "K7M2X9" as a word is useless to a screen-reader user at a counter.
+**Accessibility:** the code is announced digit by digit via `aria-label="Kode pengambilan: 4, 8, 2, 9, 0, 1"`. Reading "482901" as a number is useless to a screen-reader user at a counter.
 
 ### 7.5 `PickupCodeInput`
 
@@ -885,7 +888,7 @@ export type PickupVerificationResult =
 | --- | --- |
 | Input | Six single-character boxes, auto-advance, backspace moves back |
 | Case | Auto-uppercase; accepts lowercase input |
-| Paste | A pasted 6-char string fills all boxes |
+| Paste | A pasted 6-digit string fills all boxes |
 | Auto-submit | Fires on the 6th character — no submit tap needed |
 | Scan | `onScanRequest` opens the Capacitor camera scanner on Android |
 | `inputMode` | `"text"` with `autoCapitalize="characters"` |

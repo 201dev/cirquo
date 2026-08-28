@@ -3,8 +3,8 @@
 | Field | Value |
 | --- | --- |
 | **Document Type** | Architecture Specification |
-| **Status** | Draft v1.0 |
-| **Last Updated** | 2026-08-06 |
+| **Status** | Target frontend architecture with implemented M1–M3 subset |
+| **Last Updated** | 2026-08-29 |
 | **Owner** | Frontend Engineering |
 | **Applies To** | Cirquo Web (PWA) + Capacitor Android shell |
 | **Audience** | Engineers, reviewers, DSDC ANFORCOM 2026 judges |
@@ -31,7 +31,7 @@ Scope of this document:
 
 Out of scope: backend function design (see [`BACKEND.md`](BACKEND.md)), realtime subscription semantics (see [`REALTIME.md`](REALTIME.md)), and visual design tokens (see [`../design/UI_GUIDE.md`](../design/UI_GUIDE.md)).
 
-> **Implementation status — 2026-08-27.** Authentication, route guards,
+> **Implementation status — 2026-08-29.** Authentication, route guards,
 > Merchant Rescue Item flows, Consumer discovery, Mapbox, reservation, and
 > checkout are now present in `src/`. Sections or examples marked 📋 remain
 > target architecture; inspect `src/app/router.tsx` and the referenced source
@@ -85,32 +85,25 @@ src/
 │   └── router.tsx           ✅ every route declared in one file
 ├── assets/                  ✅ static images, logo marks
 ├── components/
-│   ├── ui/                  ✅ 17 shadcn/ui primitives
-│   ├── common/              ✅ PageHeader, SummaryCard, RoleShell
-│   ├── consumer/            ✅ empty (.gitkeep)
-│   ├── merchant/            ✅ empty (.gitkeep)
-│   ├── processor/           ✅ empty (.gitkeep)
-│   └── admin/               ✅ empty (.gitkeep)
+│   ├── ui/                  ✅ shadcn/ui primitives
+│   └── common/              ✅ route guards, status, query-error, cards, reserve sheet
 ├── constants/
 │   └── mock-data.ts         ✅ remaining placeholder fixtures
 ├── features/
-│   ├── auth/                ✅ empty (.gitkeep)
-│   ├── impact/              ✅ empty (.gitkeep)
-│   ├── orders/              ✅ empty (.gitkeep)
-│   ├── pricing/             ✅ empty (.gitkeep)
-│   ├── recovery/            ✅ empty (.gitkeep)
-│   └── surplus/             ✅ empty (.gitkeep)
-├── hooks/                   ✅ empty (.gitkeep)
+│   ├── discovery/           ✅ reactive nearby Rescue Item query
+│   ├── orders/              ✅ Consumer order and payment-hold hooks
+│   └── payments/            ✅ Midtrans Snap client loader
 ├── layouts/                 ✅ ConsumerLayout, MerchantLayout, ProcessorLayout, AdminLayout
 ├── lib/
 │   ├── convex.ts            ✅ conditional client construction
 │   ├── utils.ts             ✅ cn()
 │   ├── pricing.ts           ✅ suggestRescuePrice
-│   ├── routing.ts           📋 rankEligibleProcessors
-│   ├── ranking.ts           📋 rankListings
-│   ├── impact.ts            📋 summariseLedger, estimateCo2e
-│   ├── geo.ts               📋 haversineMeters
-│   └── format.ts            📋 grams/IDR/WIB formatters
+│   ├── discovery.ts         ✅ discovery visibility and ranking helpers
+│   ├── orders.ts            ✅ active/past grouping
+│   ├── payment-hold.ts      ✅ countdown helpers
+│   ├── geo.ts               ✅ Haversine distance
+│   ├── format.ts            ✅ grams/IDR/WIB formatters
+│   └── validations.ts       ✅ Zod schemas
 ├── pages/
 │   ├── auth/                ✅ login, registration, and onboarding pages
 │   └── *.tsx                ✅ role pages; some remain placeholders
@@ -127,11 +120,11 @@ src/
 | `app/` | Application composition root: provider tree and route table. Two files, deliberately. | Business logic, data fetching | ✅ |
 | `assets/` | Bundled static media referenced by import. | Anything fetched at runtime | ✅ |
 | `components/ui/` | Generated shadcn/ui primitives. Edited only to add variants. | Domain vocabulary (`RescueItem`, `pickupCode`) | ✅ 17 primitives |
-| `components/common/` | Cross-role presentational components (`PageHeader`, `SummaryCard`, `RoleShell`). | Role-specific copy or queries | ✅ |
-| `components/{consumer,merchant,processor,admin}/` | Role-scoped presentational components. Props in, JSX out. | `useQuery` calls (those live in features/pages) | ✅ empty |
+| `components/common/` | Cross-role presentation, route/security, status, cards, and query-error components. | Role-specific copy or queries | ✅ |
+| `components/{consumer,merchant,processor,admin}/` | Role-scoped presentational components. Props in, JSX out. | `useQuery` calls (those live in features/pages) | 📋 Create only when reuse requires it |
 | `constants/` | Static enumerations, label maps, and — temporarily — `mock-data.ts`. | Anything mutable at runtime | ✅ |
-| `features/` | Vertical slices: hooks + composed components + local schemas for one domain area. | Cross-feature imports (go through `lib/` or `components/common/`) | ✅ empty |
-| `hooks/` | Generic reusable hooks (`useGeolocation`, `useCountdown`, `useMediaQuery`). | Domain-specific hooks (those belong in `features/`) | ✅ empty |
+| `features/` | Vertical slices: hooks + composed components + local schemas for one domain area. | Cross-feature imports (go through `lib/` or `components/common/`) | ✅ discovery, orders, payments |
+| `hooks/` | Generic reusable hooks (`useGeolocation`, `useCountdown`, `useMediaQuery`). | Domain-specific hooks (those belong in `features/`) | 📋 No generic hook directory yet |
 | `layouts/` | Chrome: header, nav, sidebar, `<Outlet />`. | Data fetching beyond the session/current user | ✅ |
 | `lib/` | **Framework-agnostic pure logic** and thin client factories. | React imports, Convex imports (in the algorithm files) | ✅ partial |
 | `pages/` | One component per route. Fetches data, composes components, owns page-level layout. | Reusable UI (extract to `components/`) | ✅ role pages; some placeholders |
@@ -203,7 +196,7 @@ navigation UX only; Convex guards remain the authorization boundary.
 | `/item/:itemId` | `ListingDetailPage` | `ConsumerLayout` | none (public) | Live price, live `remainingQuantity`, pickup window countdown |
 | `/checkout/:itemId` | `CheckoutPage` | `ConsumerLayout` | `RequireAuth` | Calls `orders.reserve`, then opens Midtrans Snap |
 | `/payment/result` | `PaymentResultPage` | `ConsumerLayout` | `RequireAuth` | Reads `?order_id=`; polls order status via reactive query |
-| `/orders/:orderId` | `OrderDetailPage` | `ConsumerLayout` | `RequireAuth` + ownership | Pickup code, QR, countdown, merchant map link |
+| `/orders/:orderId` | `OrderDetailPage` | `ConsumerLayout` | `RequireAuth` + ownership | Manual pickup code, countdown, merchant map link |
 | `/impact` | `ConsumerImpactPage` | `ConsumerLayout` | `RequireAuth` | Personal rescued kg + estimated CO2e |
 | `/merchant/surplus/:itemId/edit` | `EditSurplusPage` | `MerchantLayout` | `RequireRole("merchant")` + ownership | Blocked once any unit is reserved |
 | `/merchant/orders` | `MerchantPendingPickupsPage` | `MerchantLayout` | `RequireRole("merchant")` | Live incoming reservations |
@@ -1210,9 +1203,9 @@ The map/list pairing is the most important item: a WebGL canvas cannot be made f
 | # | Component | Directory | Depends on | Why this order | Status |
 | --- | --- | --- | --- | --- | --- |
 | 1 | `RescueItemCard` | `components/consumer/` | `format.ts` | Appears in Explore, Home, detail, order history — the most reused unit in the product | 📋 |
-| 2 | `StatusBadge` | `components/common/` | domain types | Every role needs item/order/batch status rendering | 📋 |
-| 3 | `EmptyState` | `components/common/` | — | Nine pages currently have no empty state; a shared one prevents nine variants | 📋 |
-| 4 | `LoadingSkeletons` | `components/common/` | — | Required before any page is wired to a live query | 📋 |
+| 2 | `StatusBadge` | `components/common/` | domain types | Every role needs item/order/batch status rendering | ✅ |
+| 3 | `EmptyState` | `components/common/` | — | Later-role pages can share one when repeated inline states become costly | 📋 |
+| 4 | `LoadingSkeletons` | `components/common/` | — | M1–M3 pages use skeletons; extract only when shared variants are needed | 📋 |
 | 5 | `AppErrorBoundary` | `components/common/` | — | Query errors throw during render; nothing is safe to wire without it | 📋 |
 | 6 | `RequireAuth` / `RequireRole` | `features/auth/` | `api.auth.currentUser` | Unblocks every guarded route | 📋 |
 | 7 | `PickupWindowCountdown` | `components/consumer/` | `format.ts` | Urgency is the core consumer motivator | 📋 |
@@ -1242,7 +1235,7 @@ Ordering rationale: items 1–6 are infrastructure that every subsequent item de
 | # | Question | Owner | Blocking |
 | --- | --- | --- | --- |
 | 1 | Image upload: Convex file storage vs. an external CDN? | Backend | `SurplusItemForm` |
-| 2 | Pickup code as QR (needs a scanner library) or 6-digit manual entry only? | Product | `VerifyCodeForm` |
+| 2 | Manual pickup-code entry only; do not add a QR/scanner dependency for the MVP. | Resolved | `VerifyCodeForm` |
 | 3 | Does Midtrans Snap render acceptably inside the Capacitor WebView, or is a Custom Tab required? | Frontend | `CheckoutPanel` |
 | 4 | Mapbox style: standard streets or a custom Cirquo-branded style? | Design | `MapCanvas` |
 | 5 | Should Explore default to map or list on first open? | Product | `ExplorePage` |

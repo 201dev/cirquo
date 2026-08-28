@@ -3,8 +3,8 @@
 | Field | Value |
 | --- | --- |
 | **Document Type** | Engineering Runbook |
-| **Status** | Active runbook v1.1 |
-| **Last Updated** | 2026-08-27 |
+| **Status** | Runbook — environment verification required |
+| **Last Updated** | 2026-08-29 |
 | **Owner** | Cirquo Engineering |
 | **Scope** | Environments, CI/CD, hosting, Android release, monitoring, incidents |
 
@@ -12,20 +12,24 @@
 
 ## 1. Current State
 
-The web frontend and Convex production backend are deployed. GitHub Actions,
-the Android release, and production Midtrans UAT remain outstanding.
+Source can confirm deployment configuration and integration code, but it
+cannot prove an external deployment, dashboard configuration, or a completed
+payment UAT. Confirm those items in the target environment before treating
+them as released.
 
 | Component | Status |
 | --- | --- |
-| Frontend hosting | ✅ Vercel production deployment |
-| Convex production deployment | ✅ Deployed from the Vercel production build |
+| Frontend hosting | 🧪 Vercel deployment must be verified externally |
+| Convex production deployment | 🧪 Deployment and environment variables must be verified externally |
 | GitHub Actions CI | 📋 Planned — workflow written in §6, not yet committed |
 | Android release keystore | 📋 Planned |
-| Midtrans webhook endpoint | 🚧 Implemented in `convex/http.ts`; dashboard registration and end-to-end UAT remain required |
+| Midtrans webhook endpoint | 🧪 Implemented in `convex/http.ts`; Sandbox dashboard registration and end-to-end UAT remain required |
 | Admin provisioning and partner verification | 🚧 Temporary operator bootstrap; no Admin mutation or working review UI yet — see §4.5 |
 | Monitoring / alerting | 📋 Planned |
 
 The remaining sections describe the operating procedure and outstanding work.
+The source-level milestone boundary is maintained in
+[IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 

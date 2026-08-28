@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | **Document type** | Specification — Role-Based Access Control |
-| **Status** | Draft v1.0 |
-| **Last updated** | 2026-08-06 |
+| **Status** | Target RBAC with implemented M1–M3 subset |
+| **Last updated** | 2026-08-29 |
 | **Owner** | Engineering — Security |
 | **Audience** | Backend developers, reviewers, judges |
 | **Related** | [../security/PERMISSIONS.md](../security/PERMISSIONS.md), [../security/AUTH.md](../security/AUTH.md) |
@@ -18,6 +18,12 @@ This document defines who may do what in Cirquo, and — more importantly — wh
 The governing principle is stated once here and repeated throughout because it is the thing most often violated in a hackathon build:
 
 > **The frontend may hide a button. The server must reject the call.**
+
+> **Implementation boundary.** Authentication, current-user lookup, role
+> guards, Merchant profile/onboarding, Merchant Rescue Item writes, and
+> Consumer-owned order reads are implemented in source. Merchant pickup-code
+> verification, Processor recovery operations, and Admin operations remain
+> target work. See [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 A disabled button is a courtesy to honest users. It is not a security control. Every mutation in Cirquo re-validates identity, role, ownership, and state on the server, with no trust placed in anything the client sends beyond a session token.
 
@@ -110,7 +116,8 @@ The registration mutation does not accept `role` as an arbitrary string. It acce
 
 - All `active` Rescue Items where `processingOnly == false`, platform-wide
 - Public merchant details: name, business type, address, coordinates, verification status
-- Their own orders, in full, including pickup codes on `paid` orders
+- Their own orders; pickup codes are returned only from the owned detail query
+  when the order is `paid`, never from the order list
 - Their own notifications
 - Their own impact figures, derived from ledger events they caused
 - Aggregate platform impact figures published on the public home screen
@@ -142,7 +149,9 @@ The registration mutation does not accept `role` as an arbitrary string. It acce
 **Can see**
 
 - Their own Rescue Items in every status, including `draft`
-- Orders placed against their own items, including buyer display name, quantity, and pickup code
+- **M4 target:** orders placed against their own items for pickup verification;
+  the Merchant must verify a Consumer-presented code and must never receive the
+  expected code in a read projection
 - Recovery batches originating from their own items — read-only, including the assigned processor's name and facility type
 - Their own dashboard metrics, derived from ledger events scoped to their merchant id
 - Their own notifications and verification status with any rejection reason
@@ -361,7 +370,7 @@ Admin:     surplusItems (unscoped)
 | Read — own | ✅ | — | — | ✅ | `userId == session.userId` |
 | Read — for own item | — | ✅ | — | ✅ | `merchantId == ownMerchantProfile._id` |
 | Read — any | ❌ | ❌ | ❌ | ✅ | — |
-| Read `pickupCode` | ⚠️ | ⚠️ | ❌ | ✅ | Consumer: own, `status == "paid"`. Merchant: own item's orders |
+| Read `pickupCode` | ⚠️ | ❌ | ❌ | ✅ | Consumer: own, `status == "paid"`. Merchant verifies a presented value in M4 but never reads the expected code. |
 | Update — pay | ⚠️ | ❌ | ❌ | ❌ | Own, `status == "reserved"`, within hold |
 | Update — cancel | ⚠️ | ❌ | ❌ | ❌ | Own, `status == "reserved"` only |
 | Update — confirm pickup | ❌ | ⚠️ | ❌ | ✅ | Merchant: own item, code match, inside window. Admin: override with reason |
@@ -371,8 +380,8 @@ Admin:     surplusItems (unscoped)
 | Update — `rescuedWeightGrams` | ❌ | ❌ ⁽ᵇ⁾ | ❌ | ❌ | Computed at pickup confirmation |
 | Delete | ❌ | ❌ | ❌ | ❌ | No delete path exists |
 
-⁽ᵃ⁾ Expiry is written by the payment-hold sweeper, not by any human actor.
-⁽ᵇ⁾ Derived as `quantity × weightPerItemGrams` inside the pickup mutation. The Merchant triggers the mutation but does not supply the value.
+⁽ᵃ⁾ M3 hold expiry is written by the server-side timer, not by any human actor.
+⁽ᵇ⁾ Snapshotted as `quantity × weightPerItemGrams` inside the reservation mutation. M4 uses that immutable order value and never recomputes it.
 
 **Order read predicates**
 
@@ -1135,7 +1144,7 @@ flowchart LR
     A ==>|READ ALL, raw,<br/>filterable| LG
 
     S -->|price tick · expiry sweep| SI
-    S -->|payment-hold sweep| OR
+    S -->|payment-hold timer| OR
     S -->|routing engine ·<br/>TTL sweep| RB
     S -->|create| NO
     S ==>|recordLedgerEvent<br/>ONLY WRITE PATH| LG

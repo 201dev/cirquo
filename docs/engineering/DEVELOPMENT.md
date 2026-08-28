@@ -3,8 +3,8 @@
 | Field | Value |
 | --- | --- |
 | **Document Type** | Engineering Guide |
-| **Status** | Draft v1.0 |
-| **Last Updated** | 2026-08-06 |
+| **Status** | Active development guide |
+| **Last Updated** | 2026-08-29 |
 | **Owner** | Cirquo Engineering |
 | **Audience** | Anyone running Cirquo locally — team members, reviewers, AI agents |
 
@@ -38,7 +38,7 @@ hours looking for code that was never written.
 | Material Flow Ledger | ✅ Foundation | Append-only table/helper with current Rescue Item and order event writes |
 | Mapbox | ✅ | Explore route reads `VITE_MAPBOX_ACCESS_TOKEN` |
 | Midtrans | 🚧 | Sandbox transaction action and webhook code exist; integration UAT remains required |
-| Scheduler / cron | 🚧 | Reservation hold uses `ctx.scheduler.runAfter`; no `convex/crons.ts` sweep exists |
+| Scheduler / cron | 🚧 | Reservation hold uses `ctx.scheduler.runAt`; no `convex/crons.ts` sweep exists |
 | Impact calculation | 📋 | Dashboards still require ledger-derived aggregation |
 | Tests | ✅ Partial | Unit tests and the ledger immutability check exist; full UAT remains required |
 | Pages | 🚧 | Auth, Merchant Rescue Item, and Consumer discovery/order pages use real flows; some dashboards remain placeholders |
@@ -407,7 +407,7 @@ cirquo/
 │   ├── index.css                  ✅ Tailwind v4 @theme, OKLCH tokens
 │   ├── main.tsx                   ✅ Entry; #root guard, SW in PROD
 │   └── App.tsx                    ✅ Root component
-├── .env.example                   ✅ Only VITE_CONVEX_URL today
+├── .env.example                   ✅ Public Convex, Mapbox, and Midtrans client variables
 ├── .oxlintrc.json                 ✅ react/typescript/oxc plugins
 ├── capacitor.config.ts            ✅ com.cirquo.app, webDir: dist
 ├── components.json                ✅ shadcn config (new-york, neutral)
@@ -1047,14 +1047,16 @@ git push -u origin feat/<scope>
 | **M1** Ledger + Auth | Register and log in as all four roles; every mutation writes a ledger entry |
 | **M2** Merchant listing + Dynamic Pricing | Create a Rescue Item and see a suggested price from `suggestRescuePrice` |
 | **M3** Consumer discovery + Midtrans | Map with real listings; Snap sandbox payment; webhook flips the order to `paid` |
-| **M4** Pickup + Scheduler + Circular Routing | Pickup code confirmation; holds expire on schedule; expired items get routed |
+| **M4** Pickup + Scheduler + Circular Routing | Merchant pickup confirmation; Rescue Item expiry and routing jobs; M3 hold expiry is not reimplemented |
 | **M5** Processor intake + outcome | Accept an offer, log measured intake, log outcome and residual |
 | **M6** Impact dashboards | All four dashboards read from `summariseLedger` — hardcoded figures deleted |
 | **M7** Admin + polish | Verification queue, moderation, ledger audit trail view |
 | **M8** Capacitor + demo | Signed APK on a physical phone; full demo rehearsal |
 
-Until M1 lands, the app runs in placeholder mode against `mock-data.ts`. That is
-expected — and it must never be presented as a working backend.
+Without `VITE_CONVEX_URL`, the app runs in placeholder mode against
+`mock-data.ts`. That is useful for UI-only work but must never be presented as a
+working backend. M1–M3 source requires a configured Convex deployment for real
+data.
 
 ---
 

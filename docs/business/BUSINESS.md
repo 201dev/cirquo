@@ -2,9 +2,13 @@
 
 **Document type:** Business strategy  
 **Status:** Draft v1.0 — competition context  
-**Last updated:** 2026-08-06
+**Last updated:** 2026-08-29
 
 > **Scope note:** The competition MVP does not monetize. Midtrans runs in Sandbox mode and no platform fee is deducted. This document describes the model Cirquo would operate under commercially, and the MVP hooks that must exist so monetization can be switched on without a rewrite. See [ROADMAP.md](ROADMAP.md) for phasing.
+
+> **Implementation boundary:** this is strategy, not a release tracker. Source
+> availability and future milestone work are recorded in
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 
@@ -236,7 +240,7 @@ Consumers are the **cheapest side to acquire and the easiest to lose**. Acquisit
 The single largest churn driver is a **failed first rescue**: reserved item unavailable at pickup, merchant no-show, or food quality below expectation. One bad experience removes a consumer permanently.
 
 Mitigations that must exist in the MVP:
-- Pickup code/QR verification so disputes are resolvable ([API_MERCHANT.md](../api/API_MERCHANT.md))
+- Manual pickup-code verification so disputes are resolvable ([API_MERCHANT.md](../api/API_MERCHANT.md))
 - Grace-period cancellation and automatic refund on merchant failure
 - Honest listing descriptions with dietary attributes declared by the merchant
 - Clear "near-expiry, consume today" food-safety framing so expectations are correct
