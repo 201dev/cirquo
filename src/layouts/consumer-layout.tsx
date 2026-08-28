@@ -8,10 +8,11 @@ import {
   ShoppingBag,
   Leaf,
 } from "lucide-react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AppLogo } from "@/components/common/app-logo";
 import { PageLoader } from "@/components/common/page-loader";
 import { RouteFocus } from "@/components/common/route-focus";
+import { SiteFooter } from "@/components/common/site-footer";
 import { ThemeToggle } from "@/components/common/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +35,7 @@ const quickNavigation = [
 
 const mobileNavigation = [
   { href: "/", label: "Beranda", icon: Home, end: true },
-  { href: "/discover", label: "Jelajah", icon: Compass },
+  { href: "/explore", label: "Jelajah", icon: Compass },
   { href: "/orders", label: "Pesanan", icon: ShoppingBag },
   { href: "/impact", label: "Dampak", icon: Leaf },
   { href: "/profile", label: "Profil", icon: CircleUserRound },
@@ -43,7 +44,9 @@ const mobileNavigation = [
 export function ConsumerLayout() {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [query, setQuery] = useState("");
+  const isCheckout = pathname.startsWith("/checkout/");
 
   const handleLogout = async () => {
     await logout();
@@ -53,7 +56,7 @@ export function ConsumerLayout() {
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const value = query.trim();
-    navigate(`/discover${value ? `?q=${encodeURIComponent(value)}` : ""}`);
+    navigate(`/explore${value ? `?q=${encodeURIComponent(value)}` : ""}`);
   };
 
   return (
@@ -153,12 +156,14 @@ export function ConsumerLayout() {
       <main
         id="main-content"
         tabIndex={-1}
-        className="mx-auto max-w-7xl px-4 py-6 pb-28 focus:outline-none sm:px-6 sm:py-8 sm:pb-12"
+        className="mx-auto max-w-7xl px-4 py-6 focus:outline-none sm:px-6 sm:py-8"
       >
         <Suspense fallback={<PageLoader />}>
           <Outlet />
         </Suspense>
       </main>
+      {/* Checkout owns the bottom of the viewport with its own pay bar. */}
+      {!isCheckout && <SiteFooter />}
       <nav
         className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl sm:hidden"
         aria-label="Navigasi konsumen seluler"

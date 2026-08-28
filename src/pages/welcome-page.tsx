@@ -57,7 +57,7 @@ export default function WelcomePage() {
               variant="ghost"
               className="min-h-13 border border-white/35 bg-black/15 px-6 text-white backdrop-blur-md hover:bg-black/30 hover:text-white"
             >
-              <Link to="/discover">Lihat Rescue Item</Link>
+              <Link to="/explore">Lihat Rescue Item</Link>
             </Button>
           </div>
         </section>

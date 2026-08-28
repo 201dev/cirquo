@@ -1,7 +1,9 @@
-import { ArrowLeft, Clock3, Info, MapPin, ShieldCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ChevronRight, Clock3, Info, MapPin, ShieldCheck, Store } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { Breadcrumbs } from "@/components/common/breadcrumbs";
+import { RescueItemCard } from "@/components/common/rescue-item-card";
 import { ReserveSheet } from "@/components/common/reserve-sheet";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -11,16 +13,75 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useAuth } from "@/contexts/auth-context";
+import { useNearbyRescueItems } from "@/features/discovery/use-nearby-rescue-items";
+import { toRescueItemPreview } from "@/lib/discovery";
 import { getErrorMessage } from "@/lib/errors";
 import {
   formatDistance,
   formatIdr,
-  formatKg,
   formatPickupWindow,
+  formatWeight,
   formatWibDay,
 } from "@/lib/format";
 import { calculateHaversineDistanceMeters } from "@/lib/geo";
-import { rescueItemImageForMaterialType } from "@/lib/rescue-item-images";
+import {
+  materialCategory,
+  rescueItemImageForMaterialType,
+} from "@/lib/rescue-item-images";
+
+/**
+ * Everything else this merchant has open right now. Reuses the nearby query the
+ * rest of discovery already subscribes to, so the section costs no new backend.
+ */
+function MoreFromMerchant({
+  merchantId,
+  merchantName,
+  excludeItemId,
+}: {
+  merchantId: string;
+  merchantName: string;
+  excludeItemId: string;
+}) {
+  const nearbyData = useNearbyRescueItems();
+  const previews = useMemo(
+    () =>
+      (nearbyData?.results ?? [])
+        .filter(
+          (item) => item.merchant._id === merchantId && item._id !== excludeItemId,
+        )
+        .slice(0, 4)
+        .map((item) =>
+          toRescueItemPreview(
+            item,
+            rescueItemImageForMaterialType(item.materialType),
+          ),
+        ),
+    [excludeItemId, merchantId, nearbyData],
+  );
+
+  if (previews.length === 0) return null;
+
+  return (
+    <section aria-labelledby="more-title" className="mt-12">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="more-title" className="text-lg font-semibold">
+          Rescue Item lain dari {merchantName}
+        </h2>
+        <Link
+          to={`/merchant/${merchantId}`}
+          className="rounded text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Lihat semua
+        </Link>
+      </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {previews.map((item) => (
+          <RescueItemCard key={item.id} item={item} />
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default function ItemDetailPage() {
   const { id } = useParams();
@@ -127,15 +188,21 @@ export default function ItemDetailPage() {
     item.pickupStartAt,
     item.pickupEndAt,
   );
+  const category = materialCategory(item.materialType);
 
   return (
     <div className="-mt-2 pb-20 sm:pb-0 max-w-5xl mx-auto">
-      <Button asChild variant="ghost" className="mb-4 -ml-3">
-        <Link to="/explore">
-          <ArrowLeft />
-          Kembali
-        </Link>
-      </Button>
+      <div className="mb-4">
+        <Breadcrumbs
+          items={[
+            { label: "Beranda", to: "/" },
+            ...(category
+              ? [{ label: category.label, to: `/category/${category.type}` }]
+              : []),
+            { label: item.name },
+          ]}
+        />
+      </div>
       <div className="grid gap-8 lg:grid-cols-[1.05fr_.95fr]">
         <div className="overflow-hidden rounded-2xl bg-muted">
           <img
@@ -153,9 +220,14 @@ export default function ItemDetailPage() {
               Hemat {item.discountPercentage}%
             </Badge>
           </div>
-          <p className="mt-5 text-sm font-medium text-primary">
-            {item.merchant.name}
-          </p>
+          <Link
+            to={`/merchant/${item.merchant._id}`}
+            className="mt-5 inline-flex max-w-full items-center gap-1.5 rounded text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Store className="size-4 shrink-0" aria-hidden="true" />
+            <span className="truncate">{item.merchant.name}</span>
+            <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
+          </Link>
           <h1 className="mt-1 text-3xl font-semibold leading-tight tracking-[-0.035em] sm:text-4xl">
             {item.name}
           </h1>
@@ -210,7 +282,7 @@ export default function ItemDetailPage() {
             <p className="text-sm font-medium">Ketersediaan</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {hasStock
-                ? `${item.remainingQuantity} paket tersisa · ${formatKg(item.weightPerItemGrams)} per paket`
+                ? `${item.remainingQuantity} paket tersisa · ${formatWeight(item.weightPerItemGrams)} per paket`
                 : "Semua paket sudah habis direservasi."}
             </p>
           </div>
@@ -232,6 +304,12 @@ export default function ItemDetailPage() {
           </div>
         </div>
       </div>
+      <MoreFromMerchant
+        merchantId={item.merchant._id}
+        merchantName={item.merchant.name}
+        excludeItemId={item._id}
+      />
+
       <div className="fixed inset-x-0 bottom-[4.5rem] z-20 flex items-center justify-between gap-4 border-t bg-background/95 p-4 backdrop-blur-xl sm:hidden">
         <div>
           <p className="text-xs text-muted-foreground">Harga per paket</p>

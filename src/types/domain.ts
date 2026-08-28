@@ -22,9 +22,14 @@ export interface RescueItemPreview {
   image: string;
   address: string;
   distanceKm: number;
-  rating?: number;
   dietaryTags: string[];
   pickupDate: string;
+  /**
+   * Raw pickup deadline, when the source knows it. Lets a card say how long is
+   * left instead of only printing the window. Cirquo has no rating system, so
+   * nothing here may stand in for one.
+   */
+  pickupEndAt?: number;
 }
 
 export interface OrderPreview {
