@@ -90,7 +90,10 @@ function OrderCard({ order }: { order: ConsumerOrderSummary }) {
           {needsPayment ? (
             <>
               Belum dibayar · sisa waktu{" "}
-              <span className="font-mono font-semibold tabular-nums">
+              <span
+                aria-label={hold.label ?? undefined}
+                className="font-mono font-semibold tabular-nums"
+              >
                 {hold.countdown}
               </span>
             </>
