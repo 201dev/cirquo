@@ -27,7 +27,7 @@ dist-ssr
 graphify-out/
 
 # Convex-generated bindings and local deployment selection
-convex/_generated/
+# convex/_generated/
 
 # Capacitor/Android local build output
 android/.gradle/
