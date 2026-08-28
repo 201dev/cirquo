@@ -10,7 +10,12 @@ import {
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const themed = (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
       {children}
       <Toaster richColors closeButton />
     </ThemeProvider>

@@ -3,22 +3,36 @@ import {
   CircleUserRound,
   Compass,
   Home,
-  Leaf,
   LogOut,
-  MapPin,
+  Search,
   ShoppingBag,
+  Leaf,
 } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { AppLogo } from "@/components/common/app-logo";
-import { DemoNotice } from "@/components/common/demo-notice";
 import { PageLoader } from "@/components/common/page-loader";
 import { RouteFocus } from "@/components/common/route-focus";
 import { ThemeToggle } from "@/components/common/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
+import { useState, type FormEvent } from "react";
 
-const navigation = [
+const quickNavigation = [
+  { href: "/orders", label: "Pesanan", icon: ShoppingBag },
+  { href: "/impact", label: "Dampak", icon: Leaf },
+];
+
+const mobileNavigation = [
   { href: "/", label: "Beranda", icon: Home, end: true },
   { href: "/discover", label: "Jelajah", icon: Compass },
   { href: "/orders", label: "Pesanan", icon: ShoppingBag },
@@ -27,12 +41,19 @@ const navigation = [
 ];
 
 export function ConsumerLayout() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const [query, setQuery] = useState("");
 
   const handleLogout = async () => {
     await logout();
     navigate("/login", { replace: true });
+  };
+
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const value = query.trim();
+    navigate(`/discover${value ? `?q=${encodeURIComponent(value)}` : ""}`);
   };
 
   return (
@@ -42,56 +63,98 @@ export function ConsumerLayout() {
         Lewati ke konten utama
       </a>
       <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center px-4 sm:px-6">
+        <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center gap-4 px-4 sm:px-6">
           <AppLogo />
-          <nav
-            className="ml-5 hidden h-full items-center gap-1 md:flex"
-            aria-label="Navigasi konsumen"
+          <form
+            onSubmit={handleSearch}
+            className="ml-4 hidden flex-1 max-w-sm items-center rounded-full bg-secondary px-4 md:flex"
+            role="search"
           >
-            {navigation.map(({ href, label, icon: Icon, end }) => (
+            <Search className="size-4 text-muted-foreground" aria-hidden="true" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="h-10 border-0 bg-transparent shadow-none focus-visible:ring-0"
+              placeholder="Cari makanan atau Mitra"
+              aria-label="Cari Rescue Item"
+            />
+          </form>
+
+          <nav className="hidden items-center gap-1 md:flex ml-auto">
+            {quickNavigation.map(({ href, label, icon: Icon }) => (
               <NavLink
                 key={href}
-                end={end}
                 to={href}
                 className={({ isActive }) =>
                   cn(
-                    "relative flex h-full items-center gap-2 px-3 text-sm font-medium transition-colors after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors",
+                    "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
                     isActive
-                      ? "text-foreground after:bg-primary"
-                      : "text-muted-foreground after:bg-transparent hover:text-foreground",
+                      ? "text-primary bg-secondary"
+                      : "text-muted-foreground hover:text-foreground",
                   )
                 }
               >
-                <Icon className="size-[18px]" aria-hidden="true" />
-                {label}
+                <Icon className="size-4" aria-hidden="true" />
+                <span className="hidden lg:inline">{label}</span>
               </NavLink>
             ))}
           </nav>
-          <Button
-            variant="outline"
-            className="ml-auto hidden max-w-56 justify-start gap-2 rounded-full bg-background lg:flex"
-            aria-label="Lokasi saat ini: Tembalang, Semarang"
-          >
-            <MapPin className="text-primary" aria-hidden="true" />
-            <span className="truncate">Tembalang, Semarang</span>
-          </Button>
-          <ThemeToggle />
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Keluar"
-            onClick={handleLogout}
-          >
-            <LogOut aria-hidden="true" />
-          </Button>
+
+          <div className="ml-auto flex items-center gap-1 md:ml-0">
+            <ThemeToggle />
+            <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+                aria-label="Menu akun"
+              >
+                <CircleUserRound aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="text-base">
+                {user?.name || "Akun"}
+              </DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                {user?.email || "Tidak masuk"}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <NavLink to="/orders" className="flex items-center gap-2">
+                  <ShoppingBag className="size-4" />
+                  Pesanan
+                </NavLink>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <NavLink to="/impact" className="flex items-center gap-2">
+                  <Leaf className="size-4" />
+                  Dampak Saya
+                </NavLink>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <NavLink to="/profile" className="flex items-center gap-2">
+                  <CircleUserRound className="size-4" />
+                  Profil
+                </NavLink>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                <LogOut className="size-4 mr-2" />
+                Keluar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
+
       <main
         id="main-content"
         tabIndex={-1}
         className="mx-auto max-w-7xl px-4 py-6 pb-28 focus:outline-none sm:px-6 sm:py-8 sm:pb-12"
       >
-        <DemoNotice className="mb-5 flex w-full justify-center sm:w-fit" />
         <Suspense fallback={<PageLoader />}>
           <Outlet />
         </Suspense>
@@ -100,7 +163,7 @@ export function ConsumerLayout() {
         className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl sm:hidden"
         aria-label="Navigasi konsumen seluler"
       >
-        {navigation.map(({ href, label, icon: Icon, end }) => (
+        {mobileNavigation.map(({ href, label, icon: Icon, end }) => (
           <NavLink
             key={href}
             end={end}

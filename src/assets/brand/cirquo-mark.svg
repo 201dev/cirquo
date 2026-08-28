@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 416" role="img" aria-labelledby="title">
+  <title id="title">Cirquo</title>
+  <path
+    fill="#1BAC4B"
+    d="M241 6v96h-43c-62 0-108 47-108 106s46 106 108 106c16 0 31-3 43-9v99c-14 4-29 6-45 6C86 410 0 321 0 208S86 6 196 6h45Z"
+  />
+  <path fill="#1BAC4B" d="M276 132h86v272h-86z" />
+  <circle cx="319" cy="48" r="43" fill="#FFD037" />
+</svg>

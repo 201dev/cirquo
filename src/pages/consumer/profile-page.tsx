@@ -83,7 +83,7 @@ export default function ProfilePage() {
           <span className="flex-1">
             <strong className="block text-sm">Tampilan</strong>
             <span className="text-xs text-muted-foreground">
-              Tema awal terang; tema gelap tetap tersedia
+              Ikuti tema perangkat atau pilih terang dan gelap
             </span>
           </span>
           <ThemeToggle />

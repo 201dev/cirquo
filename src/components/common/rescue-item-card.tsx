@@ -17,16 +17,20 @@ export function RescueItemCard({
   item: RescueItemPreview;
   horizontal?: boolean;
 }) {
-  const discount = Math.round(
-    (1 - item.currentPrice / item.originalPrice) * 100,
-  );
+  const discount =
+    item.originalPrice > 0
+      ? Math.max(
+          0,
+          Math.round((1 - item.currentPrice / item.originalPrice) * 100),
+        )
+      : 0;
   const unavailable = item.status !== "active";
 
   return (
     <Link
       to={`/item/${item.id}`}
       className={cn(
-        "group grid overflow-hidden rounded-2xl border bg-card transition-[transform,border-color] hover:-translate-y-0.5 hover:border-primary/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "group grid h-full overflow-hidden rounded-xl border bg-card transition-[transform,border-color] hover:-translate-y-0.5 hover:border-primary/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         horizontal ? "grid-cols-[7.5rem_1fr] sm:grid-cols-[9rem_1fr]" : "",
       )}
     >
@@ -47,20 +51,20 @@ export function RescueItemCard({
             unavailable && "grayscale",
           )}
         />
-        <Badge className="absolute left-3 top-3 border-0 bg-primary text-primary-foreground shadow-none hover:bg-primary">
+        <Badge className="absolute left-3 top-3 border-0 bg-brand-yellow text-brand-charcoal shadow-none hover:bg-brand-yellow">
           Hemat {discount}%
         </Badge>
         {item.rating !== undefined ? (
           <span className="absolute bottom-3 right-3 inline-flex min-h-7 items-center gap-1 rounded-full bg-background px-2 text-xs font-semibold text-foreground shadow-sm">
             <Star
-              className="size-3.5 fill-recovered text-recovered"
+              className="size-3.5 fill-brand-yellow text-brand-yellow"
               aria-hidden="true"
             />
             {item.rating}
           </span>
         ) : null}
         {unavailable ? (
-          <span className="absolute inset-0 grid place-items-center bg-foreground/50 text-sm font-semibold text-background">
+          <span className="absolute inset-0 grid place-items-center bg-brand-charcoal/70 text-sm font-semibold text-white">
             Sudah habis
           </span>
         ) : null}
@@ -74,7 +78,7 @@ export function RescueItemCard({
         </h3>
         <div className="mt-auto pt-4">
           <p>
-            <span className="font-semibold text-primary">
+            <span className="font-semibold text-foreground">
               {formatIdr(item.currentPrice)}
             </span>{" "}
             <s className="ml-1 text-xs text-muted-foreground">
