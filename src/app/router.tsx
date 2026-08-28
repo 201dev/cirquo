@@ -25,6 +25,8 @@ const ReviewQueuePage = lazy(() => import("@/pages/admin/review-queue-page"));
 const ExplorePage = lazy(() => import("@/pages/consumer/explore-page"));
 const CheckoutPage = lazy(() => import("@/pages/consumer/checkout-page"));
 const ConsumerHomePage = lazy(() => import("@/pages/consumer/home-page"));
+const CategoryPage = lazy(() => import("@/pages/consumer/category-page"));
+const ConsumerMerchantPage = lazy(() => import("@/pages/consumer/merchant-page"));
 const ImpactPage = lazy(() => import("@/pages/consumer/impact-page"));
 const ItemDetailPage = lazy(() => import("@/pages/consumer/item-detail-page"));
 const OrderDetailPage = lazy(
@@ -119,6 +121,8 @@ export const router = createBrowserRouter([
         element: <ConsumerLayout />,
         children: [
           { index: true, element: <ConsumerHomePage /> },
+          { path: "category/:categorySlug", element: <CategoryPage /> },
+          { path: "merchant/:merchantId", element: <ConsumerMerchantPage /> },
           { path: "discover", element: <ExplorePage /> },
           { path: "explore", element: <ExplorePage /> },
           { path: "orders", element: <OrdersPage /> },

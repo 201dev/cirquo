@@ -4,15 +4,21 @@
   "description": "Circular Food Recovery Platform",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f7faf7",
-  "theme_color": "#166534",
+  "background_color": "#f7faf8",
+  "theme_color": "#1BAC4B",
   "lang": "id-ID",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "/app-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/app-icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }

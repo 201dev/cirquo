@@ -15,10 +15,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import type { RescueItemPreview } from "@/types/domain";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { FeatureCollection } from "geojson";
 import type { GeoJSONSource, Map as MapboxMap } from "mapbox-gl";
+import { toRescueItemPreview } from "@/lib/discovery";
+import { rescueItemImageForMaterialType } from "@/lib/rescue-item-images";
 
 const formatIdr = new Intl.NumberFormat("id-ID", {
   style: "currency",
@@ -260,7 +261,7 @@ export default function ExplorePage() {
             source: "rescue-items",
             filter: ["has", "point_count"],
             paint: {
-              "circle-color": "#16a34a",
+              "circle-color": "#1BAC4B",
               "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 50, 40]
             }
           });
@@ -275,7 +276,7 @@ export default function ExplorePage() {
               "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
               "text-size": 12
             },
-            paint: { "text-color": "#ffffff" }
+            paint: { "text-color": "#272727" }
           });
 
           map.addLayer({
@@ -284,7 +285,7 @@ export default function ExplorePage() {
             source: "rescue-items",
             filter: ["!", ["has", "point_count"]],
             paint: {
-              "circle-color": "#16a34a",
+              "circle-color": "#1BAC4B",
               "circle-radius": 8,
               "circle-stroke-width": 2,
               "circle-stroke-color": "#fff"
@@ -346,31 +347,6 @@ export default function ExplorePage() {
     api.discovery.getListing,
     selectedItemId ? { id: selectedItemId } : "skip"
   );
-
-  const mapToPreview = (item: (typeof filtered)[number]): RescueItemPreview => {
-    const start = new Date(item.pickupStartAt);
-    const end = new Date(item.pickupEndAt);
-    const formatTime = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    
-    return {
-      id: item._id,
-      name: item.name,
-      merchantName: item.merchant.name,
-      currentPrice: item.currentPrice,
-      originalPrice: item.originalPrice,
-      remainingQuantity: item.remainingQuantity,
-      weightPerItemGrams: item.weightPerItemGrams,
-      pickupWindow: `${formatTime(start)} - ${formatTime(end)}`,
-      status: "active",
-      category: item.materialType === "bakery" ? "bakery" : (item.materialType === "produce" ? "produce" : "meal"),
-      description: "",
-      image: item.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800",
-      address: item.merchant.address,
-      distanceKm: Number((item.distanceMeters / 1000).toFixed(1)),
-      dietaryTags: item.dietaryTags,
-      pickupDate: start.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
-    };
-  };
 
   return (
     <>
@@ -510,7 +486,13 @@ export default function ExplorePage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
               {filtered.map((item) => (
                 <div key={item._id}>
-                  <RescueItemCard item={mapToPreview(item)} horizontal />
+                  <RescueItemCard
+                    item={toRescueItemPreview(
+                      item,
+                      rescueItemImageForMaterialType(item.materialType),
+                    )}
+                    horizontal
+                  />
                 </div>
               ))}
             </div>
