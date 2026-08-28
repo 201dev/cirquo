@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAction } from "convex/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { QueryErrorBoundary } from "@/components/common/query-error-boundary";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -37,7 +38,7 @@ const phaseMessages: Record<PaymentPhase, string> = {
     "Sistem pembayaran gagal dimuat. Periksa koneksi, lalu coba lagi.",
 };
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { sessionToken } = useAuth();
@@ -306,5 +307,13 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <QueryErrorBoundary title="Checkout tidak dapat dimuat">
+      <CheckoutContent />
+    </QueryErrorBoundary>
   );
 }

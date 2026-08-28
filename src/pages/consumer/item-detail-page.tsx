@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Breadcrumbs } from "@/components/common/breadcrumbs";
+import { QueryErrorBoundary } from "@/components/common/query-error-boundary";
 import { RescueItemCard } from "@/components/common/rescue-item-card";
 import { ReserveSheet } from "@/components/common/reserve-sheet";
 import { StatusBadge } from "@/components/common/status-badge";
@@ -83,7 +84,7 @@ function MoreFromMerchant({
   );
 }
 
-export default function ItemDetailPage() {
+function ItemDetailContent() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { sessionToken } = useAuth();
@@ -342,5 +343,13 @@ export default function ItemDetailPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function ItemDetailPage() {
+  return (
+    <QueryErrorBoundary title="Detail Rescue Item tidak dapat dimuat">
+      <ItemDetailContent />
+    </QueryErrorBoundary>
   );
 }
