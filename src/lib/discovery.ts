@@ -1,4 +1,4 @@
-import type { RescueItemPreview } from "@/types/domain";
++import type { RescueItemPreview } from "../types/domain";
 
 type DiscoveryItem = {
   status: string;
