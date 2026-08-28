@@ -4,8 +4,8 @@
 | --- | --- |
 | **Document type** | API Reference (Admin role) |
 | **Backend** | Convex (`query` / `mutation` / `action`, not REST) |
-| **Status** | Draft v1.0 |
-| **Last updated** | 2026-08-06 |
+| **Status** | Draft v1.1 |
+| **Last updated** | 2026-08-27 |
 | **Audience** | Backend engineers, platform operators, DSDC judges auditing the Material Flow Ledger |
 
 This document specifies every Convex function available to an **Admin** account. The admin surface has three jobs, in order of importance:
@@ -57,9 +57,15 @@ Per **AUTH-02**, admin accounts are **provisioned manually** and there is no cod
 Concretely:
 
 - `auth.register` accepts only `consumer`, `merchant`, and `processor` in its role validator. Passing `'admin'` fails the `v.union` at the Convex argument boundary before the handler runs — a type-level rejection, not a runtime check that could be forgotten.
-- No mutation anywhere in the codebase writes `role: 'admin'` to `users`. There is no `admin.promoteUser`, and there deliberately never will be. A privilege-escalation function is the single most attractive target on the platform, so it does not exist.
-- Admin rows are created by an operator running a seeding script against the Convex deployment with production credentials (`npx convex run seed:createAdmin --prod`), which uses an `internalMutation` not exposed on the public `api` surface.
+- No mutation anywhere in the codebase writes `role: 'admin'` to `users`. There is no `admin.promoteUser`; role escalation must never be exposed through the application API.
+- **Current temporary bootstrap:** a trusted operator registers the future Admin as a Consumer through the production application, then changes that user's `role` to `admin` in the production Convex Dashboard. The user must log out and back in afterwards. The previously documented `seed:createAdmin` function does **not** exist.
+- No Admin verification mutation is implemented. The `/admin/verifications` page is placeholder UI, so a trusted operator currently changes a completed Merchant or Organic Processor profile from `pending` to `verified` in the production Convex Dashboard. This is an operational stopgap, not a client-side authorization mechanism.
 - Admin accounts cannot be suspended through `admin.suspendUser` (`FORBIDDEN`). Removing admin access is an operator action, not an in-app one — otherwise a compromised admin session could lock out every other admin.
+
+The operator must never edit `passwordHash`, `sessions`, session tokens, or any
+`materialFlowLedger` row. Verification moves no material and therefore has no
+ledger event. The Admin milestone must replace this bootstrap with the guarded
+functions specified below and a reactive review UI.
 
 Everything else follows from `requireRole(ctx, 'admin')`, which is the first line of every function in this document. See [`../security/AUTH.md`](../security/AUTH.md).
 

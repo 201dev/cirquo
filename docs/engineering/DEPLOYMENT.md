@@ -3,8 +3,8 @@
 | Field | Value |
 | --- | --- |
 | **Document Type** | Engineering Runbook |
-| **Status** | Draft v1.0 |
-| **Last Updated** | 2026-08-06 |
+| **Status** | Active runbook v1.1 |
+| **Last Updated** | 2026-08-27 |
 | **Owner** | Cirquo Engineering |
 | **Scope** | Environments, CI/CD, hosting, Android release, monitoring, incidents |
 
@@ -12,20 +12,20 @@
 
 ## 1. Current State
 
-Nothing is deployed today. There is no CI, no hosting account, no production
-Convex deployment, no signed APK.
+The web frontend and Convex production backend are deployed. GitHub Actions,
+the Android release, and production Midtrans UAT remain outstanding.
 
 | Component | Status |
 | --- | --- |
-| Frontend hosting | 📋 Planned — provider chosen in §3, not yet provisioned |
-| Convex production deployment | 📋 Planned |
+| Frontend hosting | ✅ Vercel production deployment |
+| Convex production deployment | ✅ Deployed from the Vercel production build |
 | GitHub Actions CI | 📋 Planned — workflow written in §6, not yet committed |
 | Android release keystore | 📋 Planned |
 | Midtrans webhook endpoint | 🚧 Implemented in `convex/http.ts`; dashboard registration and end-to-end UAT remain required |
+| Admin provisioning and partner verification | 🚧 Temporary operator bootstrap; no Admin mutation or working review UI yet — see §4.5 |
 | Monitoring / alerting | 📋 Planned |
 
-Everything below is the plan, written concretely enough to execute without
-further design work.
+The remaining sections describe the operating procedure and outstanding work.
 
 ---
 
@@ -292,6 +292,29 @@ Omit `--prod` to target your dev deployment.
 Secrets can also be managed in the Convex dashboard under **Settings →
 Environment Variables**, which is safer for the pilot because it avoids secrets
 landing in shell history.
+
+### 4.5 Temporary Admin and Merchant-verification bootstrap
+
+The production application has no Admin self-registration path, no Admin
+verification mutation, and no working review queue. The `/admin/verifications`
+page is frontend-only placeholder content. Until the Admin milestone is
+implemented, a trusted project operator performs this one-off bootstrap in the
+**production Convex Dashboard**:
+
+1. Register the future Admin as a Consumer through the production application.
+   This preserves the normal password hashing and session creation flow.
+2. In the production `users` table, change that user's `role` to `admin`.
+3. Log out and log back in as that user so the session is restored with the new
+   role.
+4. When a Merchant has completed onboarding, change only that Merchant profile's
+   `verificationStatus` from `pending` to `verified` in the production
+   `merchants` table.
+
+Do not edit `passwordHash`, `sessions`, session tokens, or any
+`materialFlowLedger` row. Verification does not move material, so it has no
+Material Flow Ledger event; it must nevertheless be limited to trusted operators
+and recorded in the team's operational notes. This bootstrap is temporary and
+must be replaced by the guarded Admin API and review UI in the Admin milestone.
 
 ---
 
