@@ -48,6 +48,16 @@ export function formatKg(grams: number) {
   return `${kgFormatter.format(grams / 1_000)} kg`;
 }
 
+/**
+ * "480 g" below a kilogram, "1,5 kg" above it. Portion weights are usually
+ * under a kilo, where rounding to "0,5 kg" loses the detail that matters.
+ */
+export function formatWeight(grams: number) {
+  return grams < 1_000
+    ? `${Math.round(grams).toLocaleString(LOCALE)} g`
+    : formatKg(grams);
+}
+
 /** "17.00" — WIB clock time, 24-hour. */
 export function formatWibTime(epochMs: number) {
   return timeFormatter.format(epochMs);

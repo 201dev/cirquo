@@ -6,16 +6,12 @@ import {
   Recycle,
   Search,
   ShieldCheck,
+  Store,
 } from "lucide-react";
 import { type FormEvent, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import dryGoodsImage from "@/assets/categories/rescue-dry-goods.webp";
-import mixedImage from "@/assets/categories/rescue-mixed.webp";
-import proteinImage from "@/assets/categories/rescue-protein.webp";
 import heroImage from "@/assets/cirquo-hero.webp";
-import bakeryImage from "@/assets/rescue-bakery.webp";
-import mealImage from "@/assets/rescue-meal.webp";
-import produceImage from "@/assets/rescue-produce.webp";
+import { MerchantCard } from "@/components/common/merchant-card";
 import { QueryErrorBoundary } from "@/components/common/query-error-boundary";
 import { RescueItemCard } from "@/components/common/rescue-item-card";
 import { Button } from "@/components/ui/button";
@@ -23,79 +19,82 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 import { useNearbyRescueItems } from "@/features/discovery/use-nearby-rescue-items";
-import { toRescueItemPreview } from "@/lib/discovery";
-import { rescueItemImageForMaterialType } from "@/lib/rescue-item-images";
+import { groupByMerchant, toRescueItemPreview } from "@/lib/discovery";
+import {
+  MATERIAL_CATEGORIES,
+  rescueItemImageForMaterialType,
+} from "@/lib/rescue-item-images";
 
-const quickActions = [
+/**
+ * Shortcuts into `/explore` with the filter pre-applied. These used to exist
+ * twice on this page — once as tall icon cards, once as a chip row that always
+ * drew the first chip as "active" no matter what the URL said. One row now,
+ * and nothing here claims to be a filter of the grid below it.
+ */
+const shortcuts = [
+  { label: "Dekat saya", hint: "maks. 2 km", to: "/explore?distance=2000", icon: MapPin },
+  { label: "Paling hemat", hint: "maks. Rp15.000", to: "/explore?price=15000", icon: BadgePercent },
+  { label: "Pickup segera", hint: "mulai sebelum 18.00", to: "/explore?pickup=before_18", icon: Clock3 },
+  { label: "Vegetarian", hint: "tanpa daging", to: "/explore?dietary=Vegetarian", icon: Recycle },
+];
+
+const HOW_IT_WORKS = [
   {
-    label: "Dekat saya",
-    description: "Maks. 2 km",
-    href: "/discover?distance=2000",
-    icon: MapPin,
+    icon: ShieldCheck,
+    title: "Pickup langsung di lokasi",
+    body: "Reservasi lewat Cirquo, tunjukkan kode pickup enam digit di Mitra Usaha. Tidak ada pengantaran.",
   },
   {
-    label: "Paling hemat",
-    description: "Maks. Rp15.000",
-    href: "/discover?price=15000",
     icon: BadgePercent,
+    title: "Harga turun, mutu tetap",
+    body: "Surplus dijual di bawah harga normal karena window pickup-nya pendek, bukan karena kualitasnya turun.",
   },
   {
-    label: "Pickup segera",
-    description: "Mulai sebelum 18.00",
-    href: "/discover?pickup=before_18",
-    icon: Clock3,
+    icon: Recycle,
+    title: "Sisanya tetap tercatat",
+    body: "Yang tidak terambil bisa masuk Circular Routing ke Mitra Pengolah, dan setiap perpindahan masuk Material Flow Ledger.",
   },
 ];
 
-const categoryShortcuts = [
-  { label: "Siap santap", image: mealImage, href: "/category/prepared_food" },
-  { label: "Roti & pastry", image: bakeryImage, href: "/category/bakery" },
-  { label: "Sayur & buah", image: produceImage, href: "/category/produce" },
-  { label: "Paket campur", image: mixedImage, href: "/category/mixed" },
-  { label: "Bahan kering", image: dryGoodsImage, href: "/category/dry_goods" },
-  { label: "Protein", image: proteinImage, href: "/category/protein" },
-];
-
-const discoveryFilters = [
-  { label: "Semua", href: "/discover" },
-  { label: "Di bawah 2 km", href: "/discover?distance=2000" },
-  { label: "Maks. Rp15.000", href: "/discover?price=15000" },
-  { label: "Vegetarian", href: "/discover?dietary=Vegetarian" },
-];
+function ItemGridSkeleton({ label }: { label: string }) {
+  return (
+    <div
+      role="status"
+      aria-label={label}
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+    >
+      {Array.from({ length: 8 }, (_, index) => (
+        <div key={index} className="overflow-hidden rounded-xl border bg-card">
+          <Skeleton className="aspect-[4/3] rounded-none" />
+          <div className="space-y-2 p-3">
+            <Skeleton className="h-3 w-2/5" />
+            <Skeleton className="h-5 w-4/5" />
+            <Skeleton className="h-5 w-1/2" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function NearbyRescueItems() {
   const nearbyData = useNearbyRescueItems();
   const items = useMemo(
     () =>
-      nearbyData?.results.slice(0, 8).map((item) =>
-        toRescueItemPreview(
-          item,
-          rescueItemImageForMaterialType(item.materialType),
+      nearbyData?.results
+        .slice(0, 8)
+        .map((item) =>
+          toRescueItemPreview(
+            item,
+            rescueItemImageForMaterialType(item.materialType),
+          ),
         ),
-      ),
     [nearbyData],
   );
 
   if (items === undefined) {
-    return (
-      <div
-        role="status"
-        aria-label="Memuat Rescue Item di dekatmu"
-        className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
-      >
-        {Array.from({ length: 8 }, (_, index) => (
-          <div key={index} className="overflow-hidden rounded-xl border bg-card">
-            <Skeleton className="aspect-[4/3] rounded-none" />
-            <div className="space-y-3 p-4">
-              <Skeleton className="h-3 w-2/5" />
-              <Skeleton className="h-5 w-4/5" />
-              <Skeleton className="h-5 w-1/2" />
-              <Skeleton className="h-3 w-3/4" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    return <ItemGridSkeleton label="Memuat Rescue Item di dekatmu" />;
   }
 
   if (items.length === 0) {
@@ -104,19 +103,66 @@ function NearbyRescueItems() {
         <Search className="mx-auto size-9 text-muted-foreground" aria-hidden="true" />
         <h3 className="mt-4 text-lg font-semibold">Belum ada Rescue Item aktif</h3>
         <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-          Coba perluas jarak atau lihat lagi saat Mitra Usaha menambahkan surplus.
+          Semua window pickup dalam radius 30 km sudah lewat. Coba lagi saat
+          Mitra Usaha menambahkan surplus.
         </p>
         <Button asChild variant="outline" className="mt-5">
-          <Link to="/discover">Buka halaman jelajah</Link>
+          <Link to="/explore">Buka halaman jelajah</Link>
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {items.map((item) => (
         <RescueItemCard key={item.id} item={item} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Same query as the grid above — the Convex client keeps one subscription for
+ * identical args, so this is a second view of the same data, not a second read.
+ */
+function NearbyMerchants() {
+  const nearbyData = useNearbyRescueItems();
+  const merchants = useMemo(
+    () => (nearbyData ? groupByMerchant(nearbyData.results).slice(0, 6) : undefined),
+    [nearbyData],
+  );
+
+  if (merchants === undefined) {
+    return (
+      <div
+        role="status"
+        aria-label="Memuat Mitra Usaha di dekatmu"
+        className="grid gap-3 lg:grid-cols-2"
+      >
+        {Array.from({ length: 4 }, (_, index) => (
+          <div
+            key={index}
+            className="grid grid-cols-[4.5rem_1fr] items-center gap-3 rounded-xl border bg-card p-3 sm:grid-cols-[5.5rem_1fr] sm:gap-4"
+          >
+            <Skeleton className="aspect-square rounded-lg" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-3/5" />
+              <Skeleton className="h-3 w-4/5" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (merchants.length === 0) return null;
+
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      {merchants.map((merchant) => (
+        <MerchantCard key={merchant.id} merchant={merchant} />
       ))}
     </div>
   );
@@ -131,16 +177,16 @@ export default function ConsumerHomePage() {
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const value = query.trim();
-    navigate(`/discover${value ? `?q=${encodeURIComponent(value)}` : ""}`);
+    navigate(`/explore${value ? `?q=${encodeURIComponent(value)}` : ""}`);
   }
 
   return (
-    <div className="space-y-12 sm:space-y-16">
+    <div className="space-y-10 sm:space-y-14">
       <section className="grid overflow-hidden rounded-xl bg-brand-green text-brand-charcoal lg:grid-cols-[1.15fr_.85fr]">
         <div className="flex flex-col justify-center px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
           <p className="flex items-center gap-2 text-sm font-medium text-brand-charcoal/75">
             <MapPin className="size-4" aria-hidden="true" />
-            Tembalang, Semarang
+            Tembalang, Semarang · radius 30 km
           </p>
           <h1 className="mt-3 max-w-2xl text-3xl font-bold leading-tight tracking-[-0.025em] sm:text-4xl">
             {firstName ? `Halo, ${firstName}. ` : ""}Makanan baik di dekatmu,
@@ -151,7 +197,7 @@ export default function ConsumerHomePage() {
           </p>
           <form
             onSubmit={handleSearch}
-            className="mt-6 flex max-w-xl items-center rounded-lg bg-card p-1.5 text-card-foreground shadow-[0_16px_34px_-24px_rgba(39,39,39,.55)]"
+            className="mt-6 flex max-w-xl items-center rounded-lg bg-card p-1.5 text-card-foreground shadow-raised"
             role="search"
           >
             <Search className="ml-3 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -179,125 +225,124 @@ export default function ConsumerHomePage() {
           <div className="absolute inset-0 bg-gradient-to-r from-brand-green via-brand-green/20 to-transparent" />
         </div>
       </section>
+      <section aria-labelledby="shortcut-title">
+        <h2 id="shortcut-title" className="text-lg font-semibold sm:text-xl">
+          Lagi cari apa?
+        </h2>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {shortcuts.map(({ label, hint, to, icon: Icon }) => (
+            <Link
+              key={label}
+              to={to}
+              className="group flex items-center gap-3 rounded-xl border bg-card p-3 shadow-card transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-leaf-300 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-leaf-100 text-leaf-700 transition-transform group-hover:scale-105">
+                <Icon className="size-5" strokeWidth={1.8} aria-hidden="true" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold">{label}</span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {hint}
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
-      <div className="mx-auto w-full max-w-6xl space-y-14 sm:space-y-16">
-        <section aria-labelledby="quick-action-title" className="text-center">
-          <h2 id="quick-action-title" className="text-xl font-bold sm:text-2xl">
-            Lagi cari apa? Mulai dari sini
-          </h2>
-          <div className="mx-auto mt-6 grid max-w-3xl grid-cols-3 gap-2 sm:gap-4">
-            {quickActions.map(({ label, description, href, icon: Icon }) => (
-              <Link
-                key={label}
-                to={href}
-                className="group flex min-h-36 flex-col items-center justify-center rounded-xl border bg-card px-2 py-4 text-center transition-[transform,border-color] hover:-translate-y-0.5 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-40"
-              >
-                <Icon
-                  className="size-10 text-primary transition-transform group-hover:scale-105 sm:size-12"
-                  strokeWidth={1.7}
-                  aria-hidden="true"
+      <section aria-labelledby="category-title">
+        <h2 id="category-title" className="text-lg font-semibold sm:text-xl">
+          Pilih berdasarkan kategori
+        </h2>
+        <div className="-mx-4 mt-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-7 sm:px-0">
+          {MATERIAL_CATEGORIES.map((category) => (
+            <Link
+              key={category.type}
+              to={`/category/${category.type}`}
+              className="group flex min-w-20 snap-start flex-col items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="overflow-hidden rounded-full border bg-muted">
+                <img
+                  src={category.image}
+                  alt=""
+                  width="160"
+                  height="160"
+                  loading="lazy"
+                  className="size-20 object-cover transition-transform duration-300 group-hover:scale-105"
                 />
-                <span className="mt-3 text-sm font-semibold sm:text-base">{label}</span>
-                <span className="mt-1 text-[11px] text-muted-foreground sm:text-xs">
-                  {description}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section aria-labelledby="category-title" className="text-center">
-          <h2 id="category-title" className="text-xl font-bold sm:text-2xl">
-            Pilih berdasarkan kategori
-          </h2>
-          <div className="-mx-4 mt-6 flex snap-x gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-6 sm:px-0">
-            {categoryShortcuts.map((category) => (
-              <Link
-                key={category.label}
-                to={category.href}
-                className="group flex min-w-24 snap-start flex-col items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <span className="overflow-hidden rounded-full border bg-muted">
-                  <img
-                    src={category.image}
-                    alt=""
-                    width="160"
-                    height="160"
-                    loading="lazy"
-                    className="size-20 object-cover transition-transform duration-300 group-hover:scale-105 sm:size-24"
-                  />
-                </span>
-                <span className="text-xs font-medium sm:text-sm">{category.label}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section aria-labelledby="nearby-title">
-          <div className="text-center">
-            <h2 id="nearby-title" className="text-2xl font-bold sm:text-3xl">
+              </span>
+              <span className="text-center text-xs font-medium">{category.label}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+      <section aria-labelledby="nearby-title">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 id="nearby-title" className="text-xl font-bold sm:text-2xl">
               Pilihan bagus di dekatmu
             </h2>
-            <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
-              Rescue Item aktif yang bisa direservasi dan diambil langsung hari ini.
+            <p className="mt-1 text-sm text-muted-foreground">
+              Rescue Item aktif yang bisa direservasi dan diambil hari ini.
             </p>
           </div>
-          <nav
-            aria-label="Filter cepat Rescue Item"
-            className="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:justify-center sm:px-0"
-          >
-            {discoveryFilters.map((filter, index) => (
-              <Link
-                key={filter.label}
-                to={filter.href}
-                className={`inline-flex min-h-10 shrink-0 items-center rounded-full border px-4 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  index === 0
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "bg-card text-card-foreground hover:border-primary/40 hover:bg-accent"
-                }`}
-              >
-                {filter.label}
-              </Link>
-            ))}
-          </nav>
-          <div className="mt-5">
-            <QueryErrorBoundary title="Rescue Item di dekatmu tidak dapat dimuat">
-              <NearbyRescueItems />
-            </QueryErrorBoundary>
-          </div>
-          <div className="mt-6 text-center">
-            <Button asChild variant="secondary">
-              <Link to="/discover">
-                Lihat semua Rescue Item <ArrowRight aria-hidden="true" />
-              </Link>
-            </Button>
-          </div>
-        </section>
+          <Button asChild variant="ghost" className="shrink-0">
+            <Link to="/explore">
+              Lihat semua <ArrowRight aria-hidden="true" />
+            </Link>
+          </Button>
+        </div>
+        <div className="mt-4">
+          <QueryErrorBoundary title="Rescue Item di dekatmu tidak dapat dimuat">
+            <NearbyRescueItems />
+          </QueryErrorBoundary>
+        </div>
+      </section>
 
-        <aside
-          className="grid gap-5 border-y py-7 text-sm sm:grid-cols-2"
-          aria-label="Tentang pickup Cirquo"
-        >
-          <p className="flex items-start gap-3">
-            <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
-            <span>
-              <strong className="block">Pickup langsung di lokasi</strong>
-              <span className="text-muted-foreground">
-                Cirquo tidak menyediakan layanan pengantaran.
+      <section aria-labelledby="merchant-title">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 id="merchant-title" className="text-xl font-bold sm:text-2xl">
+              Mitra Usaha terdekat
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Tempat pickup yang sedang punya surplus, diurutkan dari yang
+              terdekat.
+            </p>
+          </div>
+          <Button asChild variant="ghost" className="shrink-0">
+            <Link to="/explore">
+              <Store aria-hidden="true" /> Lihat di peta
+            </Link>
+          </Button>
+        </div>
+        <div className="mt-4">
+          <QueryErrorBoundary title="Daftar Mitra Usaha tidak dapat dimuat">
+            <NearbyMerchants />
+          </QueryErrorBoundary>
+        </div>
+      </section>
+      <section
+        aria-labelledby="how-title"
+        className="rounded-xl border bg-leaf-50 p-5 sm:p-7 dark:bg-card"
+      >
+        <h2 id="how-title" className="text-xl font-bold sm:text-2xl">
+          Kenapa lewat Cirquo?
+        </h2>
+        <div className="mt-5 grid gap-5 sm:grid-cols-3">
+          {HOW_IT_WORKS.map(({ icon: Icon, title, body }) => (
+            <div key={title}>
+              <span className="grid size-10 place-items-center rounded-lg bg-leaf-100 text-leaf-700 dark:bg-leaf-900 dark:text-leaf-200">
+                <Icon className="size-5" strokeWidth={1.8} aria-hidden="true" />
               </span>
-            </span>
-          </p>
-          <p className="flex items-start gap-3">
-            <Recycle className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
-            <span>
-              <strong className="block">Aliran material tetap tercatat</strong>
-              <span className="text-muted-foreground">
-                Surplus yang tidak terambil dapat masuk Circular Routing.
-              </span>
-            </span>
-          </p>
-        </aside>
-      </div>
+              <h3 className="mt-3 font-semibold">{title}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                {body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
