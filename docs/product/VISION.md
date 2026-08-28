@@ -2,7 +2,11 @@
 
 **Platform:** Circular Food Recovery Platform  
 **Mission:** Close the loop on food waste through material flow orchestration  
-**Last updated:** 2026-08-06
+**Last updated:** 2026-08-29
+
+> This vision describes the intended platform. Current source availability and
+> future milestone work are recorded in
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 

@@ -1,11 +1,16 @@
 # Algorithms — Cirquo
 
 **Document type:** Technical specification  
-**Status:** Draft v1.0  
-**Last updated:** 2026-08-06  
-**Implementation status:** 📋 Not yet built
+**Status:** Algorithm contract — pricing/discovery subset implemented
+**Last updated:** 2026-08-29
+**Implementation status:** ✅ Dynamic Rescue Pricing, Haversine distance, and discovery ranking/filtering; 📋 routing and impact aggregation
 
 > Five algorithms drive Cirquo's behaviour. All are **deliberately rule-based and explainable**. None is machine learning. This is a design decision, not a limitation — see §7.
+
+> The current source implements Dynamic Rescue Pricing, Haversine distance, and
+> discovery ranking/filtering. Circular Routing and ledger-impact aggregation
+> remain target work; see
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 | Algorithm | Purpose | Priority |
 |---|---|---|

@@ -3,8 +3,8 @@
 | Field | Value |
 | --- | --- |
 | **Document Type** | Architecture Specification |
-| **Status** | Draft v1.0 |
-| **Last Updated** | 2026-08-06 |
+| **Status** | Target realtime architecture with implemented M1–M3 subset |
+| **Last Updated** | 2026-08-29 |
 | **Owner** | Backend Engineering |
 | **Platform** | Convex 1.43 reactive queries |
 | **Audience** | Engineers, reviewers, DSDC ANFORCOM 2026 judges |
@@ -19,9 +19,12 @@ Realtime is not decoration in this product. It is the mechanism by which two peo
 
 This document specifies how Convex reactivity works, every realtime surface in the product, how subscriptions are scoped, when optimistic updates are safe and when they are actively dangerous, offline and reconnection behaviour, the demo-critical moment, failure modes, and load projections.
 
-**Current state — 2026-08-27.** Auth, Merchant Rescue Item, Consumer discovery,
-and order pages use reactive Convex queries. Some dashboards and later-role
-flows still use placeholder UI. Everything below marked 📋 is specification.
+**Current state — 2026-08-29.** Auth, Merchant Rescue Item, Consumer discovery,
+and owned order pages use reactive Convex queries. A verified Midtrans payment
+or payment-hold expiry re-runs the Consumer order query without polling. M4
+pickup confirmation and later-role flows remain target work. Everything below
+marked 📋 is specification; see
+[IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 
@@ -105,10 +108,10 @@ Every reactive surface in the product, with its query, subscribers, invalidation
 
 | # | Surface | Query | Subscribers | Invalidated by | Latency | UX treatment | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | **Order status flips to `picked_up`** | `orders.getMine(orderId)` | The one consumer | `orders.confirmPickup` (merchant) | < 500 ms | Card morphs to a green "Rescued" state, `RescueItemCard` shows rescued weight, confetti-free success toast | 📋 |
-| 2 | **Order status flips to `paid`** | `orders.getMine(orderId)` | The one consumer | `payments.recordSettlement` (webhook) | < 1 s after Midtrans callback | Pickup code and QR revealed; hold countdown replaced by pickup window countdown | 📋 |
-| 3 | **Merchant incoming reservations** | `orders.listForMerchant({status:"reserved"\|"paid"})` | Staff devices for one merchant | `orders.reserve`, `recordSettlement`, `sweepExpiredHolds` | < 500 ms | Row slides into the table, subtle highlight for 3 s, unread count on the nav item | 📋 |
-| 4 | **Live remaining quantity on a listing** | `surplusItems.get(itemId)` | Everyone viewing that item | `orders.reserve` by anyone, `sweepExpiredHolds` restoring stock | < 500 ms | "3 tersisa" → "2 tersisa"; at 0 the Reserve button becomes a disabled "Habis diamankan" | 📋 |
+| 1 | **Order status flips to `picked_up`** | `orders.get(orderId)` | The owning Consumer | `orders.confirmPickup` (merchant) | < 500 ms | Card morphs to a green "Rescued" state, `RescueItemCard` shows rescued weight, confetti-free success toast | 📋 M4 |
+| 2 | **Order status flips to `paid`** | `orders.get(orderId)` | The owning Consumer | Verified Midtrans webhook | < 1 s after Midtrans callback | Manual pickup code revealed; hold countdown replaced by pickup window information | 🧪 |
+| 3 | **Merchant incoming reservations** | `orders.listForMerchant({status:"reserved"\|"paid"})` | Staff devices for one merchant | `orders.reserve`, verified settlement, `expireHold` | < 500 ms | Row slides into the table, subtle highlight for 3 s, unread count on the nav item | 📋 M4 |
+| 4 | **Live remaining quantity on a listing** | `discovery.getListing(itemId)` | Everyone viewing that item | `orders.reserve` by anyone, `expireHold` restoring stock | < 500 ms | "3 tersisa" → "2 tersisa"; at 0 the Reserve button becomes a disabled "Habis diamankan" | 🧪 M3 |
 | 5 | **Live price after a PRICE_ADJUSTED tick** | `surplusItems.get(itemId)` / `listNearby` | Everyone viewing that item or the Explore list | `surplusItems.applyPriceTick` cron (every 15 min) | < 1 s of the tick | New price cross-fades in, old price struck through, discount badge updates; `aria-live="polite"` announces it | 📋 |
 | 6 | **Processor routed-batch queue** | `recoveryBatches.listForProcessor({status:"offered"})` | One processor's devices | `recoveryBatches.runRouting` cron (every 10 min), `sweepOfferTtl` | < 1 s of the routing tick | New offer card appears with a 6-hour TTL countdown bar; badge on the nav item | 📋 |
 | 7 | **Batch accepted by another processor** | `recoveryBatches.get(batchId)` | Any processor with the detail open | `recoveryBatches.accept` | < 500 ms | Accept button disables, card shows "Sudah diambil fasilitas lain" | 📋 |
@@ -202,7 +205,7 @@ Rounding coordinates to five decimal places (~1.1 m) is deliberate: a phone's GP
 **Skipping a query.** Pass `"skip"` rather than mounting conditionally, so hook order stays stable:
 
 ```tsx
-const order = useQuery(api.orders.getMine, orderId ? { orderId } : "skip");
+const order = useQuery(api.orders.get, orderId ? { orderId } : "skip");
 ```
 
 ---
@@ -409,10 +412,10 @@ sequenceDiagram
   M->>CX: orders.confirmPickup({ orderId, pickupCode })
   Note over CX: ONE transaction
   CX->>CX: patch order → picked_up, pickedUpAt
-  CX->>L: recordLedgerEvent(RESCUED, +rescuedWeightGrams)
+  CX->>L: recordLedgerEvent(RESCUED, -rescuedWeightGrams)
   CX->>CX: insert notification for the consumer
   Note over CX: commit — write set computed
-  CX-->>P: orders.getMine invalidated → push
+  CX-->>P: orders.get invalidated → push
   CX-->>I: impact.platformSummary invalidated → push
   CX-->>M: orders.listForMerchant invalidated → push
   P->>P: card animates to Rescued
@@ -483,7 +486,7 @@ One mutation. Three devices update. No client code ran to make it happen.
 | 6 | Subscription storm (unscoped query shipped) | Latency spikes, cost spike | Convex dashboard function-call graph | Hotfix the query to use an index; the scoping rules in section 4 exist to prevent this |
 | 7 | Stale render after resume | Old values shown as current | App-state listener | "Menyinkronkan…" indicator until the first post-resume result arrives |
 | 8 | Mutation succeeds, socket drops before the push | User does not see their own change | Reconnect | On reconnect all subscriptions re-execute; the change appears. The write already committed — nothing is lost. |
-| 9 | Midtrans webhook delayed | Order stays `reserved` while the consumer has paid | Consumer sees the hold countdown continue | Checkout screen shows "Menunggu konfirmasi pembayaran…" with a manual "Cek status" that calls a status-refresh action; the hold sweep is the safety net |
+| 9 | Midtrans webhook delayed | Order stays `reserved` while the Consumer has paid | Consumer sees the hold countdown continue | Checkout screen shows "Menunggu konfirmasi pembayaran…"; the server-side M3 hold timer is the safety net |
 
 ### 9.1 The Timeout Pattern
 

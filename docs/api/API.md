@@ -13,8 +13,8 @@
 | **Payments** | Midtrans Snap — Sandbox |
 | **Maps** | Mapbox GL JS (client-side rendering only; no server geo index) |
 | **Units** | Weight = integer **grams** · Money = integer **IDR** · Time = integer **epoch milliseconds UTC** |
-| **Methodology version** | `v1` (stamped on every ledger event) |
-| **Status legend** | ✅ implemented in `convex/` today · 📋 planned |
+| **Methodology version** | `impact-v1` (stamped on every ledger event) |
+| **Status legend** | ✅ source available · 🧪 UAT required · 📋 planned |
 | **Audience** | Backend engineers, frontend engineers, judges auditing the material chain |
 
 ---
@@ -42,6 +42,10 @@ Per-role function documentation lives in five sibling files:
 | [`API_MERCHANT.md`](./API_MERCHANT.md) | Rescue Item lifecycle, Dynamic Rescue Pricing, pickup confirmation, no-shows |
 | [`API_PROCESSOR.md`](./API_PROCESSOR.md) | Circular Routing queue, accept/decline, measured intake, processed outcome |
 | [`API_ADMIN.md`](./API_ADMIN.md) | Verification, moderation, ledger audit, disputes, integrity checks, system health |
+
+> **Source boundary — 2026-08-29.** M1–M3 exports are implemented in source;
+> Midtrans requires Sandbox UAT. Sections labelled 📋 are target contracts for
+> later milestones. See [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 
@@ -125,7 +129,7 @@ Honesty about trade-offs, since a judge will ask:
 |---|---|---|
 | **No geospatial index.** Convex has no `GEO` index or `ST_DWithin`. | `discovery.listNearby` cannot push distance filtering into the database. | Fetch `active` items via the `by_status` index, then filter with Haversine in application code, bounded by city. Documented explicitly in [`API_CONSUMER.md`](./API_CONSUMER.md). Acceptable at hackathon and early-city scale (hundreds of active items); a real geohash prefix column is the migration path. |
 | **No SQL joins.** | Listing a consumer's orders with merchant names requires N follow-up `ctx.db.get` calls. | Convex document reads by `Id` are point lookups and cheap; we batch with `Promise.all` and keep fan-out bounded by page size. |
-| **Actions cannot write.** | Midtrans flows need an extra hop. | `payments.createTransaction` (action) → Midtrans → `internal.payments.recordSnapToken` (mutation). Explicit and auditable. |
+| **Actions cannot write.** | Midtrans flows need an extra hop. | `payments.createTransaction` (action) → Midtrans → `internal.payments.savePendingTransaction` (mutation). Explicit and auditable. |
 | **Vendor coupling.** | Migrating off Convex means rewriting the function layer. | The domain rules live in pure helpers (`recordLedgerEvent`, `requireRole`, routing eligibility predicates) that take `ctx` as a parameter and are portable. |
 | **No native cursor SQL.** | Pagination is Convex-flavoured. | We use `paginationOptsValidator` on list queries; see §8. |
 
@@ -137,8 +141,8 @@ For readers whose mental model is HTTP. **These routes do not exist.** The table
 
 | If you expected… | Cirquo actually uses | Kind | Notes |
 |---|---|---|---|
-| `POST /api/auth/register` | `auth.register` | mutation | Role chosen at registration; `admin` rejected |
-| `POST /api/auth/login` | `auth.login` | mutation | Returns session token; rate limited |
+| `POST /api/auth/register` | `auth.register` | action | Role chosen at registration; `admin` rejected |
+| `POST /api/auth/login` | `auth.login` | action | Returns session token; rate limited |
 | `POST /api/auth/logout` | `auth.logout` | mutation | Deletes the `sessions` row |
 | `GET /api/me` | `auth.getCurrentUser` | query | Reactive — reflects suspension instantly |
 | `GET /api/listings?lat=&lng=` | `discovery.listNearby` | query | Haversine in app code, not a geo index |
@@ -149,8 +153,8 @@ For readers whose mental model is HTTP. **These routes do not exist.** The table
 | `POST /api/orders` | `orders.reserve` | mutation | Decrements quantity **at reservation** |
 | `GET /api/orders` | `orders.listMine` | query | Auto-updating; no polling |
 | `POST /api/orders/:id/pay` | `payments.createTransaction` | **action** | Must be an action — calls Midtrans |
-| `POST /api/orders/:id/pickup` | `orders.confirmPickup` | mutation | Merchant-side; verifies pickup code + window |
-| `DELETE /api/orders/:id` | `orders.cancel` | mutation | Status transition, not deletion |
+| `POST /api/orders/:id/pickup` | `orders.confirmPickup` | mutation | 📋 M4: Merchant-side; verifies pickup code + window |
+| `DELETE /api/orders/:id` | `orders.cancel` | mutation | 📋 Target status transition, not deletion |
 | `GET /api/recovery-batches` | `recoveryBatches.listQueue` | query | Processor-scoped, eligibility-filtered |
 | `POST /api/recovery-batches/:id/accept` | `recoveryBatches.accept` | mutation | Capacity + eligibility re-checked server-side |
 | `POST /api/recovery-batches/:id/intake` | `recoveryBatches.logIntake` | mutation | **Measured** weight, processor only |
@@ -169,7 +173,7 @@ Only the Midtrans webhook row describes an address you can actually `curl`.
 
 Status: ✅ = exists in `convex/` today · 📋 = specified, not yet implemented.
 
-The table below is checked against `convex/` as of 2026-08-27. Function
+The table below is checked against `convex/` as of 2026-08-29. Function
 sections in the role documents marked 📋 remain target contracts; do not call
 them until the matching export exists in source.
 
@@ -202,7 +206,7 @@ them until the matching export exists in source.
 | `orders.reserve` | mutation | Consumer | ✅ |
 | `payments.createTransaction` | **action** | Consumer (owner) | ✅ |
 | `orders.listMine` | query | Consumer | ✅ |
-| `orders.listByUser` | query | Consumer | ✅ |
+| `orders.listByUser` | internalQuery | Internal only | ✅ |
 | `orders.get` | query | Consumer (owner) | ✅ |
 | `orders.cancel` | mutation | Consumer (owner) | 📋 |
 | `orders.getPickupCode` | query | Consumer (owner) | 📋 |
@@ -280,10 +284,10 @@ them until the matching export exists in source.
 | `internal.routing.findEligibleProcessors` | internalQuery | Called by routing engine | 📋 |
 | `internal.routing.offerBatch` | internalMutation | Cron / cascade | 📋 |
 | `internal.routing.expireOffers` | internalMutation | Cron, every 15 min | 📋 |
-| `internal.orders.expireUnpaidHolds` | internalMutation | Cron, every minute | 📋 |
+| `internal.orders.expireHold` | internalMutation | Per-reservation `runAt` timer | ✅ |
 | `internal.surplusItems.expireListings` | internalMutation | Cron, every 5 min | 📋 |
-| `internal.payments.recordSnapToken` | internalMutation | From `payments.createTransaction` | 📋 |
-| `internal.payments.applyWebhook` | internalMutation | From the Midtrans `httpAction` | 📋 |
+| `internal.payments.savePendingTransaction` | internalMutation | From `payments.createTransaction` | ✅ |
+| `POST /midtrans/webhook` | `httpAction` | Midtrans Sandbox callback | 🧪 |
 | `internal.impact.snapshotDaily` | internalMutation | Cron, daily 00:05 WIB | 📋 |
 | `internal.notifications.push` | internalMutation | Called by many mutations | 📋 |
 
@@ -998,7 +1002,7 @@ sequenceDiagram
     end
 
     M->>N: internal push -> Merchant "New reservation"
-    M->>S: scheduler.runAt(paymentHoldExpiresAt,<br/>internal.orders.expireUnpaidHolds, { orderId })
+    M->>S: scheduler.runAt(paymentHoldExpiresAt,<br/>internal.orders.expireHold, { orderId })
     Note over M,DB: Transaction COMMIT — all writes atomic
     deactivate M
 
@@ -1011,7 +1015,7 @@ sequenceDiagram
         CX-->>MER: surplusItems.listMine invalidated -> pushed
     end
 
-    Note over C,S: If unpaid at holdExpiresAt, the cron restores<br/>quantity, sets order 'expired',<br/>and writes an EXPIRED ledger event.
+    Note over C,S: If unpaid at holdExpiresAt, the timer restores<br/>quantity, sets order 'expired',<br/>and writes CANCELLED (0 g), reason PAYMENT_HOLD_EXPIRED.
 ```
 
 The critical property the diagram encodes: the ledger write is **inside** the transaction boundary. There is no reachable state in which inventory moved and the ledger did not record it, or vice versa.

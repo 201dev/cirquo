@@ -4,8 +4,8 @@
 | --- | --- |
 | **Document type** | API Reference (Admin role) |
 | **Backend** | Convex (`query` / `mutation` / `action`, not REST) |
-| **Status** | Draft v1.1 |
-| **Last updated** | 2026-08-27 |
+| **Status** | Target contract — M7 |
+| **Last updated** | 2026-08-29 |
 | **Audience** | Backend engineers, platform operators, DSDC judges auditing the Material Flow Ledger |
 
 This document specifies every Convex function available to an **Admin** account. The admin surface has three jobs, in order of importance:
@@ -47,6 +47,9 @@ The codebase now contains authentication, ledger, Merchant, and Consumer
 functions. Admin-specific functions in this document remain **📋 planned**;
 this page is a target contract rather than a description of deployed Admin
 functionality.
+
+See [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md) for the
+verified implementation boundary.
 
 ---
 

@@ -2,8 +2,12 @@
 
 **Document type:** Risk management  
 **Status:** Draft v1.0  
-**Last updated:** 2026-08-08  
+**Last updated:** 2026-08-29
 **Review cadence:** Weekly during Phase 1, monthly thereafter
+
+> **Implementation boundary:** assess feature availability against
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md), not this
+> forward-looking risk register.
 
 ---
 

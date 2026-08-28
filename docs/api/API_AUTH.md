@@ -13,10 +13,12 @@
 
 ---
 
-> **Current implementation — 2026-08-27.** The exported functions below are
+> **Current implementation — 2026-08-29.** The exported functions below are
 > the current MVP contract. Sections marked 📋 later in this document describe
 > the target hardening contract and can be broader than the code currently
 > deployed.
+> See [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md) for the
+> cross-milestone source boundary.
 
 ## Current MVP function reference
 

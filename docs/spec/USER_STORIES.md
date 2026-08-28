@@ -3,11 +3,14 @@
 | Field | Value |
 |---|---|
 | **Document type** | Specification — Agile User Stories |
-| **Status** | Draft v1.0 |
-| **Last updated** | 2026-08-08 |
+| **Status** | Target stories with implemented M1–M3 subset |
+| **Last updated** | 2026-08-29 |
 | **Owner** | Product & Engineering |
 | **Audience** | Developers, judges, stakeholders |
 | **Related PRD** | [../product/PRD.md](../product/PRD.md) |
+
+> Story text specifies the target MVP. For source-level completion and UAT
+> boundaries, see [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 
@@ -295,7 +298,8 @@ Code uniqueness is enforced server-side. Only the paying Consumer and the owning
 **INVEST check** — **I:** independent given seeded orders. **N:** grouping presentation is free. **V:** prevents missed collections. **E:** one reactive query plus grouping. **S:** one route. **T:** transitions observable.
 
 **Notes**
-The `/orders` route exists today as a placeholder using mock data; this story replaces the mock with a live query.
+`/orders` now uses a Consumer-owned reactive query. M3 UAT must still verify
+payment, expiry, and the M4 pickup transition end-to-end.
 
 ---
 
@@ -504,7 +508,7 @@ Already-paid orders are never repriced. `totalPrice` is frozen at reservation.
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Listing | M | 3 | MER-03 | 📋 |
+| Listing | M | 3 | MER-03 | ✅ Source available; UAT pending |
 
 **Acceptance criteria**
 - **Given** I have items, **when** I open `/merchant/surplus`, **then** they are listed with status badge, remaining/initial quantity, current price, and window countdown.
@@ -515,7 +519,8 @@ Already-paid orders are never repriced. `totalPrice` is frozen at reservation.
 **INVEST check** — **I:** read-only over own data. **N:** table shape free. **V:** operational awareness. **E:** one query plus a table. **S:** one route. **T:** scoping to own merchant is assertable.
 
 **Notes**
-The route exists with mock data today; this story swaps in a live scoped query.
+`/merchant/surplus` now uses the Merchant-scoped reactive
+`surplusItems.listMine` query. End-to-end Merchant UAT remains required.
 
 ---
 
@@ -1090,7 +1095,7 @@ No-op suppression keeps the ledger readable. A ledger full of identical price ev
 
 ---
 
-#### US-S-02 — Payment hold sweeper
+#### US-S-02 — Payment-hold timer
 > **As the** System, **I want** to expire unpaid reservations after 15 minutes, **so that** held stock returns to the marketplace.
 
 | Epic | Priority | Points | PRD ref | Status |
@@ -1098,10 +1103,10 @@ No-op suppression keeps the ledger readable. A ledger full of identical price ev
 | Transaction | M | 3 | PAY-03 | 📋 |
 
 **Acceptance criteria**
-- **Given** an order is `reserved` with `paymentHoldExpiresAt` in the past, **when** the sweeper runs, **then** the order becomes `expired`, quantity is returned, and an `EXPIRED` event is recorded.
+- **Given** an order is `reserved` with `paymentHoldExpiresAt` in the past, **when** its scheduled timer runs, **then** the order becomes `expired`, quantity is returned, and a zero-delta `CANCELLED` event is recorded with reason `PAYMENT_HOLD_EXPIRED`.
 - **Given** the item was `sold_out` due to that hold, **when** quantity returns, **then** the item becomes `active` again if its window is still open.
 - **Given** an order settled moments before the sweep, **when** the sweeper evaluates it, **then** the `paid` order is left untouched.
-- **Given** the sweeper runs twice on the same order, **when** the second run executes, **then** no duplicate `EXPIRED` event is written.
+- **Given** the sweeper runs twice on the same order, **when** the second run executes, **then** no duplicate `CANCELLED` event is written.
 
 **INVEST check** — **I:** one job. **N:** interval negotiable. **V:** without it, abandoned carts permanently destroy supply. **E:** small. **S:** one function. **T:** the race with settlement is testable.
 
@@ -1275,7 +1280,7 @@ The immovable floor beneath every cut: the ledger (M1), Circular Routing (M4), a
 
 Cutting the full ladder recovers 25 points, bringing the total to 172 and the two-developer timeline to roughly 22 days — inside the deadline with a small margin.
 
-**What must never be cut.** The Material Flow Ledger, the Circular Routing engine, processor intake and outcome logging, and the payment hold sweeper. Remove any one of these and Cirquo stops being a circular food recovery platform and becomes a discount food listing app. Every other line item is negotiable; these four are the product.
+**What must never be cut.** The Material Flow Ledger, the Circular Routing engine, processor intake and outcome logging, and the server-side payment-hold timer. Remove any one of these and Cirquo stops being a circular food recovery platform and becomes a discount food listing app. Every other line item is negotiable; these four are the product.
 
 **Risk flags carried into planning**
 

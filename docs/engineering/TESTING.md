@@ -3,8 +3,8 @@
 | Field | Value |
 | --- | --- |
 | **Document Type** | Engineering Strategy |
-| **Status** | Draft v1.0 |
-| **Last Updated** | 2026-08-06 |
+| **Status** | Active testing strategy — M1–M3 checks available, UAT pending |
+| **Last Updated** | 2026-08-29 |
 | **Owner** | Cirquo Engineering |
 | **Scope** | Unit, integration, E2E, manual, and integrity testing |
 
@@ -12,12 +12,15 @@
 
 ## 1. Honest Opening
 
-**There are no automated tests in this repository today. Zero. No Vitest, no
-Playwright, no `convex-test`, no test file of any kind.**
+**Automated checks exist, but they are not a substitute for UAT.** The current
+suite includes Bun tests for pure/client logic and Vitest + `convex-test` checks
+for Merchant, reservation, and Midtrans invariants. Run `bun run test` for the
+maintained suite, then run `bun scripts/check-ledger.ts` against UAT data before
+making a ledger-integrity claim.
 
-That is a fact, not an aspiration deferred. Any claim that Cirquo is "tested" at
-the time of writing would be false, and this document exists partly so that no
-one — teammate, reviewer, or judge — is misled about it.
+M3 still requires a real Midtrans Sandbox webhook and 375px/mobile walkthrough.
+The source-level boundary is maintained in
+[IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ### 1.1 The deliberate trade-off
 
@@ -464,9 +467,9 @@ const T = 1_770_000_000_000;
  */
 const FULL_LIFECYCLE = [
   { itemId: 'i1', event: 'LISTED',           weightDeltaGrams:  10_000, occurredAt: T +   0 },
-  { itemId: 'i1', event: 'RESERVED',         weightDeltaGrams:  -6_000, occurredAt: T +  10 },
+  { itemId: 'i1', event: 'RESERVED',         weightDeltaGrams:       0, occurredAt: T +  10 },
   { itemId: 'i1', event: 'PAID',             weightDeltaGrams:       0, occurredAt: T +  20 },
-  { itemId: 'i1', event: 'RESCUED',          weightDeltaGrams:       0, occurredAt: T +  30, rescuedWeightGrams: 6_000 },
+  { itemId: 'i1', event: 'RESCUED',          weightDeltaGrams:  -6_000, occurredAt: T +  30, rescuedWeightGrams: 6_000 },
   { itemId: 'i1', event: 'EXPIRED',          weightDeltaGrams:  -4_000, occurredAt: T +  40 },
   { itemId: 'i1', event: 'ROUTED',           weightDeltaGrams:       0, occurredAt: T +  50 },
   { itemId: 'i1', event: 'INTAKE_ACCEPTED',  weightDeltaGrams:       0, occurredAt: T +  60, intakeWeightGrams: 4_000 },
@@ -641,7 +644,7 @@ describe('weight conservation', () => {
     const entries = [
       { itemId: 'i1', event: 'LISTED',          weightDeltaGrams:  10_000, occurredAt: T +  0 },
       { itemId: 'i1', event: 'RESERVED',        weightDeltaGrams:  -6_000, occurredAt: T + 10 },
-      { itemId: 'i1', event: 'RESCUED',         weightDeltaGrams:       0, occurredAt: T + 20 },
+      { itemId: 'i1', event: 'RESCUED',         weightDeltaGrams:  -1_000, occurredAt: T + 20 },
       { itemId: 'i1', event: 'EXPIRED',         weightDeltaGrams:  -4_000, occurredAt: T + 30 },
       { itemId: 'i1', event: 'INTAKE_ACCEPTED', weightDeltaGrams:       0, occurredAt: T + 40 },
       { itemId: 'i1', event: 'PROCESSED',       weightDeltaGrams:       0, occurredAt: T + 50 },

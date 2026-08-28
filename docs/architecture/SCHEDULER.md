@@ -3,8 +3,8 @@
 | Field | Value |
 | --- | --- |
 | **Document Type** | Architecture Specification |
-| **Status** | Draft v1.0 |
-| **Last Updated** | 2026-08-06 |
+| **Status** | Target scheduler architecture with implemented M3 hold timer |
+| **Last Updated** | 2026-08-29 |
 | **Owner** | Backend Engineering |
 | **Platform** | Convex 1.43 `crons` + `ctx.scheduler` |
 | **Audience** | Engineers, reviewers, DSDC ANFORCOM 2026 judges |
@@ -19,9 +19,11 @@ Scheduled jobs are what make the platform's central promise true: **every kilogr
 
 This document specifies every job, its schedule, its idempotency guarantee, its ledger emissions, its failure behaviour, and the ordering dependencies between jobs.
 
-**Current state — 2026-08-27.** `convex/crons.ts` does not exist and there are
-no recurring sweeps. `orders.reserve` does use `ctx.scheduler.runAfter` for the
-15-minute reservation hold. Everything below marked 📋 is specification.
+**Current state — 2026-08-29.** `convex/crons.ts` does not exist and there are
+no recurring sweeps. `orders.reserve` uses `ctx.scheduler.runAt` for one
+payment-hold expiry per reservation; `orders.expireHold` is idempotent and
+writes zero-delta `CANCELLED` when it expires a hold. Everything below marked 📋
+is target specification.
 
 ---
 
@@ -45,7 +47,6 @@ import { internal } from "./_generated/api";
 const crons = cronJobs();
 
 crons.interval("price tick",           { minutes: 15 }, internal.surplusItems.applyPriceTick, {});
-crons.interval("payment hold sweep",   { minutes: 1  }, internal.orders.sweepExpiredHolds, {});
 crons.interval("pickup window sweep",  { minutes: 5  }, internal.surplusItems.sweepPickupWindow, {});
 crons.interval("circular routing",     { minutes: 10 }, internal.recoveryBatches.runRouting, {});
 crons.interval("offer ttl sweep",      { minutes: 15 }, internal.recoveryBatches.sweepOfferTtl, {});
@@ -65,7 +66,7 @@ export default crons;
 
 | Rule | Reason |
 | --- | --- |
-| Every handler is an `internalMutation` (or `internalAction`) | Cron handlers must not be client-callable. A public `sweepExpiredHolds` would let anyone cancel other people's reservations. |
+| Every handler is an `internalMutation` (or `internalAction`) | Cron handlers must not be client-callable. The M3 `expireHold` timer is likewise internal, so nobody can expire another Consumer's reservation. |
 | Every handler is transactional | A sweep that patches an order *and* writes a `CANCELLED` event must do both or neither. |
 | Every handler is bounded with `.take(n)` | Convex mutations have a duration budget; the next tick handles the remainder. |
 | Every handler is idempotent | Overlap, replay, and manual triggers must all be safe. |
@@ -73,22 +74,23 @@ export default crons;
 | Handlers return a result object | `{ scanned, changed }` is the observability surface in the Convex log. |
 | No handler calls an external API | Mutations cannot `fetch`. If one ever needs to, it becomes a cron → `internalAction` → `internalMutation` chain. |
 
-### 2.4 Why Crons Rather Than Per-Document Timers
+### 2.4 Per-document timers for M3; crons for M4 onward
 
-`ctx.scheduler.runAt(order.paymentHoldExpiresAt, …)` at reservation time is superficially attractive — one timer per order, no polling.
-
-We use crons instead:
+M3 uses an absolute per-order `runAt` timer: the hold is created
+with the reservation and its `status === 'reserved'` guard makes replay safe.
+M4 onward uses recurring crons for global work that must run without a preceding
+order, such as Rescue Item expiry, routing, and notifications:
 
 | Concern | Per-document `runAt` | Cron sweep |
 | --- | --- | --- |
-| Scheduled jobs outstanding | One per reserved order (~150/day) | 1 |
+| Scheduled jobs outstanding | One per reserved order | 1 |
 | Cancelling when the user pays early | Must track and cancel the scheduled job | Nothing to cancel — the sweep's query simply does not match |
 | Changing the hold duration | Existing timers keep the old value | Next tick uses the new constant |
 | Recovering from a missed window | The timer is gone forever | The next tick picks it up |
 | Debugging | Inspect N opaque scheduled jobs | Run one function and read its return value |
-| Demo control | Cannot trigger a specific timer early | `bunx convex run orders:sweepExpiredHolds '{}'` |
+| Demo control | Create a near-expiry test reservation, then observe the scheduled transition | Run the relevant global M4 handler and read its return value |
 
-The cron sweep is stateless with respect to scheduling: **the documents themselves are the queue**. `ctx.scheduler` is reserved for genuinely one-shot follow-ups (see job 8).
+The cron sweep is stateless with respect to scheduling: **the documents themselves are the queue**. That is the right future mechanism for global M4+ jobs; it does not replace the existing M3 hold timer.
 
 ---
 
@@ -97,7 +99,7 @@ The cron sweep is stateless with respect to scheduling: **the documents themselv
 | # | Job | Schedule | Purpose | Function | Idempotency | Failure handling | Ledger events |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Price tick | 15 min | Recompute Dynamic Rescue Pricing | `surplusItems.applyPriceTick` | Emits only when the price actually changes | Next tick retries; no state corruption | `PRICE_ADJUSTED` |
-| 2 | Payment-hold sweep | **1 min** | Expire unpaid reservations, restore stock | `orders.sweepExpiredHolds` | Selects only `reserved` past expiry | Next tick retries within 60 s | `CANCELLED` |
+| 2 | Payment-hold expiry (M3) | Per reservation at `paymentHoldExpiresAt` | Expire unpaid reservation, restore stock | `orders.expireHold` | Guards `status === 'reserved'` and hold time | Replayed timer is a no-op | `CANCELLED` (0 g) |
 | 3 | Pickup-window sweep | 5 min | Expire ended listings; expire uncollected paid orders | `surplusItems.sweepPickupWindow` | Selects only pre-transition statuses | Next tick retries | `EXPIRED`, `CANCELLED` |
 | 4 | Circular Routing engine | 10 min | Match `pending` batches to processors | `recoveryBatches.runRouting` | Selects only `pending` | Batch stays `pending`; retried next tick | `ROUTED` |
 | 5 | Offer TTL sweep | 15 min | Reclaim timed-out offers; mark `unroutable` after 3 attempts | `recoveryBatches.sweepOfferTtl` | Selects only `offered` past TTL | Next tick retries | `INTAKE_DECLINED`, `ROUTING_FAILED` |
@@ -211,117 +213,58 @@ Beyond cost, this is a correctness-of-meaning decision. `PRICE_ADJUSTED` should 
 
 ---
 
-## 5. Job 2 — Payment-Hold Sweep
+## 5. M3 Payment-Hold Timer
 
 ### 5.1 Purpose
 
-Quantity is decremented **at reservation**, so an unpaid reservation holds stock hostage. The 15-minute payment hold bounds that; this sweep enforces the bound and returns the units to the pool.
+Quantity is decremented **at reservation**, so an unpaid reservation holds stock hostage. M3 bounds this with a per-order 15-minute timer created in the same transaction as the reservation. This is already implemented; it is not an M4 cron.
 
 ### 5.2 Registration
 
+`orders.reserve` calls:
+
 ```ts
-crons.interval("payment hold sweep", { minutes: 1 }, internal.orders.sweepExpiredHolds, {});
+await ctx.scheduler.runAt(paymentHoldExpiresAt, internal.orders.expireHold, { orderId });
 ```
 
-**Why every minute.** A held unit is invisible to every other consumer. At a 5-minute cadence, worst-case dead time is 20 minutes; at 1 minute it is 16. On a hot item during the 17:00–20:00 WIB peak those four minutes are the difference between a rescue and an expiry. The cost is 1,440 executions per day of a query that usually returns zero rows — trivially cheap because `by_status_hold_expiry` is a direct range seek.
+No recurring hold sweep is registered in `convex/crons.ts`.
 
 ### 5.3 Handler
 
-```ts
-// convex/orders.ts — 📋 planned
-const HOLD_SWEEP_BATCH = 100;
-
-export const sweepExpiredHolds = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const now = Date.now();
-
-    const stale = await ctx.db
-      .query("orders")
-      .withIndex("by_status_hold_expiry", (q) =>
-        q.eq("status", "reserved").lt("paymentHoldExpiresAt", now))
-      .take(HOLD_SWEEP_BATCH);
-
-    for (const order of stale) {
-      await releaseReservation(ctx, order, now, "payment_hold_expired");
-    }
-
-    return { swept: stale.length };
-  },
-});
-
-/**
- * Shared by the sweep, consumer cancellation, and payment failure.
- * Restores stock, cancels the order, and appends CANCELLED — one transaction.
- */
-export async function releaseReservation(
-  ctx: MutationCtx,
-  order: Doc<"orders">,
-  now: number,
-  reason: string,
-): Promise<void> {
-  if (order.status !== "reserved") return;          // idempotent guard
-
-  const item = await ctx.db.get(order.surplusItemId);
-  if (item) {
-    const restored = item.remainingQuantity + order.quantity;
-    const stillOpen = item.pickupEndAt > now;
-
-    await ctx.db.patch(item._id, {
-      remainingQuantity: restored,
-      status: !stillOpen
-        ? item.status                                  // job 3 will expire it
-        : restored === item.initialQuantity
-          ? "active"
-          : "reserved_partial",
-    });
-  }
-
-  await ctx.db.patch(order._id, { status: "cancelled", cancelledAt: now });
-
-  await recordLedgerEvent(ctx, {
-    surplusItemId: order.surplusItemId,
-    orderId: order._id,
-    eventType: "CANCELLED",
-    weightDeltaGrams: -order.rescuedWeightGrams,     // negative: reverses RESERVED
-    actorRole: "system",
-    metadata: { reason, quantity: order.quantity, restoredToStock: true },
-    occurredAt: now,
-  });
-
-  await ctx.db.insert("notifications", {
-    userId: order.userId,
-    type: "reservation_expired",
-    title: "Reservasi kedaluwarsa",
-    body: "Batas 15 menit pembayaran terlewat. Item dikembalikan ke daftar.",
-    link: "/explore",
-    read: false,
-    createdAt: now,
-  });
-}
-```
+`internal.orders.expireHold({ orderId })` first checks that the order still
+exists, remains `reserved`, and has reached `paymentHoldExpiresAt`. It then
+sets the order to `expired`, restores the exact reserved quantity, and appends
+`CANCELLED` with `weightDeltaGrams: 0` and
+`metadata.reason: PAYMENT_HOLD_EXPIRED` in the same transaction. A paid or
+previously expired order makes the callback a no-op.
 
 ### 5.4 Weight Accounting
 
-`RESERVED` wrote `+rescuedWeightGrams`; `CANCELLED` writes `-rescuedWeightGrams`. The pair sums to zero, so an abandoned reservation contributes nothing to rescued totals while remaining fully visible in the audit trail. We never delete the `RESERVED` row — **the ledger is append-only**, and "this material was claimed and then released" is real history.
+Both `RESERVED` and a payment-hold `CANCELLED` write zero grams. An abandoned
+reservation therefore contributes no material outcome while remaining fully
+visible in the append-only ledger. `RESCUED` is the later M4 pickup event and
+writes `-order.rescuedWeightGrams`.
 
 ### 5.5 The Late-Settlement Race
 
 ```mermaid
 sequenceDiagram
-  participant S as Hold sweep
+  participant S as M3 hold timer
   participant DB as orders
   participant W as Midtrans webhook
 
   Note over DB: order.paymentHoldExpiresAt = T
-  S->>DB: at T+0.4s → status = cancelled, CANCELLED written
+  S->>DB: at T+0.4s → status = expired, CANCELLED (0 g) written
   W->>DB: at T+0.9s → settlement arrives
-  DB->>DB: order.status is "cancelled", not "reserved"
+  DB->>DB: order.status is "expired", not "reserved"
   DB->>DB: payment row recorded; order NOT promoted to paid
-  DB->>DB: refund task queued for admin
+  DB->>DB: order is not promoted to paid
 ```
 
-The consumer is refunded, not given a phantom order. Extending the hold "just in case" would weaken the anti-overselling guarantee, which is worth more than avoiding a rare refund. See [`BACKEND.md`](BACKEND.md#92-midtrans-webhook).
+The verified webhook never promotes a non-`reserved` order to `paid`. Any
+financial remediation is an out-of-scope payment-operations decision, not an
+order-state shortcut. Extending the hold "just in case" would weaken the
+anti-overselling guarantee.
 
 ---
 
@@ -1245,7 +1188,7 @@ Every sweep's selection query is itself the idempotency guard.
 | Job | Selection | Second run finds |
 | --- | --- | --- |
 | 1 Price tick | `status = active` **and** computed price ≠ current | Nothing — the price now equals the computed value |
-| 2 Hold sweep | `status = reserved` and past expiry | Nothing — swept orders are `cancelled` |
+| M3 hold timer | `status = reserved` and hold reached | Nothing — expired orders no longer match |
 | 3 Window sweep | status ∈ {active, reserved_partial, sold_out} past `pickupEndAt` | Nothing — they are `expired`/`recovery_pending`/`closed` |
 | 4 Routing | `status = pending` | Nothing — routed batches are `offered` |
 | 5 TTL sweep | `status = offered` past `offerExpiresAt` | Nothing — they are `pending` or `unroutable` |
@@ -1353,7 +1296,7 @@ The function takes UTC and returns UTC; the WIB offset appears only inside. Call
 | Job | Batch | Rationale |
 | --- | --- | --- |
 | 1 Price tick | 200 items | 4× headroom over 50 active items; one pure function call each |
-| 2 Hold sweep | 100 orders | Usually returns 0–5; 100 covers any conceivable spike |
+| M3 hold timer | One order | One callback checks one reserved order |
 | 3 Window sweep | 100 per status | Heaviest job — creates batches and touches orders |
 | 4 Routing | 50 batches | Each does a candidate scan plus a capacity lookup |
 | 5 TTL sweep | 100 batches | Light: patch plus one ledger event |
@@ -1373,7 +1316,7 @@ If a sweep hits its cap, the remaining rows are simply picked up on the next tic
 
 | Job | Cap | Next attempt | Worst-case delay for the tail |
 | --- | --- | --- | --- |
-| 2 Hold sweep | 100 | 1 min | 1 min per extra 100 orders |
+| M3 hold timer | 1 | No batch backlog; one callback per reservation |
 | 3 Window sweep | 100/status | 5 min | 5 min per extra 100 items |
 | 4 Routing | 50 | 10 min | 10 min per extra 50 batches |
 
@@ -1456,7 +1399,7 @@ Each interval is set to at least 10× the job's expected duration at 10× projec
 
 | Job | Expected duration | Interval | Headroom |
 | --- | --- | --- | --- |
-| 2 Hold sweep | < 100 ms | 60 s | 600× |
+| M3 hold timer | < 100 ms | Scheduled per order | N/A — no interval overlap |
 | 3 Window sweep | < 500 ms | 300 s | 600× |
 | 4 Routing | < 1 s | 600 s | 600× |
 | 1 Price tick | < 300 ms | 900 s | 3000× |
@@ -1481,7 +1424,7 @@ Because sweeps are idempotent and transactional, **a failed run is indistinguish
 | Job | If it fails once | If it fails for an hour | If it fails for a day |
 | --- | --- | --- | --- |
 | 1 Price tick | Prices lag 15 min | Prices lag 1 h; items sell more slowly | Discounts never deepen; more expiries |
-| 2 Hold sweep | Stock held 1 extra min | Up to 60 stale holds block inventory | Contended items effectively unavailable |
+| M3 hold timer | Callback delayed by scheduler | The affected reservation stays reserved until delivery | The status guard still prevents duplicate release |
 | 3 Window sweep | Expiry lags 5 min | Expired listings still visible; consumers hit `PICKUP_WINDOW_CLOSED` on reserve | **No batches created — Circular Routing stops entirely** |
 | 4 Routing | Batch waits 10 min | Batches accumulate `pending` | Material ages; recovery quality drops |
 | 5 TTL sweep | Offer held 15 min | Offers stuck with unresponsive processors | Batches never reach attempt 3; nothing is honestly marked Residual |
@@ -1525,7 +1468,6 @@ Every handler returns a structured result that lands in the Convex function log:
 
 ```ts
 return { scanned: 47, adjusted: 12 };           // price tick
-return { swept: 3 };                            // hold sweep
 return { expiredItems: 8, expiredOrders: 2, batchesCreated: 6 };
 return { scanned: 6, routed: 5, unroutable: 1 };
 return { scanned: 2, returned: 1, unroutable: 1 };
@@ -1536,7 +1478,7 @@ return { scanned: 2, returned: 1, unroutable: 1 };
 | Signal | Healthy | Investigate |
 | --- | --- | --- |
 | `applyPriceTick.adjusted` | 5–30 per tick | `0` for hours during peak — pricing may be stuck at the floor or the cron is dead |
-| `sweepExpiredHolds.swept` | 0–5 per minute | Sustained > 20 — payment flow is failing |
+| M3 timer callback errors | 0 | Any error — a payment hold might remain reserved |
 | `sweepPickupWindow.batchesCreated` | Peaks after 20:00 WIB | `0` for a whole evening — the sweep or `processingOnly` logic is broken |
 | `runRouting.routed / scanned` | > 0.7 | < 0.3 — insufficient processor coverage in that city |
 | `runRouting.unroutable` | Occasional | Rising trend — recruit processors |
@@ -1579,7 +1521,6 @@ Because every handler is a plain `internalMutation`, it can be invoked directly:
 
 ```bash
 bunx convex run surplusItems:applyPriceTick '{}'
-bunx convex run orders:sweepExpiredHolds '{}'
 bunx convex run surplusItems:sweepPickupWindow '{}'
 bunx convex run recoveryBatches:runRouting '{}'
 bunx convex run recoveryBatches:sweepOfferTtl '{}'
@@ -1636,15 +1577,14 @@ Moving `offerExpiresAt` backwards is more honest than faking `Date.now()`: the h
 
 ```ts
 // convex/scheduler.test.ts — 📋 planned
-test("hold sweep restores quantity and writes exactly one CANCELLED", async () => {
+test("expireHold restores quantity and writes exactly one CANCELLED", async () => {
   const t = convexTest(schema);
   const { itemId, orderId } = await seedReservedOrder(t, {
     quantity: 2, weightPerItemGrams: 400, initialQuantity: 5,
   });
 
   await t.mutation(internal.devtools.ageOrderHold, { orderId, minutes: 20 });
-  const result = await t.mutation(internal.orders.sweepExpiredHolds, {});
-  expect(result.swept).toBe(1);
+  await t.mutation(internal.orders.expireHold, { orderId });
 
   const item = await t.run((ctx) => ctx.db.get(itemId));
   expect(item!.remainingQuantity).toBe(5);        // 3 + 2 restored
@@ -1653,17 +1593,16 @@ test("hold sweep restores quantity and writes exactly one CANCELLED", async () =
   const events = await t.query(api.ledger.listByItem, { surplusItemId: itemId });
   const cancelled = events.filter((e) => e.eventType === "CANCELLED");
   expect(cancelled).toHaveLength(1);
-  expect(cancelled[0].weightDeltaGrams).toBe(-800);   // reverses RESERVED
+  expect(cancelled[0].weightDeltaGrams).toBe(0);
 });
 
-test("hold sweep is idempotent", async () => {
+test("expireHold is idempotent", async () => {
   const t = convexTest(schema);
   const { itemId, orderId } = await seedReservedOrder(t, { quantity: 1 });
   await t.mutation(internal.devtools.ageOrderHold, { orderId, minutes: 20 });
 
-  await t.mutation(internal.orders.sweepExpiredHolds, {});
-  const second = await t.mutation(internal.orders.sweepExpiredHolds, {});
-  expect(second.swept).toBe(0);
+  await t.mutation(internal.orders.expireHold, { orderId });
+  await t.mutation(internal.orders.expireHold, { orderId });
 
   const events = await t.query(api.ledger.listByItem, { surplusItemId: itemId });
   expect(events.filter((e) => e.eventType === "CANCELLED")).toHaveLength(1);
@@ -1737,7 +1676,7 @@ Three commands take material from "on sale" to "offered to an Organic Processor"
 flowchart TD
   subgraph consumer["Consumer path"]
     R[orders.reserve<br/>quantity decremented<br/>RESERVED]
-    J2["Job 2 · Payment-hold sweep<br/>every 1 min"]
+    J2["M3 payment-hold timer<br/>per reserved order"]
     P[payments webhook<br/>PAID]
     PU[orders.confirmPickup<br/>RESCUED · terminal]
   end
@@ -1753,7 +1692,7 @@ flowchart TD
     UNR[unroutable<br/>ROUTING_FAILED · terminal<br/>= RESIDUAL]
   end
 
-  R -->|unpaid after 15 min| J2
+  R -->|unpaid at paymentHoldExpiresAt| J2
   J2 -->|CANCELLED, stock restored| R
   R -->|paid| P
   P -->|collected in window| PU
@@ -1783,7 +1722,6 @@ The three bold nodes are the dependency spine: **sweep 3 feeds job 4, which feed
 | Job 3 (5 min) | Job 4 (10 min) | `recoveryBatches` with `status = pending` | ~10 min |
 | Job 4 (10 min) | Job 5 (15 min) | `status = offered` with `offerExpiresAt` | 6 h TTL + ~15 min |
 | Job 5 (15 min) | Job 4 (10 min) | `status = pending`, attempts incremented | ~10 min |
-| Job 2 (1 min) | Job 3 (5 min) | Restored `remainingQuantity` | ~5 min |
 | Jobs 1–8 | Job 10 (daily) | Ledger events | ≤ 24 h |
 | Job 9 (daily) | Job 10 (daily) | `impactSnapshots` row | 30 min (scheduled after) |
 
@@ -1795,9 +1733,8 @@ The intervals are not arbitrary — each is faster than its consumer so work is 
 | --- | --- | --- | --- |
 | 3 → 4 | 5 min | 10 min | A batch always exists before routing runs |
 | 4 → 5 | 10 min | 15 min | An offer is always established before the TTL sweep looks |
-| 2 → 3 | 1 min | 5 min | Stock is restored before expiry classifies unclaimed weight |
 
-If job 3 ran *slower* than job 4, routing ticks would frequently find an empty queue and material would sit longer than necessary. If job 2 ran slower than job 3, expired holds would still be counted as reserved when job 3 computed unclaimed weight — producing an understated `EXPIRED` delta and an understated recovery batch.
+If job 3 ran *slower* than job 4, routing ticks would frequently find an empty queue and material would sit longer than necessary. M3's independent per-order hold timer must not be reimplemented as a job 3 prerequisite; pickup-window expiry classifies only the current item state.
 
 ### 21.4 Job 9 and Job 10 Ordering
 
@@ -1814,7 +1751,7 @@ Jobs 1, 6, 7, and 8 have no producers or consumers. They read existing state and
 | Job | Events emitted | Weight-bearing | Terminal |
 | --- | --- | --- | --- |
 | 1 Price tick | `PRICE_ADJUSTED` | No (`0`) | No |
-| 2 Hold sweep | `CANCELLED` | Yes (negative) | No |
+| M3 hold timer | `CANCELLED` | No (`0`) | No |
 | 3 Window sweep | `EXPIRED`, `CANCELLED` | Yes (negative) | No |
 | 4 Routing | `ROUTED` | No (`0`) | No |
 | 5 TTL sweep | `INTAKE_DECLINED`, `ROUTING_FAILED` | `ROUTING_FAILED` yes | `ROUTING_FAILED` **yes** |

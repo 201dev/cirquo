@@ -7,10 +7,15 @@
 | **Category** | Circular Food Recovery Platform |
 | **Context** | Built for DSDC ANFORCOM 2026 |
 | **Document owner** | Product / Founder |
-| **Status** | Draft v1.0 — living document |
-| **Last updated** | 2026-08-06 |
+| **Status** | Living product requirement — not an implementation tracker |
+| **Last updated** | 2026-08-29 |
 
 > **Note to the AI coding agent:** This document is the source of truth for *what* to build and *why*. It intentionally does not prescribe database schemas, API contracts, or component-level architecture — those belong in dedicated follow-up documents (`DATABASE.md`, `API.md`, `ARCHITECTURE.md`, `ALGORITHM.md`, `DESIGN.md`, etc.) that can be generated next using this PRD as their source. When a requirement here is ambiguous, prefer the interpretation that best serves the circular-economy mission described in Section 1, and flag the assumption you made rather than silently guessing.
+
+> **Implementation status.** Requirements in this PRD are target scope, not
+> proof of shipped functionality. M1–M3 source exists with M3 UAT pending;
+> M4–M8 remain planned. See
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 
@@ -152,7 +157,7 @@ Priority uses MoSCoW: **M**ust have, **S**hould have, **C**ould have, **W**on't 
 | MER-01 | Merchant can create a Rescue Item listing with: title, description, category, original price, quantity, weight/unit estimate, expiry/pickup window, photo | M |
 | MER-02 | Platform suggests a discounted price via Dynamic Rescue Pricing based on time-to-expiry; Merchant can accept or override it | M |
 | MER-03 | Merchant can edit or cancel a listing before it is reserved | M |
-| MER-04 | Merchant can view incoming reservations and mark a pickup as completed (e.g., via a code/QR shown by the Consumer) | M |
+| MER-04 | Merchant can view incoming reservations and mark a pickup as completed using a manual code shown by the Consumer | M |
 | MER-05 | Listings that pass their pickup window without being claimed are automatically flagged for Circular Routing | M |
 | MER-06 | Merchant can view a dashboard: items listed, items rescued, items routed to processing, revenue recovered, personal impact stats | S |
 | MER-07 | Merchant can mark a listing as "processing-only" from creation (e.g., trim/bakery scraps not fit for consumer sale), skipping the marketplace and going straight to Circular Routing | S |
@@ -165,7 +170,7 @@ Priority uses MoSCoW: **M**ust have, **S**hould have, **C**ould have, **W**on't 
 | CON-02 | Consumer can browse Rescue Items as a filterable/sortable list (distance, price, category, pickup window) | M |
 | CON-03 | Consumer can view listing detail and reserve an item, locking its price and quantity | M |
 | CON-04 | Consumer completes payment via Midtrans Sandbox to confirm the reservation | M |
-| CON-05 | Consumer receives a pickup code/QR to present at the merchant | M |
+| CON-05 | Consumer receives a server-generated manual pickup code to present at the merchant | M |
 | CON-06 | Consumer can view active and past orders with status (reserved, picked up, expired/cancelled) | M |
 | CON-07 | Consumer can view a personal impact dashboard: total kg rescued, estimated CO2e avoided, money saved | S |
 | CON-08 | Consumer can cancel a reservation within a defined grace period | S |
@@ -363,7 +368,7 @@ The MVP is considered feature-complete when all of the following are demonstrabl
 ## 13. Assumptions & Constraints
 
 - Target launch market is Indonesia (language, currency, regulatory framing), starting with a single city for the competition MVP.
-- Merchants and Processors are assumed to have smartphone/computer access and basic digital literacy; the UI should not assume specialized hardware (e.g., no dedicated barcode scanners — QR codes readable by any phone camera).
+- Merchants and Processors are assumed to have smartphone/computer access and basic digital literacy; the UI must not depend on specialized hardware such as barcode or QR scanners.
 - Pickup logistics between Merchant and Processor (physical transport) are arranged outside the platform in the MVP; Cirquo tracks and coordinates, it does not dispatch drivers.
 - CO2e estimation is necessarily an approximation based on published emission-factor assumptions, not lab-measured per-item data; this must be clearly labeled as an estimate wherever shown.
 - Convex is assumed as the backend for the competition timeline; a future PostgreSQL migration path should be kept in mind but is not blocking for MVP (see `DATABASE.md` when produced).

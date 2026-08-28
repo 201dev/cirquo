@@ -4,7 +4,15 @@
 **Tagline:** Closing the Loop, Saving Every Meal  
 **Target Market:** Indonesia, starting with Semarang  
 **Competition:** DSDC ANFORCOM 2026  
-**Last updated:** 2026-08-06
+**Last updated:** 2026-08-29
+
+---
+
+> **Implementation boundary.** This is product positioning and target MVP
+> scope. Source currently covers M1–M3 implementation, with Sandbox/mobile UAT
+> still pending; Circular Routing, Processor outcomes, ledger-derived impact,
+> and Admin operations are future milestones. See
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 
@@ -52,7 +60,7 @@ Cirquo is a **Circular Food Recovery Platform** that connects three sides of a c
 1. **Merchants** (restaurants, bakeries, groceries, caterers)
    - List surplus food as "Rescue Items" close to expiry at a discount
    - Receive dynamic pricing suggestions based on time-to-expiry
-   - Confirm pickup via QR code verification
+   - Confirm pickup with the Consumer-presented manual pickup code
    - Track revenue recovered and environmental impact
 
 2. **Consumers**
@@ -119,7 +127,7 @@ flowchart LR
 - Turn total-loss surplus into recovered revenue (even at steep discounts)
 - Reduce waste disposal costs
 - Automated dynamic pricing suggestions (don't guess the right discount)
-- Simple QR code verification for pickup
+- Simple manual pickup-code verification
 - Dashboard showing kg rescued, revenue recovered, circularity rate
 - Free impact reporting for sustainability programs, investors, or certifications
 - No need to manage disposal of unclaimed items — Circular Routing handles it
@@ -220,7 +228,7 @@ flowchart LR
 **Success criteria:**
 - List surplus in under 2 minutes
 - Platform suggests sensible pricing automatically
-- Pickup verification is instant (QR code scan)
+- Pickup verification is quick (manual pickup-code entry)
 - Dashboard shows revenue recovered and impact stats
 
 ---

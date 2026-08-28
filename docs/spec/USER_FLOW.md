@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | **Document type** | Specification — User Journeys & Flows |
-| **Status** | Draft v1.0 |
-| **Last updated** | 2026-08-06 |
+| **Status** | Target user journeys with implemented M1–M3 subset |
+| **Last updated** | 2026-08-29 |
 | **Owner** | Product & Design |
 | **Audience** | Developers, designers, judges |
 | **Related** | [USER_STORIES.md](USER_STORIES.md), [../domain/STATE_MACHINE.md](../domain/STATE_MACHINE.md) |
@@ -36,7 +36,7 @@ Every diagram in this document uses the same vocabulary.
 
 | Marker | Meaning |
 |---|---|
-| ✅ | Implemented in the current codebase |
+| ✅ | Source implementation available; UAT is still required for end-to-end claims |
 | 🚧 | Partially implemented — usually a placeholder screen with mock data |
 | 📋 | Planned, not yet built |
 
@@ -77,13 +77,13 @@ flowchart TD
     RESERVE ==>|Yes| HOLD[(Order: reserved<br/>remainingQuantity decremented<br/>15-min payment hold<br/>Ledger: RESERVED)]
 
     HOLD --> PAYQ{Paid within<br/>15 minutes?}
-    PAYQ -->|No| SWEEP[[Payment hold sweeper]]
-    SWEEP --> RETURN[(Order: expired<br/>Quantity returned to item<br/>Ledger: EXPIRED)]
+    PAYQ -->|No| SWEEP[[Payment-hold timer]]
+    SWEEP --> RETURN[(Order: expired<br/>Quantity returned to item<br/>Ledger: CANCELLED, 0 g)]
     RETURN --> ACTIVE
     PAYQ -->|Cancelled by Consumer| CANCEL[(Order: cancelled<br/>Quantity returned<br/>Ledger: CANCELLED)]
     CANCEL --> ACTIVE
 
-    PAYQ ==>|Yes, Midtrans QRIS| PAID[(Order: paid<br/>pickupCode generated<br/>Ledger: PAID)]
+    PAYQ ==>|Yes, Midtrans QRIS| PAID[(Order: paid<br/>pickupCode revealed to owner<br/>Ledger: PAID)]
     PAID ==> COLLECT{Collected inside<br/>pickup window?}
 
     COLLECT ==>|Yes, code matches| RESCUED[(Order: picked_up<br/>rescuedWeightGrams written<br/>Ledger: RESCUED ✔ terminal)]
@@ -300,12 +300,12 @@ flowchart TD
     X ==> Y[/Checkout screen<br/>with live countdown/]
     Y --> Z{Pay before<br/>countdown ends?}
     Z -->|Cancel| AA[(Order: cancelled<br/>Quantity returned<br/>Ledger: CANCELLED)]
-    Z -->|Timeout| AB[[Payment hold sweeper]]
-    AB --> AC[(Order: expired<br/>Quantity returned<br/>Ledger: EXPIRED)]
+    Z -->|Timeout| AB[[Payment-hold timer]]
+    AB --> AC[(Order: expired<br/>Quantity returned<br/>Ledger: CANCELLED, 0 g)]
     Z ==>|Midtrans QRIS| AD{Settlement}
     AD -->|Failed / denied| AE[/Retry while time remains/]
     AE --> Y
-    AD ==>|Settled| AF[(Order: paid<br/>pickupCode generated<br/>Ledger: PAID)]
+    AD ==>|Settled| AF[(Order: paid<br/>pickupCode revealed to owner<br/>Ledger: PAID)]
 
     AF ==> AG[/Order detail<br/>Pickup code shown large<br/>+ address + window/]
     AG ==> AH[Consumer travels to merchant]
@@ -886,8 +886,8 @@ flowchart LR
     B -->|Yes| C[/Pembayaran gagal. Coba lagi./<br/>Order stays reserved<br/>Quantity stays held]
     C --> D[Consumer retries]
     D --> E([New charge attempt])
-    B -->|No| F[[Hold sweeper runs]]
-    F --> G[(Order → expired<br/>Quantity returned<br/>Ledger: EXPIRED)]
+    B -->|No| F[[Payment-hold timer runs]]
+    F --> G[(Order → expired<br/>Quantity returned<br/>Ledger: CANCELLED, 0 g)]
     G --> H([Item returns to active<br/>if window still open])
 ```
 
@@ -1007,13 +1007,13 @@ Reconciliation of what exists today against what the flows above require.
 | Route | Purpose | Key components | Status |
 |---|---|---|---|
 | `/` | Consumer home — nearby highlights, personal impact summary | ConsumerLayout, SummaryCard, item cards | 🚧 Exists with mock data |
-| `/explore` | Map and list discovery with filters | Mapbox map, filter Sheet, item cards, toggle | 🚧 Exists with mock data; map and filters planned |
-| `/orders` | Active and past orders, live countdowns | Order cards, Tabs, countdown | 🚧 Exists with mock data |
-| `/login` | Email + password sign in | Form, Input, Button | 📋 Planned |
-| `/register` | Registration with role selection | Form, Select, Input | 📋 Planned |
-| `/items/:itemId` | Rescue Item detail and reserve action | Detail panel, quantity picker, Button | 📋 Planned |
-| `/checkout/:orderId` | Midtrans QRIS payment with hold countdown | QR display, countdown, Alert | 📋 Planned |
-| `/orders/:orderId` | Order detail, pickup code, completion summary | Code panel, status Badge, map link | 📋 Planned |
+| `/explore` | Map and list discovery with filters | Mapbox map, filter Sheet, item cards, toggle | ✅ Source-backed; mobile UAT pending |
+| `/orders` | Active and past orders, live countdowns | Order cards, Tabs, countdown | ✅ Source-backed; payment/expiry UAT pending |
+| `/login` | Email + password sign in | Form, Input, Button | ✅ Source-backed |
+| `/register` | Registration with role selection | Form, Select, Input | ✅ Source-backed |
+| `/item/:id` | Rescue Item detail and reserve action | Detail panel, quantity picker, Button | ✅ Source-backed; UAT pending |
+| `/checkout/:orderId` | Midtrans QRIS payment with hold countdown | Midtrans handoff, countdown, Alert | 🧪 Source-backed; verified Sandbox UAT pending |
+| `/orders/:orderId` | Owned order detail, manual pickup code, completion summary | Code panel, status Badge, map link | 🧪 Source-backed; paid/picked-up UAT pending |
 | `/impact` | Personal impact detail derived from ledger | SummaryCard, ledger-derived charts | 📋 Planned |
 | `/notifications` | Notification centre | List, unread Badge | 📋 Planned |
 | `/profile` | Account settings, logout | Form, Button | 📋 Planned |
@@ -1023,11 +1023,11 @@ Reconciliation of what exists today against what the flows above require.
 | Route | Purpose | Key components | Status |
 |---|---|---|---|
 | `/merchant` | Dashboard — listings, pickups today, impact | RoleShell, PageHeader, SummaryCard | 🚧 Exists with mock data |
-| `/merchant/surplus` | Listing management table with status filter | RoleShell, Table, Badge, Select | 🚧 Exists with mock data |
-| `/merchant/surplus/new` | Create Rescue Item with pricing suggestion | Form, Zod schema, price suggestion panel | 🚧 Exists as placeholder form |
-| `/merchant/surplus/:itemId/edit` | Edit listing, locked once reserved | Form, read-only state, Alert | 📋 Planned |
-| `/merchant/onboarding` | Business profile with map pin | Form, Mapbox picker | 📋 Planned |
-| `/merchant/pickups` | Pickup code verification console | Code input, order list, Button | 📋 Planned |
+| `/merchant/surplus` | Listing management table with status filter | RoleShell, Table, Badge, Select | ✅ Source-backed; UAT pending |
+| `/merchant/surplus/new` | Create Rescue Item with pricing suggestion | Form, Zod schema, price suggestion panel | ✅ Source-backed; UAT pending |
+| `/merchant/surplus/:id` | Rescue Item detail | Detail, read-only state, Alert | ✅ Source-backed; edit remains M2 query/mutation scope |
+| `/merchant/onboarding` | Business profile with map pin | Form, Mapbox picker | ✅ Source-backed; verification remains operational UAT |
+| `/merchant/pickup` | Pickup code verification console | Code input, order list, Button | 🚧 Route exists; M4 confirmation is not implemented |
 | `/merchant/recovery` | Read-only view of routing state for own items | Batch cards, status Badge | 📋 Planned |
 | `/merchant/profile` | Business profile management | Form, Mapbox picker | 📋 Planned |
 
@@ -1060,7 +1060,11 @@ Reconciliation of what exists today against what the flows above require.
 |---|---|---|---|
 | `*` | Not-found fallback | Card, Button | ✅ Exists |
 
-**Summary.** 9 placeholder screens exist today across the four role surfaces, all driven by `src/constants/mock-data.ts`. Reaching the flows in this document requires 25 new routes and the replacement of mock data with live Convex queries in the 9 existing ones. Layout infrastructure — `ConsumerLayout` with its fixed mobile bottom navigation, and `RoleShell` with its large-screen sidebar and Sheet hamburger — is already in place and will not need structural change.
+**Summary.** Consumer discovery, reservation, checkout, and orders plus Merchant
+Rescue Item management are source-backed. Some Home, impact, Processor, and
+Admin surfaces still use `src/constants/mock-data.ts` or lack the required
+Convex function. Use [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md)
+instead of a placeholder count when planning the remaining work.
 
 ---
 
@@ -1077,7 +1081,7 @@ Target runtime **3–7 minutes**. Rehearsed against seeded data so every number 
 | 3 | 1:15–1:45 | Merchant | Enter original price; the Dynamic Rescue Pricing suggestion appears with its rationale; accept it; publish | "The platform suggests a rescue price and explains why — the window is short and the day is ending. The merchant can override it, but never below their floor price." |
 | 4 | 1:45–2:15 | Consumer | Switch to the Consumer app, explore screen, map pin appears, apply a dietary preference filter, open the detail | "The listing is live on the map instantly — this is a Convex subscription, not a refresh. A consumer filters by dietary preference and finds it." |
 | 5 | 2:15–2:50 | Consumer | Reserve 5 units; countdown starts; note the map now shows 3 remaining | "Reserving decrements the quantity immediately, not at payment. That is how we prevent overselling. The consumer now has fifteen minutes to pay." |
-| 6 | 2:50–3:20 | Consumer | Pay with Midtrans Sandbox QRIS; order flips to paid; pickup code appears | "Payment settles and a pickup code is generated. There is no delivery here — the consumer collects in person." |
+| 6 | 2:50–3:20 | Consumer | Pay with Midtrans Sandbox QRIS; order flips to paid; pickup code appears | "Payment settles and the server-generated pickup code is revealed to its owner. There is no delivery here — the Consumer collects in person." |
 | 7 | 3:20–3:50 | Merchant | Merchant enters the pickup code; order becomes picked_up; both screens update | "Code verified inside the pickup window. That is 1,250 grams **rescued** — a terminal ledger event." |
 | 8 | 3:50–4:20 | System | Fast-forward the clock; expiry sweeper runs; 3 unsold units become a recovery batch | "The window closes with three loaves unsold. In a normal marketplace this is where the story ends. In Cirquo it is where the interesting part begins." |
 | 9 | 4:20–5:00 | System | Routing engine screen shows eligibility evaluation, then an offer to a BSF larvae facility with a 6-hour countdown | "Circular Routing evaluates every verified processor: does it accept this material, is it inside the collection radius, does it have capacity today, is it open within 24 hours. The best match gets a six-hour offer." |

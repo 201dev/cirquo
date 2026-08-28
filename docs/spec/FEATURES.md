@@ -7,7 +7,7 @@
 | **Document type** | Specification — feature catalogue |
 | **Status** | Draft v1.0 — living document |
 | **Owner** | Product / UX |
-| **Last updated** | 2026-08-06 |
+| **Last updated** | 2026-08-29 |
 | **Source of truth for** | *What* each feature does, its acceptance criteria, and the ledger events it emits |
 | **Not the source of truth for** | Schemas ([DATA_MODEL.md](../domain/DATA_MODEL.md)), API contracts ([API.md](../api/API.md)), algorithms ([ALGORITHM.md](../impact/ALGORITHM.md)) |
 
@@ -25,11 +25,15 @@
 | **S** | Should have | Ships if all M work is complete and stable |
 | **C** | Could have | Explicitly deferred unless time remains |
 
-**Status** reflects the *actual* repository state as of 2026-08-06:
+**Status** reflects the source snapshot as of 2026-08-29. A source-level ✅
+is not end-to-end sign-off; Midtrans and mobile flows remain 🧪 UAT-required.
+The complete current/future boundary is in
+[IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 | Symbol | Meaning |
 |---|---|
-| ✅ | Implemented and working end-to-end |
+| ✅ | Source implementation available |
+| 🧪 | Source implementation available, UAT pending |
 | 🚧 | Partially implemented — UI shell exists, logic missing |
 | 📋 | Planned — nothing in the codebase yet |
 
@@ -43,10 +47,10 @@
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-01 | Registration with role selection | AUTH-01 | M | 📋 |
-| F-02 | Login & session management | AUTH-03 | M | 📋 |
-| F-03 | Merchant business profile onboarding | AUTH-05 | M | 📋 |
-| F-04 | Processor facility profile onboarding | AUTH-05, PRC-06 | M | 📋 |
+| F-01 | Registration with role selection | AUTH-01 | M | ✅ |
+| F-02 | Login & session management | AUTH-03 | M | ✅ |
+| F-03 | Merchant business profile onboarding | AUTH-05 | M | ✅ |
+| F-04 | Processor facility profile onboarding | AUTH-05, PRC-06 | M | ✅ |
 | F-05 | Admin verification gate | AUTH-04 | M | 📋 |
 | F-06 | Admin account provisioning (manual) | AUTH-02 | M | 📋 |
 | F-07 | Password reset | AUTH-06 | S | 📋 |
@@ -55,12 +59,12 @@
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-10 | Create Rescue Item | MER-01 | M | 🚧 |
-| F-11 | Dynamic Rescue Pricing suggestion + override | MER-02, PRI-01..03 | M | 📋 |
-| F-12 | Edit / cancel listing before reservation | MER-03 | M | 📋 |
+| F-10 | Create Rescue Item | MER-01 | M | ✅ |
+| F-11 | Dynamic Rescue Pricing suggestion + override | MER-02, PRI-01..03 | M | ✅ |
+| F-12 | Edit / cancel listing before reservation | MER-03 | M | ✅ |
 | F-13 | Processing-only listing | MER-07 | S | 📋 |
-| F-14 | Merchant listing management view | MER-06 | M | 🚧 |
-| F-15 | Pickup confirmation via code / QR | MER-04 | M | 📋 |
+| F-14 | Merchant listing management view | MER-06 | M | ✅ |
+| F-15 | Pickup confirmation via manual code | MER-04 | M | 📋 |
 | F-16 | Merchant dashboard & impact | MER-06, IMP-03 | M | 🚧 |
 | F-17 | Merchant recovery visibility | MER-05, PRC-04 | S | 📋 |
 
@@ -68,12 +72,12 @@
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-20 | Map discovery | CON-01, MKT-01 | M | 🚧 |
-| F-21 | List view with filters | CON-02, MKT-02 | M | 🚧 |
-| F-22 | Listing detail screen | CON-01, CON-02 | M | 📋 |
-| F-23 | Reservation (locks price + quantity) | CON-03 | M | 📋 |
-| F-24 | Pickup code / QR display | CON-05 | M | 📋 |
-| F-25 | Order history + realtime status | CON-06, PAY-02 | M | 🚧 |
+| F-20 | Map discovery | CON-01, MKT-01 | M | ✅ |
+| F-21 | List view with filters | CON-02, MKT-02 | M | ✅ |
+| F-22 | Listing detail screen | CON-01, CON-02 | M | ✅ |
+| F-23 | Reservation (locks price + quantity) | CON-03 | M | ✅ |
+| F-24 | Pickup code display after verified payment | CON-05 | M | 🧪 |
+| F-25 | Order history + realtime status | CON-06, PAY-02 | M | 🧪 |
 | F-26 | Cancellation within grace period | CON-08 | S | 📋 |
 | F-27 | Consumer impact dashboard | CON-07, IMP-03 | M | 🚧 |
 | F-28 | Rate a pickup | CON-09 | C | 📋 |
@@ -104,16 +108,16 @@
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-50 | Listing ranking algorithm | MKT-03 | M | 📋 |
-| F-51 | Dietary preference filtering | MKT-02, CON-02 | S | 📋 |
+| F-50 | Listing ranking algorithm | MKT-03 | M | ✅ |
+| F-51 | Dietary preference filtering | MKT-02, CON-02 | S | ✅ |
 | F-52 | Personalised recommendation | MKT-04 | C | 📋 |
 
 ### Module G — Payments
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-60 | Midtrans Sandbox checkout | CON-04, PAY-01 | M | 📋 |
-| F-61 | Realtime payment status | PAY-02 | M | 📋 |
+| F-60 | Midtrans Sandbox checkout | CON-04, PAY-01 | M | 🧪 |
+| F-61 | Realtime payment status | PAY-02 | M | 🧪 |
 | F-62 | Automatic refund on cancel / expiry | PAY-03 | S | 📋 |
 | F-63 | Merchant payout tracking | PAY-04 | C | 📋 |
 
@@ -155,7 +159,7 @@
 
 ### F-01 — Registration with role selection
 
-**PRD refs:** AUTH-01 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** AUTH-01 · **Priority:** M · **Status:** ✅ Source implementation available
 
 **Objective** — Let a new user create an account and declare which side of the circular economy they participate in, because every downstream permission derives from that choice.
 
@@ -198,7 +202,7 @@ Consumers land directly in the marketplace after registration. Merchants and Pro
 
 ### F-02 — Login & session management
 
-**PRD refs:** AUTH-03 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** AUTH-03 · **Priority:** M · **Status:** ✅ Source implementation available
 
 **Objective** — Authenticate returning users and maintain a session that survives app restarts, including inside the Capacitor Android shell.
 
@@ -241,7 +245,7 @@ Route protection is a two-layer arrangement: React Router guards redirect unauth
 
 ### F-03 — Merchant business profile onboarding
 
-**PRD refs:** AUTH-05 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** AUTH-05 · **Priority:** M · **Status:** ✅ Source implementation available
 
 **Objective** — Capture the business identity and, critically, the pickup coordinates without which a merchant cannot appear on the map or be distance-ranked for Circular Routing.
 
@@ -284,14 +288,17 @@ Coordinates are typed optional in the current Convex schema only because they ar
 
 ### F-04 — Processor facility profile onboarding
 
-**PRD refs:** AUTH-05, PRC-06 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** AUTH-05, PRC-06 · **Priority:** M · **Status:** ✅ Source implementation available
 
 **Objective** — Capture the facility constraints that make Circular Routing correct rather than random.
 
 **Description**
 The processor profile declares facility name, processing method (`bsf` / `composting` / `biogas` / `animal_feed`), `acceptedMaterialTypes[]`, `dailyCapacityGrams`, `maxPickupRadiusMeters`, operating hours, and coordinates. These fields are not cosmetic: they are hard constraints E2, E3, E4 and E6 in the routing eligibility filter ([ALGORITHM.md](../impact/ALGORITHM.md) §3.2).
 
-The `processors` table does not exist in the current schema — `recoveryBatches.processorId` currently points at a `users` row, which records *who* accepted a batch but carries none of the constraints needed to decide *whether* they should have been offered it. Creating this table is a prerequisite for the entire routing module.
+The `processors` table now exists with profile and capacity fields;
+`processors.createProfile` writes its onboarding record. Circular Routing still
+does not consume those constraints, so the table is foundation for M5 rather
+than evidence that Processor recovery is complete.
 
 **Actors** — Organic Processor
 
@@ -453,7 +460,7 @@ Priority is S because the demo does not require it, but omitting it from Phase 1
 
 ### F-10 — Create Rescue Item
 
-**PRD refs:** MER-01 · **Priority:** M · **Status:** 🚧 Partial (route `/merchant/surplus/new` exists, no mutation)
+**PRD refs:** MER-01 · **Priority:** M · **Status:** ✅ Source implementation available
 
 **Objective** — Turn surplus food into a tracked unit of material with a price, a quantity, a weight, and a pickup window.
 
@@ -500,7 +507,7 @@ The listing form captures title, description, category, `materialType`, `quantit
 
 ### F-11 — Dynamic Rescue Pricing suggestion + override
 
-**PRD refs:** MER-02, PRI-01, PRI-02, PRI-03 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** MER-02, PRI-01, PRI-02, PRI-03 · **Priority:** M · **Status:** ✅ Source implementation available
 
 **Objective** — Suggest a price that maximises the chance the item is claimed before its window closes, while never dropping below the merchant's floor.
 
@@ -546,7 +553,7 @@ The merchant may always override the suggestion within `[floorPrice, originalPri
 
 ### F-12 — Edit / cancel listing before reservation
 
-**PRD refs:** MER-03 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** MER-03 · **Priority:** M · **Status:** ✅ Source implementation available
 
 **Objective** — Let merchants correct mistakes, while making it impossible to change terms a consumer has already committed to.
 
@@ -631,7 +638,7 @@ This feature is what makes Cirquo a circular platform rather than a discount mar
 
 ### F-14 — Merchant listing management view
 
-**PRD refs:** MER-06 · **Priority:** M · **Status:** 🚧 Partial (route `/merchant/surplus` renders mock data)
+**PRD refs:** MER-06 · **Priority:** M · **Status:** ✅ Source implementation available for listing management; impact dashboard remains target
 
 **Objective** — Give merchants one screen showing every listing's live state and what action it needs.
 
@@ -671,14 +678,14 @@ The page currently renders `src/constants/mock-data.ts`. Replacing that import w
 
 ---
 
-### F-15 — Pickup confirmation via code / QR
+### F-15 — Pickup confirmation via manual code
 
 **PRD refs:** MER-04 · **Priority:** M · **Status:** 📋 Planned
 
 **Objective** — Convert a paid order into a verified physical hand-off, which is the only event that produces `RESCUED` weight.
 
 **Description**
-The merchant enters the consumer's 6-character alphanumeric pickup code, or scans its QR representation. The mutation validates that the code matches a `paid` order on one of this merchant's items, then in a single transaction sets `orders.status = 'picked_up'`, sets `pickedUpAt`, writes a `RESCUED` ledger event with a negative delta equal to the order's `rescuedWeightGrams`, and closes the item if no quantity remains.
+The merchant enters the Consumer-presented 6-digit pickup code. The mutation validates that the code matches a `paid` order on one of this merchant's items, then in a single transaction sets `orders.status = 'picked_up'`, sets `pickedUpAt`, writes a `RESCUED` ledger event with a negative delta equal to the order's `rescuedWeightGrams`, and closes the item if no quantity remains.
 
 **This is the single most important guard in the system.** `RESCUED` is terminal and is the source of all rescued-weight impact. Writing it on payment instead of pickup would inflate impact with food that was never collected — exactly the quiet dishonesty this product exists to avoid.
 
@@ -704,13 +711,12 @@ The merchant enters the consumer's 6-character alphanumeric pickup code, or scan
 | Case | Expected behaviour |
 |---|---|
 | Consumer's phone is dead | The merchant finds the order by consumer name in the reservation list and confirms manually |
-| Camera unavailable for QR | Manual 6-character entry is always available — QR is a convenience, never the only path |
+| Consumer's screen is difficult to read | Merchant asks the Consumer to read the 6-digit code aloud; no scanner is required |
 | Consumer never shows | No confirmation; the expiry sweep releases the quantity back into Circular Routing. This is **not** residual |
 | Merchant confirms the wrong order | Corrected through an admin dispute; the ledger is never edited, a compensating entry is appended |
 | Two merchants with colliding codes | Codes are validated scoped to the merchant, so cross-merchant collisions are harmless |
 
 **Future improvements**
-- Consumer-scans-merchant QR as an alternative direction
 - Offline confirmation queue for weak-signal locations
 - Photo capture of the hand-off as dispute evidence
 
@@ -803,7 +809,7 @@ This is a retention feature disguised as a reporting feature. A merchant who rea
 
 ### F-20 — Map discovery
 
-**PRD refs:** CON-01, MKT-01 · **Priority:** M · **Status:** 🚧 Partial (route `/explore` exists, no Mapbox integration)
+**PRD refs:** CON-01, MKT-01 · **Priority:** M · **Status:** ✅ Source implementation available (Mapbox and reactive discovery); 🧪 UAT pending
 
 **Objective** — Make nearby surplus food immediately visible, because pickup distance is the dominant factor in whether a rescue actually happens.
 
@@ -847,7 +853,7 @@ Map-first is a deliberate rejection of the delivery-app pattern. In delivery, lo
 
 ### F-21 — List view with filters
 
-**PRD refs:** CON-02, MKT-02 · **Priority:** M · **Status:** 🚧 Partial (route exists, renders mock data)
+**PRD refs:** CON-02, MKT-02 · **Priority:** M · **Status:** ✅ Source implementation available; 🧪 UAT pending
 
 **Objective** — Provide a scannable, filterable alternative to the map for consumers who already know what they want.
 
@@ -890,7 +896,7 @@ Dietary filtering is **dietary preference filtering** — halal, vegetarian, veg
 
 ### F-22 — Listing detail screen
 
-**PRD refs:** CON-01, CON-02 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** CON-01, CON-02 · **Priority:** M · **Status:** ✅ Source implementation available
 
 **Objective** — Give the consumer everything needed to commit: what it is, what it costs, where it is, when to collect, and how much impact it represents.
 
@@ -933,12 +939,12 @@ Showing weight and estimated CO2e here, rather than only in a dashboard, makes i
 
 ### F-23 — Reservation (locks price + quantity)
 
-**PRD refs:** CON-03 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** CON-03 · **Priority:** M · **Status:** ✅ Source implementation available; 🧪 UAT pending
 
 **Objective** — Give the consumer an exclusive claim on specific quantity at a specific price, and prevent overselling.
 
 **Description**
-Reservation creates an `orders` row in `reserved`, decrements `rescueItems.remainingQuantity`, snapshots `unitPrice` and `rescuedWeightGrams`, generates a 6-character pickup code, sets a 15-minute payment deadline, schedules an expiry job, and writes a `RESERVED` ledger event — all inside one Convex transaction.
+Reservation creates an `orders` row in `reserved`, decrements `rescueItems.remainingQuantity`, snapshots `totalPrice` and `rescuedWeightGrams`, generates a 6-digit pickup code, sets a 15-minute payment deadline, schedules an expiry job, and writes a `RESERVED` ledger event — all inside one Convex transaction.
 
 **Quantity is decremented at reservation, not at payment.** This is the central concurrency decision. If quantity were held until payment, two consumers could both reach checkout for the last portion and one would fail after committing emotionally and possibly financially. Reserving optimistically and reclaiming on a 15-minute timeout inverts the failure mode into something recoverable.
 
@@ -953,7 +959,7 @@ Reservation creates an `orders` row in `reserved`, decrements `rescueItems.remai
 - [ ] GIVEN insufficient quantity WHEN reserve is called THEN it fails with `INSUFFICIENT_QUANTITY` and nothing is written
 - [ ] GIVEN two simultaneous reservations for the last portion WHEN both execute THEN exactly one succeeds — Convex mutations are serializable
 - [ ] GIVEN a successful reservation WHEN it commits THEN `unitPrice` is snapshotted and later price changes never affect this order
-- [ ] GIVEN a successful reservation WHEN it commits THEN a unique 6-character pickup code is generated
+- [ ] GIVEN a successful reservation WHEN it commits THEN a 6-digit pickup code is generated server-side
 - [ ] GIVEN remaining quantity reaching zero WHEN it commits THEN the item becomes `sold_out`; if quantity remains it becomes `reserved_partial`
 - [ ] GIVEN a reservation WHEN 15 minutes elapse without payment THEN the order becomes `expired`, quantity is restored, and `EXPIRED` is written
 - [ ] GIVEN a reservation WHEN it commits THEN a `RESERVED` ledger event with delta 0 is written
@@ -978,14 +984,14 @@ Reservation creates an `orders` row in `reserved`, decrements `rescueItems.remai
 
 ---
 
-### F-24 — Pickup code / QR display
+### F-24 — Manual pickup-code display
 
-**PRD refs:** CON-05 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** CON-05 · **Priority:** M · **Status:** ✅ Source implementation available; 🧪 verified-payment UAT pending
 
 **Objective** — Give the consumer a credential that proves their claim at the counter.
 
 **Description**
-After payment the order screen shows a 6-character code in large type plus its QR encoding. Both are visible immediately; there is no reveal step, because a consumer standing at a counter should not have to hunt for a button.
+After verified payment the owned order-detail screen shows a 6-digit code in large type. There is no reveal step, because a Consumer standing at a counter should not have to hunt for a button.
 
 The code is valid only once the order is `paid`. Displaying it while `reserved` would let consumers attempt collection before paying, and merchants would learn to accept it.
 
@@ -994,7 +1000,7 @@ The code is valid only once the order is `paid`. Displaying it while `reserved` 
 **User story** — As a Consumer, I want a clear pickup code, so that I can collect my food without confusion at the counter.
 
 **Acceptance criteria**
-- [ ] GIVEN a `paid` order WHEN the detail screen loads THEN the code is shown in at least 32px type with a QR beneath it
+- [ ] GIVEN a `paid` order WHEN the detail screen loads THEN the code is shown in at least 32px type
 - [ ] GIVEN a `reserved` unpaid order WHEN rendered THEN the code is hidden and a "Complete payment" CTA is shown
 - [ ] GIVEN a `picked_up` order WHEN rendered THEN the code is replaced by a Rescued confirmation with the pickup timestamp
 - [ ] GIVEN the code screen WHEN displayed THEN screen brightness is boosted where the platform allows it
@@ -1023,7 +1029,7 @@ The code is valid only once the order is `paid`. Displaying it while `reserved` 
 
 ### F-25 — Order history + realtime status
 
-**PRD refs:** CON-06, PAY-02 · **Priority:** M · **Status:** 🚧 Partial (route `/orders` renders mock data)
+**PRD refs:** CON-06, PAY-02 · **Priority:** M · **Status:** ✅ Source implementation available; 🧪 payment/expiry UAT pending
 
 **Objective** — One place where consumers track active and past rescues, updating without refresh.
 
@@ -1837,6 +1843,3 @@ Note that authentication blocks less than it appears to. Discovery and listing d
 
 **Built for DSDC ANFORCOM 2026**  
 **Platform:** Cirquo — Closing the Loop, Saving Every Meal
-
-
-

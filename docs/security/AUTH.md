@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | **Document type** | Security / Authentication Design |
-| **Status** | Draft v1.0 |
-| **Last updated** | 2026-08-06 |
+| **Status** | Authentication foundation implemented; hardening target documented |
+| **Last updated** | 2026-08-29 |
 | **Applies to** | Convex backend (`convex/auth.ts`, `convex/lib/guards.ts`), React 19 client, Capacitor 8 Android shell (`com.cirquo.app`) |
 | **Implementation status** | ✅ Foundation implemented; password reset/refresh and other hardening remain planned. See §0. |
 
@@ -37,11 +37,11 @@ Internal lookups such as `users.getByEmail` are not callable by the client.
 
 | ID | Requirement | Summary | Priority | Status | Section |
 |---|---|---|---|---|---|
-| **AUTH-01** | Email + password registration and login for all actors | One credential model for Consumer, Merchant, Processor, Admin. No social login in MVP. | P0 | 📋 | §3, §4 |
+| **AUTH-01** | Email + password registration and login for all actors | One credential model for Consumer, Merchant, Processor, Admin. No social login in MVP. | P0 | ✅ source | §3, §4 |
 | **AUTH-02** | Role chosen at registration, but `admin` is **never** self-assignable | Client may request `consumer`, `merchant`, `processor` only. Admins are provisioned manually. | P0 | 📋 | §8.2 |
-| **AUTH-03** | Merchant and Processor complete a business profile | Registration creates `users`; a second step creates `merchants` / `processors`. | P0 | 📋 | §8.3 |
-| **AUTH-04** | Listing and intake blocked until `verificationStatus === 'verified'` | Unverified Merchant may log in and browse but not publish a Rescue Item. Unverified Processor may not accept a Recovery Batch. | P0 | 📋 | §9 |
-| **AUTH-05** | Session persists across app restart on Capacitor | Killing and reopening the Android app must not force re-login. | P0 | 📋 | §7 |
+| **AUTH-03** | Merchant and Processor complete a business profile | Registration creates `users`; a second step creates `merchants` / `processors`. | P0 | ✅ source | §8.3 |
+| **AUTH-04** | Listing and intake blocked until `verificationStatus === 'verified'` | Unverified Merchant may log in and browse but not publish a Rescue Item. Unverified Processor may not accept a Recovery Batch. | P0 | ✅ current Merchant gate | §9 |
+| **AUTH-05** | Session persists across app restart on Capacitor | Killing and reopening the Android app must not force re-login. | P0 | 🧪 Android UAT | §7 |
 | **AUTH-06** | Password reset | Self-service recovery by emailed single-use token. | P1 | 📋 | §10 |
 
 ### 1.1 Deliberate non-requirements
@@ -1271,7 +1271,7 @@ Keyed on the normalised email address, evaluated inside `auth.login` **before** 
 
 ## 16. Testing Checklist
 
-No automated suite exists yet (see [../engineering/TESTING.md](../engineering/TESTING.md)). Write these first, ordered by severity of what they prevent.
+Runnable Bun and Vitest checks exist (see [../engineering/TESTING.md](../engineering/TESTING.md)); add the security-negative cases below in severity order.
 
 ### 16.1 Registration
 

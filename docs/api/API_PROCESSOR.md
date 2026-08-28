@@ -4,8 +4,8 @@
 | --- | --- |
 | **Document type** | API Reference (Processor role) |
 | **Backend** | Convex (`query` / `mutation` / `action`, not REST) |
-| **Status** | Draft v1.0 |
-| **Last updated** | 2026-08-06 |
+| **Status** | Target contract — M5 |
+| **Last updated** | 2026-08-29 |
 | **Audience** | Backend engineers, frontend engineers building the Processor console, DSDC judges auditing Material Flow Orchestration |
 
 This document specifies every Convex function that an **Organic Processor** account can call. Organic Processors are the final stage of Cirquo's Material Flow Orchestration: when a **Rescue Item** is not claimed by a consumer inside its **pickup window**, **Circular Routing** offers the material to a nearby verified processor (BSF larvae farm, composting site, biogas digester, or animal-feed producer). The processor weighs what actually arrives, processes it, and logs the outcome. Those two numbers — measured intake and measured output — are what turn "we saved food" into an auditable figure.
@@ -37,6 +37,10 @@ Consumer flows are implemented elsewhere in the codebase. The
 Processor-specific functions documented on this page are still **📋 planned**;
 this file is a target contract rather than a description of deployed Processor
 functionality.
+
+The `processors` profile table and `processors.createProfile` are current M1
+foundation. They do not constitute the M5 recovery workflow. See
+[IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 

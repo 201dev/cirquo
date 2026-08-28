@@ -3,11 +3,15 @@
 | Field | Value |
 | --- | --- |
 | **Document type** | Figma workspace & handoff specification |
-| **Status** | Draft v1.0 |
-| **Last updated** | 2026-08-06 |
+| **Status** | Figma handoff specification — current source and target screens |
+| **Last updated** | 2026-08-29 |
 | **Audience** | Designers new to the Cirquo codebase |
 | **Figma file** | `Cirquo — Design System & Screens` |
 | **Source of truth** | `src/index.css` (see §12) |
+
+> Figma frames describe intended UX. Use
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md) before
+> labelling a screen as implemented.
 
 ---
 
@@ -78,7 +82,7 @@ Sections are collapsible and named in `Title Case`. They carry a `Ready` / `In r
 | Title | `Cirquo — Closing the Loop, Saving Every Meal` |
 | Subtitle | `Circular Food Recovery Platform · DSDC ANFORCOM 2026` |
 | Version | `Design v1.0 · Draft` |
-| Last updated | `2026-08-06` |
+| Last updated | `2026-08-29` |
 | Status legend | Colour key for Ready / In review / Blocked |
 | Doc links | Links to `DESIGN.md`, `UI_GUIDE.md`, `COMPONENTS.md` in the repo |
 | Warning block | `Figma is a communication artefact. src/index.css is the source of truth. See §12.` |
@@ -593,21 +597,21 @@ Reference proportions for the demo (93% circularity): Rescued 62,4% · Recovered
 
 | Property | Type | Values |
 | --- | --- | --- |
-| `variant` | Variant | `code-only`, `with-qr` |
+| `variant` | Variant | `code-only` |
 | `size` | Variant | `full`, `compact` |
-| `code` | Text | e.g. `K7M 2X9` |
+| `code` | Text | e.g. `482 901` |
 | `merchant` | Text | Merchant name |
 | `countdown` | Text | e.g. `2 j 15 mnt` |
 
 | Element | Spec |
 | --- | --- |
 | Code text | `Mono/PickupCode` — 36/40, weight 700, +15% tracking |
-| Visual grouping | `K7M 2X9` with a space; the copied string has no space |
+| Visual grouping | `482 901` with a space; the copied string has no space |
 | Stroke | **2px `semantic/foreground`** — the only 2px stroke in the system |
 | Fill | `semantic/background` — maximum contrast in both themes |
 | Radius | `radius/lg` (14) |
-| QR | 160×160, quiet zone 16, encodes `cirquo:pickup:{orderId}:{code}` |
-| Brightness hint | `Naikkan kecerahan layar untuk memudahkan pemindaian` |
+| Manual credential | Server-generated 6-digit code; no QR asset or scanner is required |
+| Brightness hint | `Naikkan kecerahan layar agar kode mudah dibaca` |
 | Countdown | Below the code, `Caption/Default` |
 
 This card is read across a counter in a dim shop by a tired merchant. Legibility beats elegance at every decision point.
@@ -699,7 +703,8 @@ Icon chip 36×36, `radius/md`, fill = the variant's `-muted` token, icon = the v
 
 ## 8. Frame Inventory
 
-Every screen that must exist. `✅` = a codebase placeholder already exists; `📋` = to be designed from scratch.
+Every screen that must exist. `✅` = source-backed implementation is available;
+`🧪` = source exists but needs UAT; `📋` = target screen or flow.
 
 ### 8.1 Consumer — `03 Consumer`
 
@@ -725,7 +730,7 @@ Every screen that must exist. `✅` = a codebase placeholder already exists; `�
 | C-18 | `Consumer / Payment — Pending` | `/checkout/:orderId` | 📋 | Awaiting settlement | `PaymentStatusPanel`, `CountdownTimer` |
 | C-19 | `Consumer / Payment — Success` | `/checkout/:orderId` | 📋 | Settled | `PaymentStatusPanel`, CTA to code |
 | C-20 | `Consumer / Payment — Failed` | `/checkout/:orderId` | 📋 | Failure + retry within grace | `PaymentStatusPanel`, retry/cancel |
-| C-21 | `Consumer / Pickup Code` | `/orders/:id/code` | 📋 | **Demo-critical.** Large code + QR | `Display/PickupCodeCard` |
+| C-21 | `Consumer / Pickup Code` | `/orders/:id` | 🧪 | **Demo-critical.** Large manual code | `Display/PickupCodeCard` |
 | C-22 | `Consumer / Order History` | `/orders` | ✅ | Active + past | `Base/Tabs`, `Card/OrderCard` ×5 |
 | C-23 | `Consumer / Order History — Empty` | `/orders` | 📋 | No orders yet | `State/Empty` |
 | C-24 | `Consumer / Order Detail` | `/orders/:id` | 📋 | Timeline + code + ledger link | `OrderTimeline`, `PickupCodeCard compact` |
@@ -850,7 +855,7 @@ Colour: always `currentColor` equivalent — bind icon fill to the parent text c
 
 ### 9.3 Consumer
 
-`Home` · `Map` · `MapPin` · `Compass` · `ShoppingBag` · `Clock` · `TimerOff` · `KeyRound` · `QrCode` · `CreditCard` · `Store` · `Salad` · `Sprout` · `Ban` · `BadgeCheck` · `Wheat` · `User` · `Navigation` · `Minus` · `Plus` · `Copy` · `Share2`
+`Home` · `Map` · `MapPin` · `Compass` · `ShoppingBag` · `Clock` · `TimerOff` · `KeyRound` · `CreditCard` · `Store` · `Salad` · `Sprout` · `Ban` · `BadgeCheck` · `Wheat` · `User` · `Navigation` · `Minus` · `Plus` · `Copy` · `Share2`
 
 ### 9.4 Merchant
 
@@ -892,7 +897,7 @@ Colour: always `currentColor` equivalent — bind icon fill to the parent text c
 | Weights | `450 g`, `1,2 kg`, `2,4 kg`, `12,0 kg` |
 | Distances | `450 m`, `1,2 km`, `3,8 km` |
 | Times | `17.00–21.00`, `6 Agu 2026, 14.32 WIB` |
-| Pickup codes | `K7M 2X9`, `B3P 8Q4` |
+| Pickup codes | `482 901`, `715 304` |
 | Circularity | `93,4%` — never `100%` |
 
 ---
@@ -920,7 +925,7 @@ Transitions: `Smart Animate`, 200ms, `Ease Out`. Sheets slide from the bottom. *
 ```
 M-04 Dashboard
   → tap Verifikasi Kode → M-13 Verify Pickup Code
-    → enter K7M2X9 → M-15 Pickup Success
+    → enter 482901 → M-15 Pickup Success
       → tap Selesaikan pengambilan → M-04 Dashboard (updated counters)
 ```
 
@@ -1036,7 +1041,7 @@ Tracked on `08 Handoff` in red annotations. Current list:
 | Q-02 | Can a merchant edit a Rescue Item that already has paid orders? | M-11 |
 | Q-03 | What is the response deadline for a processor batch offer? | P-09 |
 | Q-04 | Does the consumer see which processor received their uncollected item? | C-24 |
-| Q-05 | Is the pickup code 6 alphanumeric characters or 6 digits? | C-21, M-13 |
+| Q-05 | Resolved: pickup code is 6 digits, generated server-side. | C-21, M-13 |
 | Q-06 | What triggers `unroutable` — a fixed number of declines or a time limit? | P-06, A-10 |
 
 ---

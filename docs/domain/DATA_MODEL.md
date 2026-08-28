@@ -1,10 +1,15 @@
 # Data Model — Cirquo
 
 **Document type:** Domain reference  
-**Status:** Draft v1.0  
-**Last updated:** 2026-08-06
+**Status:** Living domain reference — target model plus source snapshot
+**Last updated:** 2026-08-29
 
 > This document describes **entities, relationships, and cardinality** at a conceptual level. For the concrete Convex table definitions, field types, and indexes, see [DATABASE.md](DATABASE.md). For lifecycle rules, see [STATE_MACHINE.md](STATE_MACHINE.md).
+
+> **Current boundary.** The entity diagram is the target MVP model. The current
+> 10-table schema already contains `processors`, `materialFlowLedger`, and
+> `payments`; routing, disputes, notifications, and impact aggregation remain
+> future work. See [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 
@@ -148,7 +153,9 @@ Business identity and, critically, **location**.
 
 ### 2.3 `processors` — Processor Profile
 
-**This table does not exist yet and must be added.** Without it, three domain rules are unenforceable:
+**This table exists in the current 10-table schema.** Its owner, verification,
+and routing-profile fields are available for onboarding; M4–M5 still own the
+logic that uses those fields for routing and intake.
 
 | Rule | Requires |
 |---|---|
@@ -236,7 +243,10 @@ Impact calculations prefer `acceptedWeightGrams` over `offeredWeightGrams` whene
 
 ### 2.7 `materialFlowLedger` — Material Flow Ledger
 
-**This table does not exist yet and is the single most important addition.** Every impact figure in the product derives from it.
+**This table exists and is append-only in the current source.** Implemented M1–M3
+mutations write the events needed for listing, reservation, payment, and
+payment-hold expiry. Ledger aggregation and the later lifecycle write paths
+remain target work.
 
 | Relationship | Cardinality |
 |---|---|

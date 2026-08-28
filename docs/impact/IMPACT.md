@@ -2,10 +2,15 @@
 
 **Document type:** Methodology specification  
 **Methodology version:** `impact-v1`  
-**Status:** Draft v1.0  
-**Last updated:** 2026-08-06
+**Status:** Methodology contract — aggregation/dashboard implementation pending
+**Last updated:** 2026-08-29
 
 > This document defines how Cirquo measures environmental impact, what assumptions underpin those numbers, and — critically — **what they do not prove**. Every figure the product displays traces back to this methodology. If a judge, auditor, or partner challenges an impact claim, this document is the answer.
+
+> **Implementation boundary.** The ledger write foundation exists, but the
+> current source has no ledger-derived impact dashboard or aggregation query.
+> These remain M6 work; see
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 

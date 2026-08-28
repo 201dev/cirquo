@@ -3,8 +3,8 @@
 | Field | Value |
 | --- | --- |
 | **Document Type** | Process Guide |
-| **Status** | Draft v1.0 |
-| **Last Updated** | 2026-08-06 |
+| **Status** | Living process guide |
+| **Last Updated** | 2026-08-29 |
 | **Owner** | Cirquo Engineering |
 | **Audience** | Team members, future contributors, and AI agents |
 
@@ -76,10 +76,10 @@ number in front of judges.
 Never present mock data as live. Never claim a feature is complete without
 running it. Never write a commit message describing intent rather than result.
 
-The repository is currently full of placeholder pages reading
-`src/constants/mock-data.ts`, and dashboards showing hardcoded figures. That is
-fine — it is documented as such. What is not fine is a PR that says "impact
-dashboard implemented" when it renders constants.
+Some later-role pages and dashboards still use placeholder data. What is not
+fine is a PR that says "impact dashboard implemented" when it renders constants.
+Consult [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) before describing
+a surface as live.
 
 ---
 
@@ -777,9 +777,8 @@ If the intended behaviour is a single event, this needs changing.
 
 ### 12.3 Never present mock data as working
 
-The repository currently has 9 placeholder pages reading
-`src/constants/mock-data.ts`, and dashboards with hardcoded figures. An agent
-touching these must:
+Some later-role pages and dashboards still use `src/constants/mock-data.ts` or
+hardcoded figures. An agent touching these must:
 
 - Say plainly that the page is a placeholder.
 - Not describe it as "the impact dashboard" without the qualifier.
@@ -788,15 +787,16 @@ touching these must:
 
 ### 12.4 Respect the current state
 
-Do not invent APIs that do not exist. As of this document:
+Do not invent APIs that do not exist. As of 2026-08-29:
 
-- **No Convex mutations exist.** Six read-only queries, that is all.
-- **No auth exists.** `requireAuth` is planned, not written.
-- **No `materialFlowLedger` table exists.** It is in the target schema.
-- **No Mapbox, no Midtrans, no cron, no tests.**
+- M1–M3 include guarded mutations, authentication, the Material Flow Ledger,
+  Mapbox discovery, reservation/payment-hold logic, and Midtrans Sandbox source.
+- Midtrans end-to-end UAT remains required; no recurring cron registration exists.
+- M4 pickup/routing, M5 Processor workflow, M6 impact aggregation, and M7 Admin
+  operations remain planned.
 
-If an agent writes code calling `recordLedgerEvent`, it must also write
-`recordLedgerEvent`, or say clearly that it is a planned dependency.
+Read [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md), then inspect the
+matching export in `convex/`, before using an API.
 
 ### 12.5 Scope discipline
 
