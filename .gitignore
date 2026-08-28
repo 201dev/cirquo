@@ -38,7 +38,6 @@ android/local.properties
 
 # AI Agent Configs
 .agents/
-AGENTS.md
 CLAUDE.md
 GEMINI.md
 .claude/
