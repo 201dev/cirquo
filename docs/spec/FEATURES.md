@@ -147,8 +147,8 @@ The complete current/future boundary is in
 |---|---|---|---|---|
 | F-90 | Payment hold expiry sweep | CON-03, CON-04 | M | 📋 |
 | F-91 | Pickup window expiry sweep | MER-05 | M | 📋 |
-| F-92 | Circular Routing engine | MER-05, PRC-01 | M | 📋 |
-| F-93 | Offer TTL & retry loop | PRC-02 | M | 📋 |
+| F-92 | Circular Routing engine | MER-05, PRC-01 | M | ✅ |
+| F-93 | Offer TTL & retry loop | PRC-02 | M | ✅ |
 | F-94 | Dynamic price re-evaluation cron | PRI-01 | S | 📋 |
 
 **Totals:** 44 features — 27 Must, 12 Should, 5 Could.
