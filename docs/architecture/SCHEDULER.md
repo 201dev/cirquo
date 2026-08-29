@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | **Document Type** | Architecture Specification |
-| **Status** | Target scheduler architecture with implemented M3 hold timer |
+| **Status** | Implemented M3–M4 scheduler subset; remaining jobs are target architecture |
 | **Last Updated** | 2026-08-29 |
 | **Owner** | Backend Engineering |
 | **Platform** | Convex 1.43 `crons` + `ctx.scheduler` |
@@ -19,11 +19,12 @@ Scheduled jobs are what make the platform's central promise true: **every kilogr
 
 This document specifies every job, its schedule, its idempotency guarantee, its ledger emissions, its failure behaviour, and the ordering dependencies between jobs.
 
-**Current state — 2026-08-29.** `convex/crons.ts` does not exist and there are
-no recurring sweeps. `orders.reserve` uses `ctx.scheduler.runAt` for one
-payment-hold expiry per reservation; `orders.expireHold` is idempotent and
-writes zero-delta `CANCELLED` when it expires a hold. Everything below marked 📋
-is target specification.
+**Current state — 2026-08-29.** `convex/crons.ts` registers the five-minute
+pickup-window expiry sweep and ten-minute Circular Routing sweep.
+`orders.reserve` uses `ctx.scheduler.runAt` for one payment-hold expiry per
+reservation; `recoveryBatches.runRouting` similarly schedules one TTL callback
+per offer. These M3–M4 paths are idempotent. Everything else marked 📋 is target
+specification.
 
 ---
 
@@ -40,15 +41,16 @@ is target specification.
 ### 2.2 Cron Registration
 
 ```ts
-// convex/crons.ts — 📋 planned
+// convex/crons.ts — current M4 registrations
 import { cronJobs } from "convex/server";
 import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
-crons.interval("price tick",           { minutes: 15 }, internal.surplusItems.applyPriceTick, {});
-crons.interval("pickup window sweep",  { minutes: 5  }, internal.surplusItems.sweepPickupWindow, {});
+crons.interval("pickup window expiry", { minutes: 5  }, internal.surplusItems.expirePickupWindows, {});
 crons.interval("circular routing",     { minutes: 10 }, internal.recoveryBatches.runRouting, {});
+// 📋 Remaining registrations below are target work.
+crons.interval("price tick",           { minutes: 15 }, internal.surplusItems.applyPriceTick, {});
 crons.interval("offer ttl sweep",      { minutes: 15 }, internal.recoveryBatches.sweepOfferTtl, {});
 crons.interval("pickup reminder",      { minutes: 15 }, internal.notifications.sendPickupReminders, {});
 crons.interval("expiry warning",       { minutes: 30 }, internal.notifications.sendExpiryWarnings, {});
@@ -100,9 +102,9 @@ The cron sweep is stateless with respect to scheduling: **the documents themselv
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Price tick | 15 min | Recompute Dynamic Rescue Pricing | `surplusItems.applyPriceTick` | Emits only when the price actually changes | Next tick retries; no state corruption | `PRICE_ADJUSTED` |
 | 2 | Payment-hold expiry (M3) | Per reservation at `paymentHoldExpiresAt` | Expire unpaid reservation, restore stock | `orders.expireHold` | Guards `status === 'reserved'` and hold time | Replayed timer is a no-op | `CANCELLED` (0 g) |
-| 3 | Pickup-window sweep | 5 min | Expire ended listings; expire uncollected paid orders | `surplusItems.sweepPickupWindow` | Selects only pre-transition statuses | Next tick retries | `EXPIRED`, `CANCELLED` |
+| 3 | Pickup-window sweep | 5 min | Create recovery batches for unclaimed material | `surplusItems.expirePickupWindows` | Selects only pre-transition statuses | Next tick retries | `EXPIRED`, `CANCELLED` |
 | 4 | Circular Routing engine | 10 min | Match `pending` batches to processors | `recoveryBatches.runRouting` | Selects only `pending` | Batch stays `pending`; retried next tick | `ROUTED` |
-| 5 | Offer TTL sweep | 15 min | Reclaim timed-out offers; mark `unroutable` after 3 attempts | `recoveryBatches.sweepOfferTtl` | Selects only `offered` past TTL | Next tick retries | `INTAKE_DECLINED`, `ROUTING_FAILED` |
+| 5 | Offer TTL callback | Per offer at `offerExpiresAt` | Re-offer timed-out batch; mark `unroutable` after 3 attempts | `recoveryBatches.expireOffer` | Requires matching offered status and expiry token | Late callback is a no-op | `ROUTED`, `ROUTING_FAILED` |
 | 6 | Pickup reminder | 15 min | Notify consumers ~30 min before window close | `notifications.sendPickupReminders` | `reminderSentAt` marker on the order | Skipped this cycle; retried next | none |
 | 7 | Expiry warning | 30 min | Warn merchants of listings about to expire unclaimed | `notifications.sendExpiryWarnings` | `expiryWarnedAt` marker on the item | Skipped; retried next | none |
 | 8 | Notification fan-out | 1 min | Deliver queued notifications to many recipients | `notifications.drainOutbox` | Row deleted on delivery | Row remains; retried | none |

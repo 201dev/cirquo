@@ -1,17 +1,19 @@
 # Material Flow Ledger — Cirquo
 
 **Document type:** Technical specification  
-**Status:** Living ledger contract — implemented M1–M3 writes plus target paths
+**Status:** Living ledger contract — implemented M1–M5 writes and M6 impact contract
 **Last updated:** 2026-08-29
-**Implementation status:** ✅ M1–M3 write paths available; M4–M7 paths and aggregation pending
+**Implementation status:** ✅ M1–M5 write paths, M6 aggregation, and all role dashboards available in source; Admin inspection remains M7 work
 
 > The Material Flow Ledger is Cirquo's core differentiator. Every impact number the product displays is derived from it and from nothing else. If the ledger has gaps, the platform's central claim — *we know where every kilogram went* — is false.
 
 > **Implementation boundary.** `materialFlowLedger` and
-> `recordLedgerEvent()` exist in source. M1–M3 currently emit `LISTED`,
-> `PRICE_ADJUSTED`, `RESERVED`, `PAID`, and zero-delta `CANCELLED` events on
-> their implemented paths. `RESCUED`, routing, recovery, aggregation, and Admin
-> integrity queries remain M4–M7 target work. See
+> `recordLedgerEvent()` exist in source. M1–M4 currently emit `LISTED`,
+> `PRICE_ADJUSTED`, `RESERVED`, `PAID`, `RESCUED`, `CANCELLED`, `EXPIRED`,
+> `ROUTED`, `ROUTING_FAILED`, `INTAKE_ACCEPTED`, `INTAKE_DECLINED`, and
+> `PROCESSED` on their implemented paths. M6 provides pure aggregation,
+> role-scoped queries, and Consumer, Merchant, Processor, and Admin dashboard
+> projections; Admin integrity UI remains target work. See
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
@@ -81,7 +83,10 @@ materialFlowLedger: defineTable({
 
 ### Why `weightDeltaGrams` is signed
 
-Material enters the system once (`LISTED`, positive) and leaves through terminal events (`RESCUED`, `PROCESSED`, `ROUTING_FAILED`, negative). Non-material events (`PRICE_ADJUSTED`, `RESERVED`) carry `0`.
+Material enters the system once (`LISTED`, positive). In the current M4 source,
+unclaimed material leaves marketplace accounting at `EXPIRED` (negative); later
+routing state audits carry `0` so the immutable batch weight is never debited
+twice.
 
 This makes the conservation invariant a single sum:
 
@@ -95,7 +100,11 @@ A non-zero sum means material is unaccounted for. That is a one-line integrity c
 
 Event types carry heterogeneous detail — a `PRICE_ADJUSTED` event needs old and new price, a `PROCESSED` event needs output type and quantity, a `MODERATED` event needs a reason. Convex validators would require either a wide sparse object or a discriminated union per event type. A JSON string keeps the table narrow at the cost of losing type-safety inside metadata.
 
-**Trade-off accepted:** metadata is for human audit and forensics, never for computation. Anything a metric depends on must be a first-class column. This is why `weightDeltaGrams` is a column and not a metadata key.
+**Trade-off accepted:** `weightDeltaGrams` is the primary first-class metric
+input. M6 also defensively parses the small metadata contracts that split
+`PROCESSED`, attribute `ROUTING_FAILED`, reconcile measured intake, and record
+immutable `RESCUED` price snapshots. Malformed required metadata is reported as
+an integrity issue, never interpreted as zero.
 
 ---
 
@@ -109,26 +118,32 @@ Thirteen event types. Each maps to exactly one transition in [STATE_MACHINE.md](
 | `PRICE_ADJUSTED` | Pricing engine or merchant | `0` | — | `previousPrice`, `newPrice`, `trigger` |
 | `RESERVED` | Consumer reserves | `0` | — | `quantity`, `unitPrice`, `orderId` |
 | `PAID` | Midtrans webhook | `0` | — | `amount`, `method`, `providerTransactionId` |
-| `RESCUED` | Merchant verifies pickup code | `−quantity × weightPerItemGrams` | ✅ | `quantity`, `totalPrice`, `pickupCode` |
+| `RESCUED` | Merchant verifies pickup code | `−order.rescuedWeightGrams` | ✅ | `quantity`, `totalPrice`, `originalPriceSnapshot` |
 | `CANCELLED` | Consumer hold expiry or Merchant cancellation | `0` for a reservation/hold; `−remainingQuantity × weightPerItemGrams` when an active Rescue Item is cancelled by its Merchant | Merchant cancellation only | `quantity` returned, `reason`, `cancelledBy` |
-| `EXPIRED` | Scheduler | `0` | — | `remainingQuantity`, `pickupEndAt` |
+| `EXPIRED` | Scheduler | `−unclaimedWeightGrams` | — | `remainingQuantity`, no-show weight, `pickupEndAt` |
 | `ROUTED` | Circular Routing | `0` | — | `processorId`, `rank`, `distanceMeters`, `attempt` |
-| `ROUTING_FAILED` | Circular Routing | `−unrouted weight` | ✅ | `attempts`, `declinedBy[]`, `reason` |
-| `INTAKE_ACCEPTED` | Processor accepts | `0` | — | `processorId`, `acceptedWeightGrams` (measured) |
+| `ROUTING_FAILED` | Circular Routing | `0` | ✅ | `attempts`, attempted/declined IDs, `residualWeightGrams`, `reason` |
+| `INTAKE_ACCEPTED` | Processor logs physical intake | `+acceptedWeightGrams` | — | `processorId`, `declaredWeightGrams`, variance |
 | `INTAKE_DECLINED` | Processor declines or TTL | `0` | — | `processorId`, `reason` |
-| `PROCESSED` | Processor logs outcome | `−(outputWeight + residualWeight)` | ✅ | `outputType`, `outputWeightGrams`, `residualWeightGrams` |
+| `PROCESSED` | Processor logs outcome | `−acceptedWeightGrams` | ✅ | `outputType`, `outputWeightGrams`, `residualWeightGrams`, process loss |
 | `MODERATED` | Admin removes listing | `−remaining weight` | ✅ | `adminId`, `reason` |
 
 ### Terminal events and their impact attribution
 
-Only four events attribute material to a final outcome:
+Four events attribute material to circular outcomes; `PROCESSED` may additionally
+record an explicit process loss:
 
 | Event | Contributes to |
 |---|---|
 | `RESCUED` | **Rescued** weight |
 | `PROCESSED` | **Recovered** weight (the `outputWeightGrams` portion) and **Residual** weight (the `residualWeightGrams` portion) |
-| `ROUTING_FAILED` | **Residual** weight |
+| `ROUTING_FAILED` | **Residual** weight from `metadata.residualWeightGrams` |
 | `MODERATED` | **Residual** weight |
+
+`processLossGrams = |PROCESSED.weightDeltaGrams| − outputWeightGrams −
+residualWeightGrams`. It is neither Recovered nor Residual and is returned as a
+separate reconciliation value. Likewise, M5's accepted-versus-declared intake
+variance is a signed measurement adjustment, not a circular outcome.
 
 `PROCESSED` is the only event that splits across two outcomes. This is why the metric layer parses its metadata for the residual portion rather than treating the whole delta as recovered — an important detail for honest reporting. See [IMPACT.md](IMPACT.md) §3.
 
@@ -297,9 +312,14 @@ export const aggregateImpact = query({
 
 The aggregation logic lives in a **framework-agnostic pure function**. The Convex query only fetches rows and delegates. This keeps it unit-testable without a Convex runtime and keeps it portable if the backend ever changes. See [BACKEND.md](../architecture/BACKEND.md).
 
-### Personal scope
+### Role scope
 
-Consumer and Merchant dashboards use `by_actor`, which indexes `actorId` then `occurredAt` — one index scan for "this user's events in this period."
+`RESCUED` is written by the confirming Merchant, not the Consumer. M6 therefore
+resolves Consumer-owned orders first and reads their `by_order` events. Merchant
+scope is established from owned Rescue Items and `by_rescue_item`; Processor
+scope is established from assigned recovery batches and `by_recovery_batch`.
+Only Admin reads the complete ledger. These entity lookups establish ownership;
+the metric values always come from the selected ledger events.
 
 ---
 
@@ -423,9 +443,9 @@ A bakery lists 10 loaves at 400 g each — 4,000 g total. Three are rescued, sev
 | 6 | `PAID` | 0 | 4,000 | System |
 | 7 | `RESCUED` (2 loaves) | −800 | 3,200 | Merchant |
 | 8 | `RESCUED` (1 loaf) | −400 | 2,800 | Merchant |
-| 9 | `EXPIRED` (7 remaining) | 0 | 2,800 | System |
+| 9 | `EXPIRED` (7 remaining) | −2,800 | 0 | System |
 | 10 | `ROUTED` | 0 | 2,800 | System |
-| 11 | `INTAKE_ACCEPTED` (measured 2,800 g) | 0 | 2,800 | Processor |
+| 11 | `INTAKE_ACCEPTED` (measured 2,800 g) | +2,800 | 2,800 | Processor |
 | 12 | `PROCESSED` | −2,800 | **0** | Processor |
 
 **Impact derived from these twelve rows:**

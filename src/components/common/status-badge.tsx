@@ -7,6 +7,8 @@ const statusLabels: Record<string, string> = {
   sold_out: "Habis",
   expired: "Kedaluwarsa",
   recovery_pending: "Menunggu recovery",
+  recovered: "Recovered",
+  residual: "Residual",
   closed: "Ditutup",
   reserved: "Direservasi",
   paid: "Siap diambil",
@@ -17,11 +19,12 @@ const statusLabels: Record<string, string> = {
   accepted: "Diterima",
   collected: "Sudah diambil",
   processed: "Terolah",
-  unroutable: "Tidak ter-rute",
+  unroutable: "Routing gagal",
   LISTED: "Tercatat",
   RESERVED: "Direservasi",
   RESCUED: "Terselamatkan",
   ROUTED: "Circular Routing",
+  ROUTING_FAILED: "Routing gagal",
   PROCESSED: "Terolah",
 };
 

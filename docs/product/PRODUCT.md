@@ -9,9 +9,9 @@
 ---
 
 > **Implementation boundary.** This is product positioning and target MVP
-> scope. Source currently covers M1–M3 implementation, with Sandbox/mobile UAT
-> still pending; Circular Routing, Processor outcomes, ledger-derived impact,
-> and Admin operations are future milestones. See
+> scope. Source currently covers M1–M5 implementation, with M3–M5
+> deployment/Sandbox/mobile UAT still pending; ledger-derived impact and Admin
+> operations are future milestones. See
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---

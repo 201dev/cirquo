@@ -6,10 +6,10 @@
 
 > This document defines the **ubiquitous language** of Cirquo. Every other document, every variable name, every UI string, and every database field should use these terms exactly as defined here. When code and this document disagree, one of them is a bug.
 
-> **Implementation boundary — 2026-08-29.** M1–M3 source implements the
-> identity, Merchant, discovery, reservation, payment-hold, and payment parts
-> of this model. Pickup, Circular Routing, processor outcomes, and impact
-> aggregation remain target work. See
+> **Implementation boundary — 2026-08-29.** M1–M5 source implements the
+> identity, Merchant, discovery, reservation, payment-hold, pickup, Circular
+> Routing, and Processor outcome parts of this model. Impact aggregation
+> remains target work. See
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
@@ -261,6 +261,7 @@ Business rules that hold regardless of implementation. These are the assertions 
 | OR-2 | Reservation decrements `remainingQuantity` immediately, before payment — this prevents overselling during checkout |
 | OR-3 | An unpaid reservation expires after a fixed hold period and returns quantity to stock |
 | OR-4 | `rescuedWeightGrams` is snapshotted at reservation and never recalculated |
+| OR-4a | `originalPriceSnapshot` is captured at reservation; Consumer savings never reads a mutable Rescue Item price |
 | OR-5 | Pickup requires code verification by the Merchant |
 | OR-6 | Pickup cannot be confirmed outside the pickup window without an Admin override |
 | OR-7 | Cancellation is permitted only within the grace period and only before pickup |
@@ -398,9 +399,9 @@ The current codebase predates this document. Known divergences between code and 
 | `SurplusStatus` type | Rescue Item status | Acceptable — internal type name |
 | `weightPerItemGrams` | Weight per unit | ✅ Aligned in intent |
 | `floorPrice` field | Floor price | ✅ Present and validated on current Merchant writes |
-| `materialType` field | Material type | ✅ Present; routing use remains M4 target work |
-| `materialFlowLedger` table | Material Flow Ledger | ✅ Present and written by implemented M1–M3 state transitions |
-| `processors` profile table | Processor Profile | ✅ Present; recovery workflow remains M4–M5 target work |
+| `materialType` field | Material type | ✅ Present and used by Circular Routing |
+| `materialFlowLedger` table | Material Flow Ledger | ✅ Present and written by implemented M1–M5 state transitions |
+| `processors` profile table | Processor Profile | ✅ Present; routing and recovery workflow implemented through M5 |
 
 See [DATABASE.md](DATABASE.md) for the schema. `convex/schema.ts` currently
 defines ten tables; this document may also describe target fields and lifecycle

@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { v, ConvexError } from "convex/values";
-import { action, internalMutation, internalQuery } from "./_generated/server";
+import { action, internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { requireRole } from "./lib/guards";
@@ -24,6 +24,9 @@ type CreateTransactionResult = {
   amount: number;
   paymentHoldExpiresAt: number;
 };
+
+type RefundRequest = { amount: number; refundKey: string };
+type RefundActionResult = { status: "skipped" | "succeeded" | "failed" };
 
 export const createTransaction = action({
   args: {
@@ -154,6 +157,91 @@ export const savePendingTransaction = internalMutation({
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
+    }
+  },
+});
+
+export const getPendingSandboxRefund = internalQuery({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, args) => {
+    const payment = await ctx.db
+      .query("payments")
+      .withIndex("by_order", (q) => q.eq("orderId", args.orderId))
+      .first();
+    if (!payment || payment.refundStatus !== "pending" || !payment.refundKey) return null;
+    return { amount: payment.amount, refundKey: payment.refundKey };
+  },
+});
+
+export const completeSandboxRefund = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    status: v.union(v.literal("succeeded"), v.literal("failed")),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const payment = await ctx.db
+      .query("payments")
+      .withIndex("by_order", (q) => q.eq("orderId", args.orderId))
+      .first();
+    if (!payment || payment.refundStatus !== "pending") return;
+
+    const now = Date.now();
+    await ctx.db.patch(payment._id, {
+      refundStatus: args.status,
+      refundCompletedAt: now,
+      refundError: args.status === "failed" ? args.error ?? "Refund Midtrans gagal." : undefined,
+      updatedAt: now,
+    });
+  },
+});
+
+export const requestSandboxRefund = internalAction({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, args): Promise<RefundActionResult> => {
+    const refund = await ctx.runQuery(internal.payments.getPendingSandboxRefund, args) as RefundRequest | null;
+    if (!refund) return { status: "skipped" as const };
+
+    const serverKey = process.env.MIDTRANS_SERVER_KEY;
+    if (!serverKey) {
+      await ctx.runMutation(internal.payments.completeSandboxRefund, {
+        orderId: args.orderId,
+        status: "failed",
+        error: "Midtrans server key tidak dikonfigurasi.",
+      });
+      return { status: "failed" as const };
+    }
+
+    try {
+      const response: Response = await fetch(
+        `https://api.sandbox.midtrans.com/v2/${encodeURIComponent(args.orderId)}/refund`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Basic ${btoa(`${serverKey}:`)}`,
+          },
+          body: JSON.stringify({
+            refund_key: refund.refundKey,
+            amount: refund.amount,
+            reason: "pickup_window_expired",
+          }),
+        },
+      );
+      await ctx.runMutation(internal.payments.completeSandboxRefund, {
+        orderId: args.orderId,
+        status: response.ok ? "succeeded" : "failed",
+        error: response.ok ? undefined : `Midtrans refund ditolak (HTTP ${response.status}).`,
+      });
+      return { status: response.ok ? "succeeded" as const : "failed" as const };
+    } catch {
+      await ctx.runMutation(internal.payments.completeSandboxRefund, {
+        orderId: args.orderId,
+        status: "failed",
+        error: "Permintaan refund Midtrans tidak dapat dikirim.",
+      });
+      return { status: "failed" as const };
     }
   },
 });

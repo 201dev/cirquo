@@ -52,6 +52,9 @@ const ProcessorDashboardPage = lazy(
 const ProcessorHistoryPage = lazy(
   () => import("@/pages/processor/history-page"),
 );
+const ProcessorProfilePage = lazy(
+  () => import("@/pages/processor/profile-page"),
+);
 const RecoveryDetailPage = lazy(
   () => import("@/pages/processor/recovery-detail-page"),
 );
@@ -170,6 +173,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <ProcessorDashboardPage /> },
           { path: "history", element: <ProcessorHistoryPage /> },
+          { path: "profile", element: <ProcessorProfilePage /> },
           {
             element: <RoleRoute role="processor" requiresVerified />,
             children: [

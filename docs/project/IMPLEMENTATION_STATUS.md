@@ -17,6 +17,7 @@ Jangan menyatakan alur selesai hanya karena sebuah route atau tabel sudah ada.
 |---|---|
 | ✅ Source tersedia | Implementasi ada di source dan dapat diaudit. UAT tetap diperlukan untuk klaim end-to-end. |
 | 🧪 UAT diperlukan | Source tersedia, tetapi harus diverifikasi pada deployment Sandbox/perangkat nyata. |
+| 🚧 Sebagian source | Sebagian issue milestone tersedia; jangan menyatakan milestone selesai. |
 | 📋 Target | Kontrak telah direncanakan, tetapi surface produksi belum ada. |
 
 Semua status di bawah adalah **source-level** kecuali dinyatakan lain.
@@ -58,15 +59,15 @@ Semua status di bawah adalah **source-level** kecuali dinyatakan lain.
 
 | Milestone | Status | Yang masih harus dibangun |
 |---|---|---|
-| M4 | 📋 Target | Konfirmasi pickup Merchant, `RESCUED` di transaksi yang sama, expiry Rescue Item berulang, Circular Routing, recovery batch creation, dan refund paid no-show. |
-| M5 | 📋 Target | Queue Processor, accept/decline, intake terukur, dan outcome logging. Profil Processor sudah ada, tetapi alur pemulihan belum ada. |
-| M6 | 📋 Target | Agregasi impact dari ledger dan semua dashboard tanpa angka mock. `impact.getPlaceholderSummary` bukan kontrak dashboard produksi. |
+| M4 | 🧪 UAT deployment diperlukan | Konfirmasi pickup, expiry/recovery batch, refund Sandbox no-show, Circular Routing, dan UI status reaktif Merchant/Consumer tersedia di source. Kontrak M5 ada di `M5_HANDOFF.md`; UAT browser/Midtrans masih diperlukan. |
+| M5 | 🧪 UAT deployment diperlukan | Queue dan detail batch Processor, accept/decline, intake terukur, outcome, dashboard operasional, serta edit profil kapasitas tersedia di source. UAT browser pada deployment masih diperlukan. |
+| M6 | 🧪 UAT deployment diperlukan | `src/lib/impact.ts`, empat query scoped, serta dashboard Consumer, Merchant, Processor, dan Admin tanpa angka mock tersedia di source. Bukti otomatis dan handoff M7 ada di `M6_UAT.md` serta `M6_HANDOFF.md`; walkthrough browser/mobile deployment masih diperlukan. |
 | M7 | 📋 Target | Operasi Admin, ledger inspector, moderasi, dan notifikasi. Route halaman bukan bukti mutasi/query Admin telah tersedia. |
 | M8 | 📋 Target | Validasi Android, seed demo, video, dan aset submission. Konfigurasi Capacitor sudah ada. |
 
 ---
 
-## Kontrak yang diteruskan ke M4
+## Kontrak source M4
 
 1. Order `paid` menyimpan snapshot `totalPrice`, `quantity`, dan
    `rescuedWeightGrams`; M4 wajib memakai `-order.rescuedWeightGrams`, bukan
@@ -76,15 +77,35 @@ Semua status di bawah adalah **source-level** kecuali dinyatakan lain.
    pemilik ketika `status === 'paid'`.
 3. Merchant harus memverifikasi code yang diberikan Consumer. Jangan membuat
    query Merchant yang mengirimkan expected pickup code sebelum verifikasi.
-4. `orders.confirmPickup` harus menjadi mutasi terjaga yang mengubah order ke
+4. `orders.confirmPickup` adalah mutasi terjaga yang mengubah order ke
    `picked_up` dan menulis `RESCUED` dengan delta gram negatif dalam transaksi
    Convex yang sama.
-5. Expiry payment hold sudah dimiliki M3: order menjadi `expired`, stok kembali,
-   dan eventnya `CANCELLED` dengan `weightDeltaGrams: 0`. M4 tidak boleh
-   menduplikasi scheduler atau event ini.
-6. Pickup code saat ini berupa enam digit acak. Sebelum M4 memakai index
-   `by_pickup_code` untuk verifikasi, generator harus menjamin tidak ada duplikasi
-   untuk order aktif dan konfirmasi harus membatasi percobaan gagal.
+5. Expiry payment hold tetap dimiliki M3: order menjadi `expired`, stok kembali,
+   dan eventnya `CANCELLED` dengan `weightDeltaGrams: 0`. M4 tidak menduplikasi
+   scheduler atau event ini.
+6. Expiry pickup M4 membuat satu recovery batch dan satu `EXPIRED` dengan delta
+   negatif; `ROUTED` dan `ROUTING_FAILED` berikutnya adalah audit state batch
+   bernilai 0 g agar berat immutable tidak terdebit dua kali.
+7. Circular Routing hanya menawarkan satu Processor terverifikasi pada satu waktu.
+   Kandidat diurutkan secara deterministik: jarak, kapasitas tersisa, lalu ID.
+   Tiga offer yang kedaluwarsa menjadikan batch `unroutable`.
+
+## Kontrak source M5
+
+1. Processor terverifikasi hanya dapat membaca dan mengubah recovery batch yang
+   ditugaskan kepadanya. Queue, detail, dashboard, dan riwayat memakai query
+   Convex reaktif.
+2. `accept` tidak menulis `INTAKE_ACCEPTED`: berat fisik belum diterima. Offer
+   yang ditolak menulis `INTAKE_DECLINED (0 g)`, sedangkan intake terukur menulis
+   satu `INTAKE_ACCEPTED (+M)` dan outcome final menulis satu `PROCESSED (-M)`.
+3. Berat intake dan outcome adalah integer gram. `output + residual` tidak dapat
+   melampaui intake; residual nol memerlukan konfirmasi server-side.
+4. Dashboard Processor menjumlahkan output, residual, intake, dan recovery rate
+   dari event ledger miliknya. Komitmen kapasitas memakai batch yang telah
+   diterima hari ini; offer aktif belum mengunci kapasitas.
+5. Profil Processor dapat mengubah material, kapasitas, radius, output, dan jam
+   operasional untuk routing berikutnya. `acceptedOutputTypes` pada batch menjaga
+   agar perubahan profil tidak membatalkan batch yang telah diterima.
 
 ---
 

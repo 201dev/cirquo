@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | **Document Type** | Architecture Specification |
-| **Status** | Target frontend architecture with implemented M1–M3 subset |
+| **Status** | Target frontend architecture with implemented M1–M5 subset |
 | **Last Updated** | 2026-08-29 |
 | **Owner** | Frontend Engineering |
 | **Applies To** | Cirquo Web (PWA) + Capacitor Android shell |
@@ -1205,7 +1205,7 @@ The map/list pairing is the most important item: a WebGL canvas cannot be made f
 | 1 | `RescueItemCard` | `components/consumer/` | `format.ts` | Appears in Explore, Home, detail, order history — the most reused unit in the product | 📋 |
 | 2 | `StatusBadge` | `components/common/` | domain types | Every role needs item/order/batch status rendering | ✅ |
 | 3 | `EmptyState` | `components/common/` | — | Later-role pages can share one when repeated inline states become costly | 📋 |
-| 4 | `LoadingSkeletons` | `components/common/` | — | M1–M3 pages use skeletons; extract only when shared variants are needed | 📋 |
+| 4 | `LoadingSkeletons` | `components/common/` | — | M1–M5 pages use local skeletons; extract only when shared variants are needed | 📋 |
 | 5 | `AppErrorBoundary` | `components/common/` | — | Query errors throw during render; nothing is safe to wire without it | 📋 |
 | 6 | `RequireAuth` / `RequireRole` | `features/auth/` | `api.auth.currentUser` | Unblocks every guarded route | 📋 |
 | 7 | `PickupWindowCountdown` | `components/consumer/` | `format.ts` | Urgency is the core consumer motivator | 📋 |

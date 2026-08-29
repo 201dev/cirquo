@@ -84,6 +84,7 @@ erDiagram
         id rescueItemId
         number quantity
         number totalPrice
+        number originalPriceSnapshot
         number rescuedWeightGrams
         string pickupCode
         string status
@@ -154,8 +155,8 @@ Business identity and, critically, **location**.
 ### 2.3 `processors` — Processor Profile
 
 **This table exists in the current 10-table schema.** Its owner, verification,
-and routing-profile fields are available for onboarding; M4–M5 still own the
-logic that uses those fields for routing and intake.
+and routing-profile fields are used by M4 routing and M5 intake/outcome. M6
+consumes the stable batch and ledger contract for impact aggregation.
 
 | Rule | Requires |
 |---|---|
@@ -213,7 +214,7 @@ The second calculation is correct. A `RESCUED` ledger event is written only on v
 | → `disputes` | 1 : 0..* |
 | → `ledger` | 1 : 1..* |
 
-**`rescuedWeightGrams` is a snapshot, not a derived value.** It is computed as `quantity × weightPerItemGrams` at reservation time and never recalculated. If a merchant later edits the listing's weight, historical orders keep their original figure. Recomputing it would retroactively change impact history, which defeats the purpose of an append-only ledger.
+**`rescuedWeightGrams` and `originalPriceSnapshot` are snapshots, not derived values.** They are captured at reservation time and never recalculated. `rescuedWeightGrams` is `quantity × weightPerItemGrams`; `originalPriceSnapshot` preserves the original per-unit price used for Consumer savings. If a merchant later edits the Rescue Item, historical orders keep their original figures. Recomputing either would retroactively change impact history.
 
 ---
 
@@ -243,10 +244,10 @@ Impact calculations prefer `acceptedWeightGrams` over `offeredWeightGrams` whene
 
 ### 2.7 `materialFlowLedger` — Material Flow Ledger
 
-**This table exists and is append-only in the current source.** Implemented M1–M3
-mutations write the events needed for listing, reservation, payment, and
-payment-hold expiry. Ledger aggregation and the later lifecycle write paths
-remain target work.
+**This table exists and is append-only in the current source.** Implemented M1–M5
+mutations write the listing, reservation, payment-hold, pickup, recovery,
+routing, intake, and outcome transitions. Ledger aggregation remains target M6
+work.
 
 | Relationship | Cardinality |
 |---|---|
@@ -314,6 +315,7 @@ Convex has no joins. Every cross-table reference costs an additional read. These
 | `merchantId` | `recoveryBatches` | Reachable via `rescueItems.merchantId` | Merchant dashboard queries batches by merchant directly; avoids N+1 |
 | `merchantName` | Client-side view types | `merchants.name` | Every listing card shows the merchant name; resolving per-item is wasteful |
 | `rescuedWeightGrams` | `orders` | `quantity × weightPerItemGrams` | **Not denormalisation — a deliberate snapshot.** Must not change if the listing is edited |
+| `originalPriceSnapshot` | `orders` | Rescue Item original price at reservation | **Not denormalisation — a deliberate snapshot.** Required to calculate Consumer savings without reading a mutable Rescue Item |
 | `weightDeltaGrams` | `materialFlowLedger` | Derivable from the entity at the time | Makes the ledger self-contained and independently auditable |
 
 **Rejected denormalisations:**

@@ -9,7 +9,9 @@
 > **How to read this:** This is a competition delivery plan, not a startup plan. Phase 1 is the only committed scope and it is sized against a hard external deadline. Everything after Phase 1 exists to answer a judge's "what next?" question, not as a promise. Priorities inside Phase 1 follow the MoSCoW ordering in [PRD.md](../product/PRD.md) §6.
 
 > **Current source boundary — 2026-08-29.** M1 and M2 source is available;
-> M3 source awaits Sandbox/mobile UAT. M4–M8 remain target work. The dates and
+> M3 source awaits Sandbox/mobile UAT; M4 dan M5 source tersedia tetapi masih
+> membutuhkan UAT deployment/browser. M6 source tersedia; M7–M8 remain target
+> work. The dates and
 > estimates below are the original planning baseline, not a live burndown. See
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
@@ -130,8 +132,8 @@ The repository scaffold exists and is type-safe. This phase deliberately built *
 - ❌ All dashboard numbers are hardcoded placeholders
 
 > **Status note — 2026-08-29:** this roadmap is a delivery plan, not the live
-> implementation tracker. M1/M2 foundations and portions of M3 now exist in
-> source; M4 onward remains target work. Use `convex/`, the route table, and UAT
+> implementation tracker. M1–M5 source sekarang tersedia. Use `convex/`, the
+> route table, and UAT
 > evidence to assess completion.
 
 ---

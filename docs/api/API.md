@@ -42,10 +42,12 @@ Per-role function documentation lives in five sibling files:
 | [`API_MERCHANT.md`](./API_MERCHANT.md) | Rescue Item lifecycle, Dynamic Rescue Pricing, pickup confirmation, no-shows |
 | [`API_PROCESSOR.md`](./API_PROCESSOR.md) | Circular Routing queue, accept/decline, measured intake, processed outcome |
 | [`API_ADMIN.md`](./API_ADMIN.md) | Verification, moderation, ledger audit, disputes, integrity checks, system health |
+| [`API_IMPACT.md`](./API_IMPACT.md) | M6 ledger-derived summaries and scope contract |
 
-> **Source boundary — 2026-08-29.** M1–M3 exports are implemented in source;
-> Midtrans requires Sandbox UAT. Sections labelled 📋 are target contracts for
-> later milestones. See [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
+> **Source boundary — 2026-08-29.** M1–M5 exports, M6 ledger summaries,
+> and role-scoped dashboards are implemented in source. M3–M6 still require deployment/Sandbox UAT;
+> sections labelled 📋 are target contracts for later milestones. See
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 
@@ -159,7 +161,7 @@ For readers whose mental model is HTTP. **These routes do not exist.** The table
 | `POST /api/recovery-batches/:id/accept` | `recoveryBatches.accept` | mutation | Capacity + eligibility re-checked server-side |
 | `POST /api/recovery-batches/:id/intake` | `recoveryBatches.logIntake` | mutation | **Measured** weight, processor only |
 | `POST /api/recovery-batches/:id/outcome` | `recoveryBatches.logOutcome` | mutation | Emits `PROCESSED`; splits Recovered/Residual |
-| `GET /api/impact` | `impact.getPlatformImpact` | query | Derived from ledger, never a counter |
+| `GET /api/impact` | `impact.getPlatformSummary` | query | Derived from ledger, never a counter |
 | `GET /api/admin/users` | `admin.listUsers` | query | Paginated |
 | `POST /api/admin/merchants/:id/verify` | `admin.verifyMerchant` | mutation | Audited |
 | `POST /api/webhooks/midtrans` | **`POST /midtrans/webhook`** | `httpAction` | ✅ **This one is a real HTTP endpoint** — see §11 |
@@ -210,7 +212,7 @@ them until the matching export exists in source.
 | `orders.get` | query | Consumer (owner) | ✅ |
 | `orders.cancel` | mutation | Consumer (owner) | 📋 |
 | `orders.getPickupCode` | query | Consumer (owner) | 📋 |
-| `impact.getConsumerSummary` | query | Consumer | 📋 |
+| `impact.getConsumerSummary` | query | Consumer | ✅ |
 | `notifications.listMine` | query | Any session | 📋 |
 | `notifications.markRead` | mutation | Owner | 📋 |
 | `disputes.raise` | mutation | Consumer/Merchant | 📋 |
@@ -227,15 +229,16 @@ them until the matching export exists in source.
 | `surplusItems.cancel` | mutation | Merchant (owner) | ✅ |
 | `surplusItems.markProcessingOnly` | mutation | Merchant (owner) | 📋 |
 | `surplusItems.listMine` | query | Merchant | ✅ |
+| `surplusItems.getMine` | query | Merchant (verified, owner) | ✅ |
 | `surplusItems.listByStatus` | query | Internal/Admin | ✅ |
 | `surplusItems.get` | query | Merchant (owner) | 📋 |
-| `orders.listForMerchant` | query | Merchant | 📋 |
-| `orders.confirmPickup` | mutation | Merchant (owner) | 📋 |
+| `orders.listForMerchant` | query | Merchant (verified) | ✅ |
+| `orders.confirmPickup` | mutation | Merchant (verified, owner) | ✅ |
 | `orders.reportNoShow` | mutation | Merchant (owner) | 📋 |
-| `impact.getMerchantSummary` | query | Merchant | 📋 |
+| `impact.getMerchantSummary` | query | Merchant | ✅ |
 | `merchants.getMine` | query | Merchant | 📋 |
 | `merchants.updateProfile` | mutation | Merchant (owner) | 📋 |
-| `recoveryBatches.listForMerchant` | query | Merchant | 📋 |
+| `recoveryBatches.listForMerchant` | query | Merchant (verified, owner) | ✅ |
 
 ### 5.4 Organic Processor → [`API_PROCESSOR.md`](./API_PROCESSOR.md)
 
@@ -251,7 +254,7 @@ them until the matching export exists in source.
 | `processors.getMine` | query | Processor | 📋 |
 | `processors.updateProfile` | mutation | Processor (owner) | 📋 |
 | `processors.updateCapacity` | mutation | Processor (owner) | 📋 |
-| `impact.getProcessorSummary` | query | Processor | 📋 |
+| `impact.getProcessorSummary` | query | Processor | ✅ |
 
 ### 5.5 Admin → [`API_ADMIN.md`](./API_ADMIN.md)
 
@@ -275,7 +278,7 @@ them until the matching export exists in source.
 | `admin.checkLedgerCompleteness` | query | Admin | 📋 |
 | `admin.getSystemHealth` | query | Admin | 📋 |
 | `admin.listCrons` | query | Admin | 📋 |
-| `impact.getPlaceholderSummary` | query | Public (demo) | ✅ |
+| `impact.getPlatformSummary` | query | Admin | ✅ |
 
 ### 5.6 Internal & scheduled (never client-callable)
 
@@ -1119,7 +1122,7 @@ npm run dev
 
 # One-off function calls from the CLI (no UI required)
 npx convex run surplusItems:listByStatus '{"status":"active"}'
-npx convex run impact:getPlaceholderSummary '{}'
+# impact.getPlatformSummary requires an Admin session; see API_IMPACT.md.
 npx convex run users:getByEmail '{"email":"merchant@example.com"}'
 
 # Seed demo data (planned)

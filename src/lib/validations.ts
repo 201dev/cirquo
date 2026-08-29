@@ -59,10 +59,40 @@ export const outputTypes = [
   "biogas",
 ] as const;
 
+export const recoveryNoteSchema = z
+  .string()
+  .trim()
+  .max(500, "Catatan maksimal 500 karakter");
+
+export const intakeSchema = z.object({
+  acceptedWeightGrams: z
+    .number({ error: "Berat harus berupa angka" })
+    .int("Berat harus berupa gram utuh")
+    .positive("Berat harus lebih dari 0 gram"),
+  note: recoveryNoteSchema,
+});
+
+export const outcomeSchema = z.object({
+  outputType: z.enum(outputTypes),
+  outputWeightGrams: z
+    .number({ error: "Berat output harus berupa angka" })
+    .int("Berat output harus berupa gram utuh")
+    .nonnegative("Berat output tidak boleh negatif"),
+  residualWeightGrams: z
+    .number({ error: "Berat residual harus berupa angka" })
+    .int("Berat residual harus berupa gram utuh")
+    .nonnegative("Berat residual tidak boleh negatif"),
+  note: recoveryNoteSchema,
+});
+
 export const loginSchema = z.object({
   email: z.string().trim().email({ message: "Format email tidak valid" }),
   password: z.string().min(1, { message: "Kata sandi harus diisi" }),
 });
+
+export const pickupCodeSchema = z
+  .string()
+  .regex(/^\d{6}$/, "Kode pickup harus terdiri dari 6 digit");
 
 export const registerSchema = z.object({
   name: z
@@ -107,31 +137,42 @@ export function timeToMinutes(value: string): number {
   return hours * 60 + minutes;
 }
 
-export const processorOnboardingSchema = z
-  .object({
-    ...businessProfileBase,
-    facilityType: z.enum(facilityTypes, {
+const processorRoutingProfileFields = {
+  facilityType: z.enum(facilityTypes, {
       error: "Pilih jenis fasilitas",
     }),
-    acceptedMaterialTypes: z
-      .array(z.enum(materialTypes))
-      .min(1, "Pilih minimal satu jenis material"),
-    dailyCapacityGrams: z
-      .number({ error: "Kapasitas harian harus berupa angka" })
-      .int("Kapasitas harian harus berupa gram utuh")
-      .min(1, "Kapasitas harian minimal 1 gram")
-      .max(100_000_000, "Kapasitas harian maksimal 100.000.000 gram"),
-    maxPickupRadiusMeters: z
-      .number({ error: "Radius pickup harus berupa angka" })
-      .int("Radius pickup harus berupa meter utuh")
-      .min(500, "Radius pickup minimal 500 meter")
-      .max(100_000, "Radius pickup maksimal 100.000 meter"),
-    outputTypes: z
-      .array(z.enum(outputTypes))
-      .min(1, "Pilih minimal satu hasil pengolahan"),
-    operatingHoursStart: timeSchema,
-    operatingHoursEnd: timeSchema,
-  })
+  acceptedMaterialTypes: z
+    .array(z.enum(materialTypes))
+    .min(1, "Pilih minimal satu jenis material"),
+  dailyCapacityGrams: z
+    .number({ error: "Kapasitas harian harus berupa angka" })
+    .int("Kapasitas harian harus berupa gram utuh")
+    .min(0, "Kapasitas harian tidak boleh negatif")
+    .max(100_000_000, "Kapasitas harian maksimal 100.000.000 gram"),
+  maxPickupRadiusMeters: z
+    .number({ error: "Radius pickup harus berupa angka" })
+    .int("Radius pickup harus berupa meter utuh")
+    .min(1_000, "Radius pickup minimal 1.000 meter")
+    .max(50_000, "Radius pickup maksimal 50.000 meter"),
+  outputTypes: z
+    .array(z.enum(outputTypes))
+    .min(1, "Pilih minimal satu hasil pengolahan"),
+  operatingHoursStart: timeSchema,
+  operatingHoursEnd: timeSchema,
+};
+
+export const processorRoutingProfileSchema = z
+  .object(processorRoutingProfileFields)
+  .refine(
+    (data) => timeToMinutes(data.operatingHoursEnd) > timeToMinutes(data.operatingHoursStart),
+    {
+      path: ["operatingHoursEnd"],
+      message: "Jam selesai harus setelah jam mulai pada hari yang sama",
+    },
+  );
+
+export const processorOnboardingSchema = z
+  .object({ ...businessProfileBase, ...processorRoutingProfileFields })
   .refine(
     (data) => timeToMinutes(data.operatingHoursEnd) > timeToMinutes(data.operatingHoursStart),
     {
@@ -145,4 +186,7 @@ export type MerchantOnboardingValues = z.infer<
 >;
 export type ProcessorOnboardingValues = z.infer<
   typeof processorOnboardingSchema
+>;
+export type ProcessorRoutingProfileValues = z.infer<
+  typeof processorRoutingProfileSchema
 >;

@@ -1,21 +1,22 @@
 import { Component, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { getErrorMessage } from "@/lib/errors";
 
 export class QueryErrorBoundary extends Component<
   {
     children: ReactNode;
     title?: string;
   },
-  { hasError: boolean }
+  { error: unknown }
 > {
-  state = { hasError: false };
+  state = { error: null as unknown };
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: unknown) {
+    return { error };
   }
 
   render() {
-    if (this.state.hasError) {
+    if (this.state.error) {
       return (
         <div
           role="alert"
@@ -25,13 +26,13 @@ export class QueryErrorBoundary extends Component<
             {this.props.title ?? "Data tidak dapat dimuat"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Periksa koneksi internet, lalu coba lagi.
+            {getErrorMessage(this.state.error, "Periksa koneksi internet, lalu coba lagi.")}
           </p>
           <Button
             type="button"
             variant="outline"
             className="mt-4"
-            onClick={() => this.setState({ hasError: false })}
+            onClick={() => this.setState({ error: null })}
           >
             Coba lagi
           </Button>

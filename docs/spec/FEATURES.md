@@ -65,7 +65,7 @@ The complete current/future boundary is in
 | F-13 | Processing-only listing | MER-07 | S | 📋 |
 | F-14 | Merchant listing management view | MER-06 | M | ✅ |
 | F-15 | Pickup confirmation via manual code | MER-04 | M | 📋 |
-| F-16 | Merchant dashboard & impact | MER-06, IMP-03 | M | 🚧 |
+| F-16 | Merchant dashboard & impact | MER-06, IMP-03 | M | 🧪 |
 | F-17 | Merchant recovery visibility | MER-05, PRC-04 | S | 📋 |
 
 ### Module C — Consumer
@@ -79,19 +79,19 @@ The complete current/future boundary is in
 | F-24 | Pickup code display after verified payment | CON-05 | M | 🧪 |
 | F-25 | Order history + realtime status | CON-06, PAY-02 | M | 🧪 |
 | F-26 | Cancellation within grace period | CON-08 | S | 📋 |
-| F-27 | Consumer impact dashboard | CON-07, IMP-03 | M | 🚧 |
+| F-27 | Consumer impact dashboard | CON-07, IMP-03 | M | 🧪 |
 | F-28 | Rate a pickup | CON-09 | C | 📋 |
 
 ### Module D — Organic Processor
 
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
-| F-30 | Routed batch queue | PRC-01 | M | 🚧 |
-| F-31 | Accept / decline offer | PRC-02 | M | 📋 |
-| F-32 | Intake log (measured weight) | PRC-03 | M | 📋 |
-| F-33 | Outcome log (output + residual) | PRC-04 | M | 📋 |
-| F-34 | Processor dashboard | PRC-05, IMP-03 | M | 🚧 |
-| F-35 | Capacity & accepted-material profile | PRC-06 | M | 📋 |
+| F-30 | Routed batch queue | PRC-01 | M | ✅ |
+| F-31 | Accept / decline offer | PRC-02 | M | ✅ |
+| F-32 | Intake log (measured weight) | PRC-03 | M | ✅ |
+| F-33 | Outcome log (output + residual) | PRC-04 | M | ✅ |
+| F-34 | Processor dashboard | PRC-05, IMP-03 | S | ✅ |
+| F-35 | Capacity & accepted-material profile | PRC-06 | S | ✅ |
 
 ### Module E — Admin
 
@@ -137,7 +137,7 @@ The complete current/future boundary is in
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
 | F-80 | Material Flow Ledger write path | IMP-01 | M | 📋 |
-| F-81 | Impact aggregation engine | IMP-02 | M | 📋 |
+| F-81 | Impact aggregation engine | IMP-02 | M | ✅ |
 | F-82 | Versioned CO2e methodology | IMP-04 | S | 📋 |
 | F-83 | Weight conservation integrity check | IMP-01 | S | 📋 |
 
@@ -147,8 +147,8 @@ The complete current/future boundary is in
 |---|---|---|---|---|
 | F-90 | Payment hold expiry sweep | CON-03, CON-04 | M | 📋 |
 | F-91 | Pickup window expiry sweep | MER-05 | M | 📋 |
-| F-92 | Circular Routing engine | MER-05, PRC-01 | M | 📋 |
-| F-93 | Offer TTL & retry loop | PRC-02 | M | 📋 |
+| F-92 | Circular Routing engine | MER-05, PRC-01 | M | ✅ |
+| F-93 | Offer TTL & retry loop | PRC-02 | M | ✅ |
 | F-94 | Dynamic price re-evaluation cron | PRI-01 | S | 📋 |
 
 **Totals:** 44 features — 27 Must, 12 Should, 5 Could.
@@ -724,7 +724,7 @@ The merchant enters the Consumer-presented 6-digit pickup code. The mutation val
 
 ### F-16 — Merchant dashboard & impact
 
-**PRD refs:** MER-06, IMP-03 · **Priority:** M · **Status:** 🚧 Partial (route `/merchant` renders `SummaryCard` with mock values)
+**PRD refs:** MER-06, IMP-03 · **Priority:** M · **Status:** 🧪 Source implementation available at `/merchant` and `/merchant/impact`; browser UAT pending
 
 **Objective** — Show a merchant what their surplus actually became, in kilograms and rupiah.
 
@@ -738,12 +738,12 @@ Revenue recovered is the honest commercial argument: this merchant turned materi
 **User story** — As a Merchant, I want to see how much food I saved and how much revenue I recovered, so that I can justify continuing to participate.
 
 **Acceptance criteria**
-- [ ] GIVEN a merchant WHEN the dashboard loads THEN all metrics are computed from ledger entries scoped to their items
-- [ ] GIVEN in-flight material WHEN metrics are rendered THEN it is shown as "in progress", never folded into residual
-- [ ] GIVEN circularity rate WHEN displayed THEN it is `(rescued + recovered) / listed × 100`, rounded to one decimal
-- [ ] GIVEN a new merchant with no listings WHEN the dashboard loads THEN an onboarding empty state is shown, not zeros presented as achievement
-- [ ] GIVEN a pickup is confirmed WHEN it commits THEN dashboard figures update live
-- [ ] GIVEN the codebase is grepped for hardcoded figures WHEN M6 completes THEN none remain in rendered merchant output
+- [x] GIVEN a merchant WHEN the dashboard loads THEN all metrics are computed from ledger entries scoped to their items
+- [x] GIVEN in-flight material WHEN metrics are rendered THEN it is shown as "in progress", never folded into residual
+- [x] GIVEN circularity rate WHEN displayed THEN it is `(rescued + recovered) / listed × 100`, rounded to one decimal
+- [x] GIVEN a new merchant with no listings WHEN the dashboard loads THEN an onboarding empty state is shown, not zeros presented as achievement
+- [x] GIVEN a pickup is confirmed WHEN it commits THEN dashboard figures update live
+- [x] GIVEN the codebase is grepped for hardcoded figures WHEN M6 completes THEN none remain in rendered merchant output
 
 **Ledger events emitted** — none (read-only)
 
@@ -1113,12 +1113,12 @@ The dual condition matters: a consumer who pays at 18:30 for a window closing at
 
 ### F-27 — Consumer impact dashboard
 
-**PRD refs:** CON-07, IMP-03 · **Priority:** M · **Status:** 🚧 Partial (home route renders mock impact numbers)
+**PRD refs:** CON-07, IMP-03 · **Priority:** M · **Status:** 🧪 Source implementation available at `/impact`; browser UAT pending
 
 **Objective** — Convert individual rescues into a running personal contribution, the primary non-monetary retention mechanism.
 
 **Description**
-Personal totals: meals rescued, kg rescued, CO2e avoided, IDR saved versus original prices, and how the consumer's rescues sit within platform totals. All derived from `RESCUED` ledger events where the consumer was the actor.
+Personal totals: meals rescued, kg rescued, CO2e avoided, and IDR saved versus original prices. All derive from `RESCUED` ledger events reached through Consumer-owned orders; the Merchant is the `RESCUED` event actor.
 
 Consumer scope counts **rescued** weight only, never recovered weight. A consumer did not cause the compost outcome of food they failed to collect, and attributing it to them would be flattery rather than measurement.
 
@@ -1127,12 +1127,12 @@ Consumer scope counts **rescued** weight only, never recovered weight. A consume
 **User story** — As a Consumer, I want to see my cumulative rescue impact, so that I feel my choices matter and keep making them.
 
 **Acceptance criteria**
-- [ ] GIVEN a consumer WHEN the dashboard loads THEN metrics derive from `RESCUED` ledger entries scoped to them
-- [ ] GIVEN a completed pickup WHEN it commits THEN totals increase live
-- [ ] GIVEN CO2e WHEN displayed THEN the methodology version and an "estimated" qualifier are shown with a link to [IMPACT.md](../impact/IMPACT.md)
-- [ ] GIVEN a new consumer WHEN the dashboard loads THEN an encouraging empty state is shown, not zeros framed as achievement
-- [ ] GIVEN money saved WHEN displayed THEN it is the sum of (original − paid) across picked-up orders, in IDR with Indonesian locale formatting
-- [ ] GIVEN reserved-but-not-collected orders WHEN metrics compute THEN they contribute nothing
+- [x] GIVEN a consumer WHEN the dashboard loads THEN metrics derive from `RESCUED` ledger entries scoped to them
+- [x] GIVEN a completed pickup WHEN it commits THEN totals increase live
+- [x] GIVEN CO2e WHEN displayed THEN the methodology version and an "estimated" qualifier are shown with a reference to [IMPACT.md](../impact/IMPACT.md)
+- [x] GIVEN a new consumer WHEN the dashboard loads THEN an encouraging empty state is shown, not zeros framed as achievement
+- [x] GIVEN money saved WHEN displayed THEN it is the sum of (original − paid) across picked-up orders, in IDR with Indonesian locale formatting
+- [x] GIVEN reserved-but-not-collected orders WHEN metrics compute THEN they contribute nothing
 
 **Ledger events emitted** — none (read-only)
 
@@ -1198,7 +1198,7 @@ Priority C. Ratings need volume to be meaningful and a competition demo has none
 
 ### F-30 — Routed batch queue
 
-**PRD refs:** PRC-01 · **Priority:** M · **Status:** 🚧 Partial (route `/processor/recovery` renders mock data)
+**PRD refs:** PRC-01 · **Priority:** M · **Status:** ✅ Source implementation available · deployment UAT pending
 
 **Objective** — Present offered batches with everything needed to decide accept or decline in seconds.
 
@@ -1212,12 +1212,12 @@ The TTL countdown is the most important element on the screen. A processor who d
 **User story** — As a Processor, I want to see offered batches with weight, material type, and distance, so that I can decide quickly whether to take them.
 
 **Acceptance criteria**
-- [ ] GIVEN a verified processor WHEN the queue loads THEN only batches offered to them are returned, scoped server-side
-- [ ] GIVEN a new routed batch WHEN routing commits THEN it appears in the queue live and triggers a notification
-- [ ] GIVEN an offered batch WHEN rendered THEN the TTL countdown is visible and turns urgent under 1 hour
-- [ ] GIVEN TTL expiry WHEN the sweep runs THEN the batch leaves the queue and returns to `pending` for the next candidate
-- [ ] GIVEN an empty queue WHEN rendered THEN an empty state explains that offers are matched to declared material types and capacity
-- [ ] GIVEN an unverified processor WHEN the queue loads THEN it is empty and a verification banner is shown
+- [x] GIVEN a verified processor WHEN the queue loads THEN only batches offered to them are returned, scoped server-side
+- [x] GIVEN a new routed batch WHEN routing commits THEN it appears in the queue live; notifications remain M7 scope
+- [x] GIVEN an offered batch WHEN rendered THEN the TTL countdown is visible and turns urgent under 1 hour
+- [x] GIVEN TTL expiry WHEN the sweep runs THEN the batch leaves the queue and returns to `pending` for the next candidate
+- [x] GIVEN an empty queue WHEN rendered THEN an empty state explains that offers are matched to declared material types and capacity
+- [x] GIVEN an unverified processor WHEN the queue loads THEN it is empty and a verification banner is shown
 
 **Ledger events emitted** — none (read-only)
 
@@ -1240,7 +1240,7 @@ The TTL countdown is the most important element on the screen. A processor who d
 
 ### F-31 — Accept / decline offer
 
-**PRD refs:** PRC-02 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** PRC-02 · **Priority:** M · **Status:** ✅ Source implementation available · deployment UAT pending
 
 **Objective** — Let a processor commit to collecting a batch, or release it quickly so it can find another home.
 
@@ -1254,13 +1254,13 @@ After **3 failed attempts** the batch becomes `unroutable`, `ROUTING_FAILED` is 
 **User story** — As a Processor, I want to accept or decline offers quickly, so that I only commit to what I can actually process.
 
 **Acceptance criteria**
-- [ ] GIVEN an `offered` batch WHEN accepted THEN status becomes `accepted`, `processorId` is set, and capacity is reserved
-- [ ] GIVEN an `offered` batch WHEN declined THEN status returns to `pending`, the processor is appended to `declinedByProcessorIds`, and routing re-runs immediately
-- [ ] GIVEN a decline WHEN it commits THEN an `INTAKE_DECLINED` ledger event with delta 0 is written including the reason
-- [ ] GIVEN `routingAttempts` reaching 3 WHEN routing fails again THEN the batch becomes `unroutable` and terminal `ROUTING_FAILED` is written as residual
-- [ ] GIVEN a batch already accepted by another processor WHEN accept is attempted THEN it is rejected with `ALREADY_ACCEPTED`
-- [ ] GIVEN acceptance that would exceed daily capacity WHEN attempted THEN it is rejected with `CAPACITY_EXCEEDED`
-- [ ] GIVEN an accept or decline WHEN it commits THEN the merchant's recovery view updates live
+- [x] GIVEN an `offered` batch WHEN accepted THEN status becomes `accepted`, `processorId` is set, and capacity is reserved
+- [x] GIVEN an `offered` batch WHEN declined THEN status returns to `pending`, the processor is appended to `declinedByProcessorIds`, and routing re-runs immediately
+- [x] GIVEN a decline WHEN it commits THEN an `INTAKE_DECLINED` ledger event with delta 0 is written including the reason
+- [x] GIVEN `routingAttempts` reaching 3 WHEN routing fails again THEN the batch becomes `unroutable` and terminal `ROUTING_FAILED` is written as residual
+- [x] GIVEN a batch already accepted by another processor WHEN accept is attempted THEN it is rejected by the ownership/transition guard
+- [x] GIVEN acceptance that would exceed daily capacity WHEN attempted THEN it is rejected with `CAPACITY_EXCEEDED`
+- [x] GIVEN an accept or decline WHEN it commits THEN the merchant's recovery view updates live
 
 **Ledger events emitted** — `INTAKE_DECLINED` on decline; `ROUTING_FAILED` (terminal) after 3 attempts
 
@@ -1284,7 +1284,7 @@ After **3 failed attempts** the batch becomes `unroutable`, `ROUTING_FAILED` is 
 
 ### F-32 — Intake log (measured weight)
 
-**PRD refs:** PRC-03 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** PRC-03 · **Priority:** M · **Status:** ✅ Source implementation available · deployment UAT pending
 
 **Objective** — Replace the merchant's estimate with a measured weight, the moment the ledger becomes trustworthy.
 
@@ -1298,13 +1298,13 @@ Four weight fields exist deliberately with different trust levels: `offeredWeigh
 **User story** — As a Processor, I want to log the actual weight I collected, so that impact figures reflect reality rather than estimates.
 
 **Acceptance criteria**
-- [ ] GIVEN an `accepted` batch WHEN intake is logged with a positive weight THEN status becomes `collected` and `acceptedWeightGrams` is stored
-- [ ] GIVEN intake WHEN it commits THEN an `INTAKE_ACCEPTED` ledger event is written with the measured weight
-- [ ] GIVEN a measured weight differing from offered by more than 30% WHEN saved THEN a variance flag is raised for admin review
-- [ ] GIVEN a zero or negative weight WHEN submitted THEN validation rejects
-- [ ] GIVEN a batch not in `accepted` WHEN intake is attempted THEN it is rejected as an invalid transition
-- [ ] GIVEN a processor logging intake on another processor's batch WHEN attempted THEN it throws `FORBIDDEN`
-- [ ] GIVEN intake WHEN it commits THEN the source merchant sees the measured weight live
+- [x] GIVEN an `accepted` batch WHEN intake is logged with a positive weight THEN status becomes `collected` and `acceptedWeightGrams` is stored
+- [x] GIVEN intake WHEN it commits THEN an `INTAKE_ACCEPTED` ledger event is written with the measured weight
+- [x] GIVEN a measured weight differing from offered by more than 30% WHEN saved THEN a variance flag is raised for admin review
+- [x] GIVEN a zero or negative weight WHEN submitted THEN validation rejects
+- [x] GIVEN a batch not in `accepted` WHEN intake is attempted THEN it is rejected as an invalid transition
+- [x] GIVEN a processor logging intake on another processor's batch WHEN attempted THEN it throws `FORBIDDEN`
+- [x] GIVEN intake WHEN it commits THEN the source merchant sees the measured weight live
 
 **Ledger events emitted** — `INTAKE_ACCEPTED` (delta = measured weight)
 
@@ -1328,7 +1328,7 @@ Four weight fields exist deliberately with different trust levels: `offeredWeigh
 
 ### F-33 — Outcome log (output + residual)
 
-**PRD refs:** PRC-04 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** PRC-04 · **Priority:** M · **Status:** ✅ Source implementation available · deployment UAT pending
 
 **Objective** — Record what the material actually became, producing the recovered figure and, equally importantly, the honest residual.
 
@@ -1342,13 +1342,14 @@ The processor logs output type (`compost`, `bsf_larvae`, `biogas`, `animal_feed`
 **User story** — As a Processor, I want to log what the material became including what was unusable, so that reported impact is accurate rather than flattering.
 
 **Acceptance criteria**
-- [ ] GIVEN a `collected` batch WHEN outcome is logged THEN status becomes `processed` and both output and residual weights are stored
-- [ ] GIVEN outcome WHEN it commits THEN a terminal `PROCESSED` event is written with `outputWeightGrams` and `residualWeightGrams` in metadata
-- [ ] GIVEN `output + residual > acceptedWeight` WHEN submitted THEN validation rejects — matter is not created
-- [ ] GIVEN `output + residual < acceptedWeight` WHEN submitted THEN it is accepted with a moisture-loss note and the gap is reported as unattributed
-- [ ] GIVEN `residualWeightGrams = 0` WHEN submitted THEN it is allowed but requires explicit confirmation, since zero residual is unusual
-- [ ] GIVEN outcome WHEN it commits THEN merchant and platform dashboards update live
-- [ ] GIVEN a `processed` batch WHEN outcome logging is attempted again THEN it is rejected — terminal states are final
+- [x] GIVEN a `collected` batch WHEN outcome is logged THEN status becomes `processed` and both output and residual weights are stored
+- [x] GIVEN outcome WHEN it commits THEN a terminal `PROCESSED` event is written with `outputWeightGrams` and `residualWeightGrams` in metadata
+- [x] GIVEN `output + residual > acceptedWeight` WHEN submitted THEN validation rejects — matter is not created
+- [x] GIVEN `output + residual < acceptedWeight` WHEN submitted THEN it is accepted and the gap is returned as explicit `processLossGrams`
+- [x] GIVEN `residualWeightGrams = 0` WHEN submitted THEN it is allowed but requires explicit confirmation, since zero residual is unusual
+- [x] GIVEN outcome WHEN it commits THEN Merchant dashboard updates live (M6-02)
+- [x] GIVEN outcome WHEN it commits THEN Admin dashboard updates live (M6-03)
+- [x] GIVEN a `processed` batch WHEN outcome logging is attempted again THEN it is rejected — terminal states are final
 
 **Ledger events emitted** — `PROCESSED` (terminal; metadata splits recovered vs residual)
 
@@ -1372,26 +1373,23 @@ The processor logs output type (`compost`, `bsf_larvae`, `biogas`, `animal_feed`
 
 ### F-34 — Processor dashboard
 
-**PRD refs:** PRC-05, IMP-03 · **Priority:** M · **Status:** 🚧 Partial (route `/processor` renders mock data)
+**PRD refs:** PRC-05, IMP-03 · **Priority:** S · **Status:** ✅ Source implementation M6-03 available · deployment UAT pending
 
 **Objective** — Show a processor their throughput, capacity utilisation, and recovery performance.
 
 **Description**
-Summary cards for pending offers, accepted batches awaiting collection, collected batches awaiting outcome, today's intake against daily capacity, total processed weight, output by type, and recovery efficiency (`output / accepted`). The reliability score — the routing input derived from accept, decline, and expiry history — is shown so processors understand why offer volume rises or falls.
-
-Surfacing reliability is a design choice with teeth: it converts an invisible ranking penalty into a visible, actionable number.
+Summary cards for offer, accepted, collected, and processed batch; intake hari ini dan total; output per jenis; residual; serta efisiensi recovery (`output / input batch yang sudah diproses`). `/processor` hanya mengonsumsi `impact.getProcessorSummary`; output, residual, intake, dan rate berasal dari Material Flow Ledger batch Processor, sedangkan count status dan kapasitas berasal dari batch yang ditugaskan serta profilnya.
 
 **Actors** — Organic Processor (verified)
 
 **User story** — As a Processor, I want to see my throughput and capacity use, so that I can manage intake and keep receiving offers.
 
 **Acceptance criteria**
-- [ ] GIVEN a processor WHEN the dashboard loads THEN all metrics are scoped to their own batches
-- [ ] GIVEN today's intake WHEN rendered THEN it is shown against `dailyCapacityGrams` as a progress indicator
-- [ ] GIVEN capacity at or above 90% used WHEN rendered THEN a warning explains that routing eligibility is now limited
-- [ ] GIVEN recovery efficiency WHEN displayed THEN it is `outputWeight / acceptedWeight` across processed batches
-- [ ] GIVEN the reliability score WHEN displayed THEN the accept, decline, and expire counts behind it are shown
-- [ ] GIVEN batch status changes WHEN they commit THEN counts update live
+- [x] GIVEN a processor WHEN the dashboard loads THEN all metrics are scoped to their own batches and ledger events
+- [x] GIVEN today's intake WHEN rendered THEN it is shown against `dailyCapacityGrams` as a progress indicator
+- [x] GIVEN capacity at or above 90% used WHEN rendered THEN a warning explains that routing eligibility is now limited
+- [x] GIVEN recovery efficiency WHEN displayed THEN it is `outputWeight / acceptedWeight` across processed batches
+- [x] GIVEN batch status changes WHEN they commit THEN counts update live
 
 **Ledger events emitted** — none (read-only)
 
@@ -1401,12 +1399,13 @@ Surfacing reliability is a design choice with teeth: it converts an invisible ra
 
 | Case | Expected behaviour |
 |---|---|
-| New processor with no history | Reliability shows the 0.7 default with an explanation |
+| New processor with no history | Empty state menjelaskan bagaimana Circular Routing menawarkan batch; tidak ada performa palsu |
 | Capacity exceeded by a manual admin re-route | Displayed as over-capacity; routing still excludes them |
 | Zero processed batches | Efficiency shows "—", not 0% |
 
 **Future improvements**
 - Weekly and monthly throughput charts
+- Reliability scoring, only after Circular Routing ranking includes it explicitly
 - Forecast of expected offers from historical patterns
 - Export for facility compliance reporting
 
@@ -1414,7 +1413,7 @@ Surfacing reliability is a design choice with teeth: it converts an invisible ra
 
 ### F-35 — Capacity & accepted-material profile
 
-**PRD refs:** PRC-06 · **Priority:** M · **Status:** 📋 Planned
+**PRD refs:** PRC-06 · **Priority:** S · **Status:** ✅ Source implementation available · deployment UAT pending
 
 **Objective** — Keep routing constraints editable so they reflect the facility's real, current situation.
 
@@ -1428,12 +1427,12 @@ Capacity is a daily figure rather than a rolling window because processors think
 **User story** — As a Processor, I want to update my capacity and accepted materials, so that offers match what I can handle today.
 
 **Acceptance criteria**
-- [ ] GIVEN a processor WHEN they edit capacity THEN the change applies to routing passes after the save
-- [ ] GIVEN capacity reduced below today's accepted weight WHEN saved THEN it is allowed and the processor is simply excluded from further offers today
-- [ ] GIVEN accepted material types WHEN edited THEN at least one must remain selected
-- [ ] GIVEN radius WHEN edited THEN it must be between 1 km and 50 km
-- [ ] GIVEN operating hours WHEN edited THEN at least one open day per week is required
-- [ ] GIVEN any profile change WHEN saved THEN it is recorded with a timestamp for admin audit
+- [x] GIVEN a processor WHEN they edit capacity THEN the change applies to routing passes after the save
+- [x] GIVEN capacity reduced below today's accepted weight WHEN saved THEN it is allowed and the processor is simply excluded from further offers today
+- [x] GIVEN accepted material types WHEN edited THEN at least one must remain selected
+- [x] GIVEN radius WHEN edited THEN it must be between 1 km and 50 km
+- [x] GIVEN operating hours WHEN edited THEN the daily WIB interval must be valid
+- [x] GIVEN any profile change WHEN saved THEN `updatedAt` is recorded for admin audit
 
 **Ledger events emitted** — none
 
@@ -1584,12 +1583,12 @@ Search by item id, merchant, or date range, then view a chronological event list
 
 ### F-43 — Platform impact dashboard
 
-**PRD refs:** ADM-04, IMP-03 · **Priority:** M · **Status:** 🚧 Partial (route `/admin` renders mock summary cards)
+**PRD refs:** ADM-04, IMP-03 · **Priority:** M · **Status:** ✅ Source implementation M6-03 available · deployment UAT pending
 
 **Objective** — Present platform-wide circular performance for operators, judges, and stakeholders.
 
 **Description**
-Totals for listed, rescued, recovered, residual, and in-flight weight; circularity rate; diversion rate; CO2e avoided; counts of merchants, consumers, and processors; unroutable batch count; and open disputes. All derived from the ledger, scoped platform-wide.
+Totals for listed, rescued, recovered, residual, and in-flight weight; circularity rate; diversion rate; Estimated CO2e avoided; counts of active merchants, consumers, and processors; and unroutable batch count. Material metrics are ledger-derived, while role and batch counts are read server-side without stored counters.
 
 **Circularity rate is expected between 85% and 95%, with 93% as the demo target.** A dashboard reading 100% would mean either no residual was ever logged or the aggregation is hiding it. The presence of a visible residual figure is the evidence that the rest of the numbers are real.
 
@@ -1598,13 +1597,13 @@ Totals for listed, rescued, recovered, residual, and in-flight weight; circulari
 **User story** — As an Admin, I want a platform-wide impact view, so that I can report performance credibly and spot systemic problems.
 
 **Acceptance criteria**
-- [ ] GIVEN the dashboard WHEN it loads THEN all metrics derive from ledger aggregation, with no stored counters
-- [ ] GIVEN residual weight WHEN displayed THEN it is shown with equal prominence to rescued and recovered
-- [ ] GIVEN in-flight material WHEN displayed THEN it is a separate figure so the totals reconcile
-- [ ] GIVEN circularity rate WHEN it computes above 99% THEN a data-quality warning is raised for investigation
-- [ ] GIVEN unroutable batches WHEN any exist THEN the count links to the manual re-route queue
-- [ ] GIVEN any state change anywhere on the platform WHEN it commits THEN the dashboard reflects it live
-- [ ] GIVEN CO2e WHEN displayed THEN the methodology version is shown
+- [x] GIVEN the dashboard WHEN it loads THEN all metrics derive from ledger aggregation, with no stored counters
+- [x] GIVEN residual weight WHEN displayed THEN it is shown with equal prominence to rescued and recovered
+- [x] GIVEN in-flight material WHEN displayed THEN it is a separate figure so the totals reconcile
+- [x] GIVEN circularity rate WHEN it computes above 99% THEN a data-quality warning is raised for investigation
+- [x] GIVEN unroutable batches WHEN any exist THEN the count is visible; manual re-route remains M7
+- [x] GIVEN any state change anywhere on the platform WHEN it commits THEN the dashboard reflects it live
+- [x] GIVEN CO2e WHEN displayed THEN the methodology version is shown
 
 **Ledger events emitted** — none (read-only)
 

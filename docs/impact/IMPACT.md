@@ -2,14 +2,14 @@
 
 **Document type:** Methodology specification  
 **Methodology version:** `impact-v1`  
-**Status:** Methodology contract — aggregation/dashboard implementation pending
+**Status:** Methodology contract — M6 aggregation and all role dashboards available in source
 **Last updated:** 2026-08-29
 
 > This document defines how Cirquo measures environmental impact, what assumptions underpin those numbers, and — critically — **what they do not prove**. Every figure the product displays traces back to this methodology. If a judge, auditor, or partner challenges an impact claim, this document is the answer.
 
-> **Implementation boundary.** The ledger write foundation exists, but the
-> current source has no ledger-derived impact dashboard or aggregation query.
-> These remain M6 work; see
+> **Implementation boundary.** M6 provides pure ledger aggregation, role-scoped
+> Convex queries, and summaries for Consumer, Merchant, Organic Processor, and
+> Admin. Browser/mobile UAT remains required; see
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
@@ -45,7 +45,8 @@ Presenting CO2e as the headline would be the single easiest way to lose credibil
 Every metric derives from one conservation identity:
 
 ```
-listed = rescued + recovered + residual + inProgress
+listed + measurementAdjustment
+  = rescued + recovered + residual + processLoss + inProgress
 ```
 
 | Term | Definition | Ledger source |
@@ -54,9 +55,14 @@ listed = rescued + recovered + residual + inProgress
 | **rescued** | Collected and consumed by a Consumer | `RESCUED` events |
 | **recovered** | Converted by an Organic Processor into compost, BSF larvae, feed, or biogas | `PROCESSED` events, `outputWeightGrams` |
 | **residual** | Neither rescued nor recovered | `ROUTING_FAILED`, `MODERATED`, and `PROCESSED` residual portion |
-| **inProgress** | Still moving through the system | The remainder |
+| **processLoss** | Measured mass lost during processing | `|PROCESSED.delta| − output − residual` |
+| **measurementAdjustment** | Difference between declared and measured intake | `INTAKE_ACCEPTED.delta − metadata.declaredWeightGrams` |
+| **inProgress** | Still moving through the system without an outcome | The reconciliation remainder |
 
-**`inProgress` is reported, never hidden.** Folding it into residual overstates failure; omitting it makes the numbers not add up. Dashboards show it explicitly.
+`processLoss` and `measurementAdjustment` are explicit reconciliation values,
+not circular outcomes. **`inProgress` is reported, never hidden.** Folding it
+into residual overstates failure; omitting it makes the numbers not add up.
+Dashboards show it explicitly.
 
 The identity is enforced by the weight conservation check in [MATERIAL_LEDGER.md](MATERIAL_LEDGER.md) §7. If it fails for any item, every metric including that item is wrong by an unknown amount.
 
@@ -88,6 +94,11 @@ rescuedGrams = Σ |weightDeltaGrams| where eventType == 'RESCUED'
 recoveredGrams = Σ metadata.outputWeightGrams where eventType == 'PROCESSED'
 ```
 
+M5 first writes `INTAKE_ACCEPTED` with the positive, measured intake weight;
+that event is an inventory handoff, not recovery. `PROCESSED` then carries the
+negative measured weight and its metadata partitions that input into recovered
+output, residual, and explicit process loss.
+
 | Property | Value |
 |---|---|
 | Trigger | Processor logs a processing outcome |
@@ -102,7 +113,7 @@ This is the metric most competitors cannot produce, because their systems end at
 ```
 residualGrams =
     Σ metadata.residualWeightGrams (PROCESSED)
-  + Σ |weightDeltaGrams| (ROUTING_FAILED)
+  + Σ metadata.residualWeightGrams (ROUTING_FAILED)
   + Σ |weightDeltaGrams| (MODERATED)
 ```
 
@@ -169,7 +180,11 @@ Money merchants recovered from food that would otherwise have been a total loss.
 savings = Σ (originalPrice − pricePaid) × quantity  for RESCUED events
 ```
 
-Reported as an estimate: original price is merchant-declared, and some consumers would not have bought at full price anyway.
+`originalPrice` is `orders.originalPriceSnapshot`, written at reservation and
+copied into `RESCUED` metadata with `quantity` and `totalPrice`. It is never
+read from the mutable Rescue Item. Reported as an estimate: original price is
+merchant-declared, and some consumers would not have bought at full price
+anyway.
 
 ---
 
@@ -217,19 +232,9 @@ Recovered food avoids landfill decomposition but does **not** displace food prod
 
 export const IMPACT_METHODOLOGY_VERSION = 'impact-v1'
 
-export const EMISSION_FACTORS = {
-  version: 'impact-v1',
-  rescueKgCo2ePerKg: 2.5,
-  recoveryKgCo2ePerKg: 0.9,
-  source: 'Derived from IPCC AR6 GWP100 for CH4 and published food-system LCA ranges',
-  lastReviewed: '2026-08-06',
-} as const
-
 export function estimateCo2e(rescuedGrams: number, recoveredGrams: number): number {
-  const ef = EMISSION_FACTORS
   return Math.round(
-    (rescuedGrams / 1000) * ef.rescueKgCo2ePerKg * 1000 +
-    (recoveredGrams / 1000) * ef.recoveryKgCo2ePerKg * 1000,
+    rescuedGrams * 2.5 + recoveredGrams * 0.9,
   )
 }
 ```
@@ -359,12 +364,15 @@ The same aggregation, filtered by actor scope.
 
 | Scope | Filter | Metrics shown |
 |---|---|---|
-| **Consumer** | `actorId == user` on `RESCUED` | kg rescued, estimated CO2e, money saved, rescue count |
+| **Consumer** | Owned orders → corresponding `RESCUED` entries | kg rescued, estimated CO2e, money saved |
 | **Merchant** | Items where `merchantId == merchant` | Listed / rescued / recovered / residual, circularity rate, revenue recovered |
 | **Processor** | Batches where `processorId == processor` | Intake volume, output by type, residual rate, estimated CO2e |
 | **Admin** | All entries | Platform totals, circularity rate, active actors, per-city breakdown |
 
-**Consumers do not see a circularity rate.** They only cause `RESCUED` events, so their personal denominator is meaningless. Showing them "100% circularity" would be both true and misleading.
+**Consumers do not see a circularity rate.** `RESCUED` is written by the
+Merchant, so Consumer scope is resolved through `orders.userId`, not
+`ledger.actorId`; their personal projection has no complete `LISTED`
+denominator. Showing "100% circularity" would be both true and misleading.
 
 ---
 

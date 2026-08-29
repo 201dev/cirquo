@@ -9,7 +9,7 @@
 | **Payments** | Midtrans Snap — Sandbox |
 | **Maps** | Mapbox GL JS (client rendering; distance computed server-side by Haversine) |
 | **Status legend** | ✅ implemented · 📋 planned |
-| **Implemented today** | Discovery, reservation, order detail/list queries, and the Midtrans transaction action are implemented. The remaining lifecycle, impact, notification, and dispute functions are planned. |
+| **Implemented today** | Discovery, reservation, pickup/order queries, Midtrans transaction action, and the M6 Consumer impact dashboard/query are implemented. Notifications and disputes remain planned. |
 | **Conventions** | [`API.md`](./API.md) §7 units · §9 errors · §10 reactivity |
 
 ---
@@ -28,6 +28,7 @@
 | `orders.listMine` | query | Consumer | `{ sessionToken? }`; returns the authenticated Consumer's orders. |
 | `orders.get` | query | Consumer | `{ orderId, sessionToken? }`; returns only the owner's order and reveals the pickup code only after payment. |
 | `payments.createTransaction` | action | Consumer | `{ orderId, sessionToken? }`; checks ownership/reserved status, calls Midtrans Sandbox, and stores pending payment context. |
+| `impact.getConsumerSummary` | query | Consumer | `{ sessionToken? }`; resolves owned orders then reduces only their `RESCUED` events. See [API_IMPACT.md](API_IMPACT.md). |
 
 ---
 
@@ -40,7 +41,7 @@ A Consumer never receives a delivery. Cirquo is not a delivery platform. The con
 3. opens a listing and reserves a quantity — **the quantity is decremented at this moment**, and a 15-minute payment hold begins;
 4. pays through Midtrans Snap within that hold;
 5. walks to the merchant during the **pickup window** and reads out a 6-digit **pickup code**;
-6. **M4 target:** the merchant verifies the presented code → the order becomes
+6. the merchant verifies the presented code → the order becomes
    `picked_up` and the material is recorded as **Rescued**.
 
 If the consumer never shows up, the material does **not** become Residual. It re-enters **Circular Routing** and is offered to an Organic Processor. This distinction is the platform's entire thesis and is enforced in `orders.reportNoShow` (see [`API_MERCHANT.md`](./API_MERCHANT.md)).

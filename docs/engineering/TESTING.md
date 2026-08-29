@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | **Document Type** | Engineering Strategy |
-| **Status** | Active testing strategy — M1–M3 checks available, UAT pending |
+| **Status** | Active testing strategy — M1–M5 checks available, UAT pending |
 | **Last Updated** | 2026-08-29 |
 | **Owner** | Cirquo Engineering |
 | **Scope** | Unit, integration, E2E, manual, and integrity testing |

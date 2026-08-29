@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Document type** | Specification — Role-Based Access Control |
-| **Status** | Target RBAC with implemented M1–M3 subset |
+| **Status** | Target RBAC with implemented M1–M5 subset |
 | **Last updated** | 2026-08-29 |
 | **Owner** | Engineering — Security |
 | **Audience** | Backend developers, reviewers, judges |
@@ -21,9 +21,9 @@ The governing principle is stated once here and repeated throughout because it i
 
 > **Implementation boundary.** Authentication, current-user lookup, role
 > guards, Merchant profile/onboarding, Merchant Rescue Item writes, and
-> Consumer-owned order reads are implemented in source. Merchant pickup-code
-> verification, Processor recovery operations, and Admin operations remain
-> target work. See [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
+> Consumer-owned order reads, Merchant pickup-code verification, and Processor
+> recovery operations are implemented in source. Admin operations remain target
+> work. See [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 A disabled button is a courtesy to honest users. It is not a security control. Every mutation in Cirquo re-validates identity, role, ownership, and state on the server, with no trust placed in anything the client sends beyond a session token.
 

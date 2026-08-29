@@ -22,7 +22,7 @@
 | 2 | **Append-only where auditability matters** | `materialFlowLedger` rows are never updated or deleted |
 | 3 | **Soft-delete everywhere else** | Hard deletion orphans ledger entries and breaks the weight conservation invariant |
 | 4 | **Integers only for weight, money, and time** | Grams, IDR, epoch milliseconds. No floats in any value that gets summed |
-| 5 | **Snapshot values that must not change retroactively** | `orders.rescuedWeightGrams`, `orders.totalPrice`, `ledger.weightDeltaGrams` |
+| 5 | **Snapshot values that must not change retroactively** | `orders.rescuedWeightGrams`, `orders.totalPrice`, `orders.originalPriceSnapshot`, `ledger.weightDeltaGrams` |
 | 6 | **Index for the query, not for the entity** | Convex indexes are ordered prefixes; design them from the access patterns in [DATA_MODEL.md](DATA_MODEL.md) §5 |
 | 7 | **No city-scoped hardcoding** | Multi-city expansion must not require a schema change ([PRD.md](../product/PRD.md) §7) |
 
@@ -42,8 +42,8 @@
 | `merchants` | ownerId, name, address, verificationStatus, profile/routing fields | `by_owner` |
 | `processors` | ownerId, name, verificationStatus, profile/routing fields | `by_owner` |
 | `surplusItems` | merchantId, prices incl. floor, quantities, grams, pickup window, material/dietary data, status | `by_merchant`, `by_status` |
-| `materialFlowLedger` | Rescue Item, optional order/batch, event, signed grams, actor, metadata, methodology, timestamp | `by_rescue_item`, `by_occurred_at`, `by_actor`, `by_event_type`, `by_order` |
-| `orders` | userId, Rescue Item, quantity, total/weight snapshots, pickup code, hold, idempotency key, status | `by_user`, `by_item`, `by_user_item_status`, `by_user_idempotency_key`, `by_pickup_code` |
+| `materialFlowLedger` | Rescue Item, optional order/batch, event, signed grams, actor, metadata, methodology, timestamp | `by_rescue_item`, `by_recovery_batch`, `by_occurred_at`, `by_actor`, `by_event_type`, `by_order` |
+| `orders` | userId, Rescue Item, quantity, total/weight/original-price snapshots, pickup code, hold, idempotency key, status | `by_user`, `by_item`, `by_user_item_status`, `by_user_idempotency_key`, `by_pickup_code` |
 | `recoveryBatches` | merchantId, Rescue Item, processorId?, offered/accepted/residual grams, status | `by_merchant`, `by_processor`, `by_status` |
 | `payments` | orderId, Midtrans amount/status/method/transaction/raw payload timestamps | `by_order`, `by_provider_txn` |
 
@@ -53,10 +53,10 @@
 
 | Gap | Blocks |
 |---|---|
-| Partial Rescue Item status model | Current source uses `draft`, `active`, `sold_out`, `expired`, `recovery_pending`, and `closed`; M4–M6 decide whether the target `recovered`, `residual`, and `moderated` states are required. |
+| Partial Rescue Item status model | Current source juga memakai `recovered` dan `residual` dari outcome M5; `moderated` masih target M7. |
 | Partial order state model | `disputed` and `refunded` are absent; they are needed only with dispute/refund work. |
-| Recovery workflow fields | Offer/retry/TTL and measured-output fields are not present; M4–M5 own them. |
-| `notifications`, `disputes`, `impactSnapshots` | Not present. They remain M6–M7 work, not evidence of a missing M1–M3 foundation. |
+| Recovery workflow fields | Offer/retry/TTL, intake terukur, outcome, dan profil kapasitas tersedia dari M4–M5; agregasi impact lintas peran tetap M6. |
+| `notifications`, `disputes`, `impactSnapshots` | Not present. They remain M6–M7 work, not evidence of a missing M1–M5 foundation. |
 
 ---
 
@@ -253,6 +253,7 @@ export default defineSchema({
     quantity: v.number(),
     unitPrice: v.number(),              // snapshot at reservation
     totalPrice: v.number(),             // snapshot
+    originalPriceSnapshot: v.number(),  // snapshot; used for Consumer savings
     rescuedWeightGrams: v.number(),     // snapshot — never recalculated
     platformFeeAmount: v.number(),      // 0 in MVP; hook for monetisation
     pickupCode: v.string(),
@@ -413,6 +414,7 @@ Convex indexes are ordered field prefixes. Each index below exists for a specifi
 | `materialFlowLedger.by_occurred_at` | Platform impact aggregation | Time-range scans for dashboard periods |
 | `materialFlowLedger.by_actor` | Personal impact dashboards | Actor prefix + time range in one index |
 | `materialFlowLedger.by_event_type` | Metric-specific aggregation | Summing only `RESCUED` or only `PROCESSED` events |
+| `materialFlowLedger.by_recovery_batch` | Processor impact summary | Fetch all routed/intake/outcome evidence for its assigned batches |
 
 **Deliberately absent: a geospatial index.** Convex has none. Distance filtering is done in application code — see §6.
 

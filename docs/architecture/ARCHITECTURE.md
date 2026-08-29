@@ -4,7 +4,7 @@
 | --- | --- |
 | **Document Type** | Architecture Specification |
 | **Document ID** | `ARCH-001` |
-| **Status** | Architecture reference — M1–M3 source snapshot plus target design |
+| **Status** | Architecture reference — M1–M5 source snapshot plus target design |
 | **Last Updated** | 2026-08-29 |
 | **Owner** | Platform Architecture |
 | **Audience** | Engineers, technical judges, future maintainers |
@@ -53,31 +53,31 @@ These principles are load-bearing. Every decision later in this document traces 
 
 | # | Principle | Practical consequence | Status |
 | --- | --- | --- | --- |
-| P1 | **The ledger is the truth** | No mutable impact counters. All metrics are reductions over `materialFlowLedger`. | ✅ Ledger foundation; aggregation is M6 target |
-| P2 | **Ledger writes are transactional with the state change** | `recordLedgerEvent` is called inside the same Convex mutation that mutates state. Never from an action, never from the client. | ✅ Implemented M1–M3 transitions |
-| P3 | **Business logic is framework-agnostic** | Algorithms live in `src/lib/*.ts` with zero Convex imports. Convex functions load data, call the pure function, persist the result. | ✅ Pricing, geo, and discovery; routing/impact pending |
-| P4 | **Weight is an integer in grams; money is an integer in IDR; time is epoch milliseconds UTC** | No floats in persisted domain data. No `Date` objects in the database. WIB conversion happens only at render. | ✅ Implemented M1–M3 contracts |
-| P5 | **Server-side authorization is the only authorization** | Client route guards are a UX affordance. Every Convex function re-checks identity and role. | ✅ Implemented M1–M3 surfaces |
-| P6 | **Append-only means append-only** | Ledger rows are never updated or deleted. Corrections are compensating events. | ✅ Implemented ledger helper; later write paths pending |
+| P1 | **The ledger is the truth** | No mutable impact counters. All metrics are reductions over `materialFlowLedger`. | ✅ M6 shared aggregation and all role dashboard rendering |
+| P2 | **Ledger writes are transactional with the state change** | `recordLedgerEvent` is called inside the same Convex mutation that mutates state. Never from an action, never from the client. | ✅ Implemented M1–M5 transitions |
+| P3 | **Business logic is framework-agnostic** | Algorithms live in `src/lib/*.ts` with zero Convex imports. Convex functions load data, call the pure function, persist the result. | ✅ Pricing, geo, routing, recovery, and impact |
+| P4 | **Weight is an integer in grams; money is an integer in IDR; time is epoch milliseconds UTC** | No floats in persisted domain data. No `Date` objects in the database. WIB conversion happens only at render. | ✅ Implemented M1–M5 contracts |
+| P5 | **Server-side authorization is the only authorization** | Client route guards are a UX affordance. Every Convex function re-checks identity and role. | ✅ Implemented M1–M5 surfaces |
+| P6 | **Append-only means append-only** | Ledger rows are never updated or deleted. Corrections are compensating events. | ✅ Implemented M1–M5 write paths |
 | P7 | **Prefer boring, reversible technology** | Where two options are close, pick the one with the cheaper exit. | ✅ Applied |
 | P8 | **Honesty over polish in documentation** | Every capability is marked ✅ implemented, 🚧 in progress, or 📋 planned. | ✅ Applied |
 
 ### 2.1 Honest Implementation Status
 
-The system is a **partially implemented MVP**, not a completed circular loop.
-M1–M3 source is available; M3 still needs Sandbox/mobile UAT. M4 onward is
+The system is a **partially implemented MVP**. M1–M6 source is available;
+M3–M6 still need Sandbox/browser/mobile UAT before sign-off. M7 onward is
 target work. [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md)
 is the authoritative documentation snapshot.
 
 | Layer | Status | Detail |
 | --- | --- | --- |
 | Convex schema (10 tables) | ✅ Implemented | `users`, `sessions`, `authEvents`, `merchants`, `processors`, `surplusItems`, `orders`, `payments`, `recoveryBatches`, `materialFlowLedger` |
-| Convex queries and mutations | ✅ M1–M3 surfaces | Auth/profile, Merchant Rescue Item, discovery, Consumer order queries, and atomic reservation/hold-expiry mutations are present. |
-| Convex actions / httpAction | 🧪 M3 UAT | Midtrans Snap action and `/midtrans/webhook` source exist; recurring crons do not. |
-| React routes | ✅ M1–M3 plus later placeholders | Auth, Consumer, Merchant, Processor, and Admin route groups exist; later role routes are not proof of live backend flows. |
+| Convex queries and mutations | ✅ M1–M5 surfaces | Auth/profile, Rescue Item, discovery, Consumer order, M4 recovery/routing, dan Processor intake/outcome tersedia. |
+| Convex actions / httpAction | 🧪 M3 UAT | Midtrans Snap action and `/midtrans/webhook` source exist; M4 recurring crons juga tersedia. |
+| React routes | ✅ M1–M5 plus later placeholders | Auth, Consumer, Merchant, dan Processor flows M5 terhubung ke data; Admin routes tidak membuktikan backend Admin. |
 | Layouts | ✅ Implemented | `ConsumerLayout`, `RoleShell` (used by Merchant/Processor/Admin layouts) |
 | UI primitives | ✅ 17 shadcn/ui components | new-york style, neutral base |
-| Pure-logic modules | ✅ Partial | `pricing.ts`, `geo.ts`, `discovery.ts`, payment-hold, order grouping, formatting, and validation exist; routing/impact aggregation do not. |
+| Pure-logic modules | ✅ M6 source | `pricing.ts`, `geo.ts`, `discovery.ts`, routing, payment-hold, order grouping, formatting, validation, dan agregasi impact tersedia. |
 | Auth | ✅ Implemented | Registration, login, logout, session restoration, onboarding, and guards are present. |
 | Mapbox | ✅ Implemented | Consumer Mapbox discovery has a list fallback. |
 | Midtrans | 🧪 UAT required | Sandbox Snap and verified webhook source are present; deployment credentials/callback must be tested. |
@@ -201,12 +201,12 @@ graph TB
 
 | Container | Technology | Responsibility | Deployment | Status |
 | --- | --- | --- | --- | --- |
-| **React SPA** | React 19.2, Vite 8, TS 6 | UI, routing, forms, and Consumer map | Static bundle on CDN | ✅ M1–M3 source; later screens vary |
-| **Pure Logic** | Plain TypeScript | Pricing, discovery/ranking, geo, validation | Bundled into SPA and imported by Convex | ✅ Partial; routing/impact pending |
+| **React SPA** | React 19.2, Vite 8, TS 6 | UI, routing, forms, and Consumer map | Static bundle on CDN | ✅ M1–M6 source; M7 Admin operations remain target |
+| **Pure Logic** | Plain TypeScript | Pricing, discovery/ranking, geo, recovery, validation, impact | Bundled into SPA and imported by Convex | ✅ M6 source; all role dashboards consume scoped impact queries |
 | **Capacitor Shell** | Capacitor 8 | Android WebView host, native permissions | Play Store / APK | ✅ Configured |
 | **Service Worker** | Vanilla SW | Shell caching, PROD only | Served with the SPA | ✅ Registered |
-| **Convex Queries** | Convex 1.43 | Reactive reads | Convex cloud | ✅ M1–M3 queries exist |
-| **Convex Mutations** | Convex 1.43 | Transactional writes + ledger | Convex cloud | ✅ M1–M3 writes; M4+ pending |
+| **Convex Queries** | Convex 1.43 | Reactive reads | Convex cloud | ✅ M1–M5 queries exist |
+| **Convex Mutations** | Convex 1.43 | Transactional writes + ledger | Convex cloud | ✅ M1–M5 writes |
 | **Convex Actions** | Convex 1.43 | Midtrans Snap transaction creation | Convex cloud | 🧪 UAT required |
 | **httpAction** | Convex 1.43 | Midtrans notification endpoint | Convex cloud (public URL) | 🧪 Source exists; UAT required |
 | **Crons** | Convex 1.43 | Recurring sweeps | Convex cloud | 📋 Planned; M3 has one-off hold scheduling only |
@@ -628,18 +628,18 @@ At pilot scale — dozens of processors — this is irrelevant. If the processor
 
 | Event | Emitted by | Weight delta | Trigger | Downstream effect |
 | --- | --- | --- | --- | --- |
-| `LISTED` | Merchant mutation | `0` | Rescue Item published | Item becomes discoverable |
+| `LISTED` | Merchant mutation | `+initialWeightGrams` | Rescue Item published | Item becomes discoverable |
 | `PRICE_ADJUSTED` | Cron (15 min) | `0` | Dynamic Rescue Pricing recomputed **and the price changed** | Listing price updates live |
 | `RESERVED` | Consumer mutation | `0` | Reservation created | Quantity decremented, 15-min hold starts |
 | `PAID` | Webhook → mutation | `0` | Midtrans settlement verified | Order becomes collectable |
 | `RESCUED` | Merchant mutation | `-rescuedWeightGrams` | Pickup confirmed with code inside window | **Counts toward Rescued** |
 | `CANCELLED` | Consumer mutation or cron | `0` | Consumer cancels, or payment hold lapses | Quantity restored |
-| `EXPIRED` | Cron (5 min) | `0` | Pickup window closed with material remaining | Item → `recovery_pending`, batch created |
+| `EXPIRED` | Cron (5 min) | `-unclaimedWeightGrams` | Pickup window closed with material remaining | Item → `recovery_pending`, batch created |
 | `ROUTED` | Cron (10 min) | `0` | Batch offered to a ranked processor | 6h offer TTL starts |
 | `ROUTING_FAILED` | Cron (15 min) | `0` | 3 attempts exhausted | Batch → `unroutable`, counted as **Residual** |
-| `INTAKE_ACCEPTED` | Processor mutation | `0` | Processor accepts the offer | Batch → `accepted` |
+| `INTAKE_ACCEPTED` | Processor mutation | `+acceptedWeightGrams` | Physical intake logged | Batch → `collected` |
 | `INTAKE_DECLINED` | Processor mutation or TTL sweep | `0` | Declined or timed out | Back to `pending`, attempts incremented |
-| `PROCESSED` | Processor mutation | `+acceptedWeightGrams` | Outcome logged | **Counts toward Recovered**; remainder is **Residual** |
+| `PROCESSED` | Processor mutation | `-acceptedWeightGrams` | Outcome logged | Metadata splits Recovered, Residual, and process loss |
 | `MODERATED` | Admin mutation | `0` | Admin intervention | Item hidden or corrected |
 
 ### 9.3 Event Flow

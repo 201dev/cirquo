@@ -55,6 +55,8 @@ export const rescueItemStatus = v.union(
   v.literal('sold_out'),
   v.literal('expired'),
   v.literal('recovery_pending'),
+  v.literal('recovered'),
+  v.literal('residual'),
   v.literal('closed'),
 )
 
@@ -68,9 +70,12 @@ export const orderStatus = v.union(
 
 export const recoveryBatchStatus = v.union(
   v.literal('pending'),
+  v.literal('offered'),
   v.literal('accepted'),
+  v.literal('collected'),
   v.literal('rejected'),
   v.literal('processed'),
+  v.literal('unroutable'),
 )
 
 export const ledgerEventType = v.union(
@@ -137,7 +142,8 @@ export default defineSchema({
     registrationNumber: v.optional(v.string()),
     verificationStatus: verificationStatus,
     createdAt: v.number(),
-  }).index('by_owner', ['ownerId']),
+  })
+    .index('by_owner', ['ownerId']),
 
   processors: defineTable({
     ownerId: v.id('users'),
@@ -157,9 +163,12 @@ export default defineSchema({
     registrationNumber: v.optional(v.string()),
     address: v.optional(v.string()),
     capacityGrams: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
     verificationStatus: verificationStatus,
     createdAt: v.number(),
-  }).index('by_owner', ['ownerId']),
+  })
+    .index('by_owner', ['ownerId'])
+    .index('by_verification', ['verificationStatus']),
 
   surplusItems: defineTable({
     merchantId: v.id('merchants'),
@@ -182,7 +191,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index('by_merchant', ['merchantId'])
-    .index('by_status', ['status']),
+    .index('by_status', ['status'])
+    .index('by_status_pickup_end', ['status', 'pickupEndAt']),
 
   materialFlowLedger: defineTable({
     surplusItemId: v.id('surplusItems'),
@@ -200,13 +210,17 @@ export default defineSchema({
     .index('by_occurred_at', ['occurredAt'])
     .index('by_actor', ['actorId', 'occurredAt'])
     .index('by_event_type', ['eventType', 'occurredAt'])
-    .index('by_order', ['orderId']),
+    .index('by_order', ['orderId'])
+    .index('by_recovery_batch', ['recoveryBatchId']),
 
   orders: defineTable({
     userId: v.id('users'),
     surplusItemId: v.id('surplusItems'),
     quantity: v.number(),
     totalPrice: v.number(),
+    // ponytail: optional so pre-M6 orders remain readable; new reservations set it.
+    // Backfill legacy paid orders before making Consumer savings universally available.
+    originalPriceSnapshot: v.optional(v.number()),
     rescuedWeightGrams: v.number(),
     pickupCode: v.string(),
     status: orderStatus,
@@ -219,6 +233,7 @@ export default defineSchema({
   })
     .index('by_user', ['userId'])
     .index('by_item', ['surplusItemId'])
+    .index('by_item_status', ['surplusItemId', 'status'])
     .index('by_user_item_status', ['userId', 'surplusItemId', 'status'])
     .index('by_user_idempotency_key', ['userId', 'idempotencyKey'])
     .index('by_pickup_code', ['pickupCode']),
@@ -226,23 +241,53 @@ export default defineSchema({
   recoveryBatches: defineTable({
     merchantId: v.id('merchants'),
     surplusItemId: v.id('surplusItems'),
-    processorId: v.optional(v.id('users')),
+    processorId: v.optional(v.id('processors')),
     offeredWeightGrams: v.number(),
     acceptedWeightGrams: v.optional(v.number()),
+    acceptedAt: v.optional(v.number()),
+    estimatedCollectionAt: v.optional(v.number()),
+    acceptanceNote: v.optional(v.string()),
+    acceptedOutputTypes: v.optional(v.array(outputType)),
+    collectedAt: v.optional(v.number()),
+    intakeNote: v.optional(v.string()),
+    varianceRequiresReview: v.optional(v.boolean()),
+    outputType: v.optional(outputType),
+    outputWeightGrams: v.optional(v.number()),
     residualWeightGrams: v.optional(v.number()),
+    processLossGrams: v.optional(v.number()),
+    conversionRatePercent: v.optional(v.number()),
+    outcomeNote: v.optional(v.string()),
     status: recoveryBatchStatus,
+    // ponytail: fields are optional so existing M4-02 batches deploy safely.
+    // The routing mutations initialise them before their first transition.
+    routingAttempts: v.optional(v.number()),
+    attemptedProcessorIds: v.optional(v.array(v.id('processors'))),
+    declinedByProcessorIds: v.optional(v.array(v.id('processors'))),
+    offerExpiresAt: v.optional(v.number()),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
   })
     .index('by_merchant', ['merchantId'])
     .index('by_processor', ['processorId'])
-    .index('by_status', ['status']),
+    .index('by_processor_status', ['processorId', 'status'])
+    .index('by_processor_and_accepted_at', ['processorId', 'acceptedAt'])
+    .index('by_status', ['status'])
+    .index('by_item', ['surplusItemId']),
 
   payments: defineTable({
     orderId: v.id('orders'),
     provider: v.literal('midtrans'),
     amount: v.number(),
     providerStatus: v.string(),
+    refundStatus: v.optional(v.union(
+      v.literal('pending'),
+      v.literal('succeeded'),
+      v.literal('failed'),
+    )),
+    refundKey: v.optional(v.string()),
+    refundRequestedAt: v.optional(v.number()),
+    refundCompletedAt: v.optional(v.number()),
+    refundError: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
     providerTxnId: v.optional(v.string()),
     rawPayload: v.optional(v.string()),

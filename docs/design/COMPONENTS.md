@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | **Document type** | Component contracts & catalogue |
-| **Status** | Component catalogue — implemented M1–M3 subset and target contracts |
+| **Status** | Component catalogue — implemented M1–M5 subset and target contracts |
 | **Last updated** | 2026-08-29 |
 | **Owner** | Frontend |
 | **Library base** | shadcn/ui (new-york, neutral, `cssVariables: true`) on radix-ui + @base-ui/react |
