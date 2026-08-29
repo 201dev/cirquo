@@ -227,15 +227,16 @@ them until the matching export exists in source.
 | `surplusItems.cancel` | mutation | Merchant (owner) | ✅ |
 | `surplusItems.markProcessingOnly` | mutation | Merchant (owner) | 📋 |
 | `surplusItems.listMine` | query | Merchant | ✅ |
+| `surplusItems.getMine` | query | Merchant (verified, owner) | ✅ |
 | `surplusItems.listByStatus` | query | Internal/Admin | ✅ |
 | `surplusItems.get` | query | Merchant (owner) | 📋 |
-| `orders.listForMerchant` | query | Merchant | 📋 |
-| `orders.confirmPickup` | mutation | Merchant (owner) | 📋 |
+| `orders.listForMerchant` | query | Merchant (verified) | ✅ |
+| `orders.confirmPickup` | mutation | Merchant (verified, owner) | ✅ |
 | `orders.reportNoShow` | mutation | Merchant (owner) | 📋 |
 | `impact.getMerchantSummary` | query | Merchant | 📋 |
 | `merchants.getMine` | query | Merchant | 📋 |
 | `merchants.updateProfile` | mutation | Merchant (owner) | 📋 |
-| `recoveryBatches.listForMerchant` | query | Merchant | 📋 |
+| `recoveryBatches.listForMerchant` | query | Merchant (verified, owner) | ✅ |
 
 ### 5.4 Organic Processor → [`API_PROCESSOR.md`](./API_PROCESSOR.md)
 

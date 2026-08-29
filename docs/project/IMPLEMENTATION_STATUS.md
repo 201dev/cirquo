@@ -58,7 +58,7 @@ Semua status di bawah adalah **source-level** kecuali dinyatakan lain.
 
 | Milestone | Status | Yang masih harus dibangun |
 |---|---|---|
-| M4 | ✅ Source tersedia | Konfirmasi pickup, expiry/recovery batch, refund Sandbox no-show, dan Circular Routing berurutan dengan TTL sudah ada di source. UAT deployment, UI routing, dan handoff M5 masih diperlukan. |
+| M4 | 🧪 UAT deployment diperlukan | Konfirmasi pickup, expiry/recovery batch, refund Sandbox no-show, Circular Routing, dan UI status reaktif Merchant/Consumer tersedia di source. Kontrak M5 ada di `M5_HANDOFF.md`; UAT browser/Midtrans masih diperlukan. |
 | M5 | 📋 Target | Queue Processor, accept/decline, intake terukur, dan outcome logging. Profil Processor sudah ada, tetapi alur pemulihan belum ada. |
 | M6 | 📋 Target | Agregasi impact dari ledger dan semua dashboard tanpa angka mock. `impact.getPlaceholderSummary` bukan kontrak dashboard produksi. |
 | M7 | 📋 Target | Operasi Admin, ledger inspector, moderasi, dan notifikasi. Route halaman bukan bukti mutasi/query Admin telah tersedia. |
