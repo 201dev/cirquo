@@ -61,7 +61,7 @@ Semua status di bawah adalah **source-level** kecuali dinyatakan lain.
 |---|---|---|
 | M4 | 🧪 UAT deployment diperlukan | Konfirmasi pickup, expiry/recovery batch, refund Sandbox no-show, Circular Routing, dan UI status reaktif Merchant/Consumer tersedia di source. Kontrak M5 ada di `M5_HANDOFF.md`; UAT browser/Midtrans masih diperlukan. |
 | M5 | 🧪 UAT deployment diperlukan | Queue dan detail batch Processor, accept/decline, intake terukur, outcome, dashboard operasional, serta edit profil kapasitas tersedia di source. UAT browser pada deployment masih diperlukan. |
-| M6 | 🧪 UAT browser diperlukan | `src/lib/impact.ts`, empat query scoped, serta dashboard Consumer, Merchant, Processor, dan Admin tanpa angka mock tersedia di source. UAT browser/mobile masih diperlukan. |
+| M6 | 🧪 UAT deployment diperlukan | `src/lib/impact.ts`, empat query scoped, serta dashboard Consumer, Merchant, Processor, dan Admin tanpa angka mock tersedia di source. Bukti otomatis dan handoff M7 ada di `M6_UAT.md` serta `M6_HANDOFF.md`; walkthrough browser/mobile deployment masih diperlukan. |
 | M7 | 📋 Target | Operasi Admin, ledger inspector, moderasi, dan notifikasi. Route halaman bukan bukti mutasi/query Admin telah tersedia. |
 | M8 | 📋 Target | Validasi Android, seed demo, video, dan aset submission. Konfigurasi Capacitor sudah ada. |
 

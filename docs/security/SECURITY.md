@@ -216,7 +216,8 @@ These are the attacks that actually threaten *this* product. A generic checklist
 ## 8. Ledger integrity threats
 
 > Rows below preserve the target threat model. The M1–M5 source already has the
-> append-only helper and its domain write paths; M6–M7 controls remain planned. See
+> append-only helper and its domain write paths; M6 aggregation and data-quality
+> warnings are available in source, while M7 operational controls remain planned. See
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 The ledger is append-only and immutable in practice. Threats target the *paths into and out of it*.

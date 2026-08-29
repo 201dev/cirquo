@@ -42,7 +42,7 @@ Per-role function documentation lives in five sibling files:
 | [`API_MERCHANT.md`](./API_MERCHANT.md) | Rescue Item lifecycle, Dynamic Rescue Pricing, pickup confirmation, no-shows |
 | [`API_PROCESSOR.md`](./API_PROCESSOR.md) | Circular Routing queue, accept/decline, measured intake, processed outcome |
 | [`API_ADMIN.md`](./API_ADMIN.md) | Verification, moderation, ledger audit, disputes, integrity checks, system health |
-| [`API_IMPACT.md`](./API_IMPACT.md) | M6-01 ledger-derived summaries and scope contract |
+| [`API_IMPACT.md`](./API_IMPACT.md) | M6 ledger-derived summaries and scope contract |
 
 > **Source boundary — 2026-08-29.** M1–M5 exports, M6 ledger summaries,
 > and role-scoped dashboards are implemented in source. M3–M6 still require deployment/Sandbox UAT;

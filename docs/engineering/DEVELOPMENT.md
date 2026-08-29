@@ -33,15 +33,15 @@ hours looking for code that was never written.
 | Area | Status | Detail |
 | --- | --- | --- |
 | Convex schema | ✅ | 10 tables, including sessions, auth events, Material Flow Ledger, and payments |
-| Convex functions | ✅ Partial | Auth, profile, Merchant lifecycle, Consumer discovery/reservation, and payment functions exist; Processor/Admin flows remain incomplete |
+| Convex functions | ✅ Partial | Auth, profile, Merchant lifecycle, Consumer discovery/reservation/payment, pickup/recovery/routing, Processor outcome, dan query impact tersedia; operasi Admin M7 masih target |
 | Authentication | ✅ | Opaque session token, server-side guards, profile onboarding, and client persistence |
-| Material Flow Ledger | ✅ Foundation | Append-only table/helper with current Rescue Item and order event writes |
+| Material Flow Ledger | ✅ | Append-only table/helper dengan write path M1–M5 dan agregasi impact M6 |
 | Mapbox | ✅ | Explore route reads `VITE_MAPBOX_ACCESS_TOKEN` |
 | Midtrans | 🚧 | Sandbox transaction action and webhook code exist; integration UAT remains required |
-| Scheduler / cron | 🚧 | Reservation hold uses `ctx.scheduler.runAt`; no `convex/crons.ts` sweep exists |
-| Impact calculation | 📋 | Dashboards still require ledger-derived aggregation |
+| Scheduler / cron | ✅ Source | Reservation hold, expiry pickup, routing, dan audit ledger dijadwalkan di `convex/crons.ts`; deployment UAT tetap diperlukan |
+| Impact calculation | ✅ Source | Empat dashboard memakai `summariseLedger` dan query scoped; lihat `M6_UAT.md` |
 | Tests | ✅ Partial | Unit tests and the ledger immutability check exist; full UAT remains required |
-| Pages | 🚧 | Auth, Merchant Rescue Item, and Consumer discovery/order pages use real flows; some dashboards remain placeholders |
+| Pages | 🚧 | Flow Auth, Merchant, Consumer, Processor, serta empat dashboard impact memakai data nyata; placeholder Admin M7 masih ada |
 | Routing | ✅ | React Router role guards and session restoration |
 | Design system | ✅ Works | Tailwind v4 OKLCH tokens, 17 shadcn primitives |
 | Capacitor Android | ✅ Configured | `com.cirquo.app`, `webDir: dist` |
@@ -236,8 +236,8 @@ frontend-only branch is never blocked on backend availability.
 Two rules follow:
 
 1. Components **must not** assume a Convex client exists.
-2. Mock data **must never** be presented as live. Hardcoded impact figures must
-   be replaced by ledger-derived values before M6 ships.
+2. Mock data **must never** be presented as live. Semua dashboard impact M6
+   sudah memakai ledger; placeholder non-impact tetap hanya untuk development.
 
 ### 5.2 `src/main.tsx` behaviour
 
@@ -377,10 +377,10 @@ cirquo/
 │   │   ├── processor/             📋
 │   │   └── admin/                 📋
 │   ├── constants/
-│   │   └── mock-data.ts           ✅ Placeholder data — to be deleted by M6
+│   │   └── mock-data.ts           ✅ Placeholder development/non-impact — bukan source impact M6
 │   ├── features/
 │   │   ├── auth/                  📋 M1
-│   │   ├── impact/                📋 M6
+│   │   ├── impact/                ✅ M6 aggregation
 │   │   ├── orders/                📋 M3
 │   │   ├── pricing/               📋 M2
 │   │   ├── recovery/              📋 M4–M5
@@ -393,13 +393,13 @@ cirquo/
 │   │   ├── pricing.ts             📋 suggestRescuePrice
 │   │   ├── routing.ts             📋 rankEligibleProcessors
 │   │   ├── ranking.ts             📋 rankListings
-│   │   ├── impact.ts              📋 summariseLedger, estimateCo2e
+│   │   ├── impact.ts              ✅ summariseLedger, estimateCo2e
 │   │   └── geo.ts                 📋 haversineMeters
 │   ├── pages/
-│   │   ├── consumer/              ✅ Placeholder pages
-│   │   ├── merchant/              ✅ Placeholder pages
-│   │   ├── processor/             ✅ Placeholder pages
-│   │   ├── admin/                 ✅ Placeholder pages
+│   │   ├── consumer/              ✅ Real flow + impact
+│   │   ├── merchant/              ✅ Real flow + impact
+│   │   ├── processor/             ✅ Real flow + impact
+│   │   ├── admin/                 🚧 Platform impact real; operasi M7 placeholder
 │   │   └── auth/                  ✅ Placeholder pages
 │   ├── types/
 │   │   ├── domain.ts              ✅ Domain types
@@ -1003,9 +1003,9 @@ prevent almost all backend slowness here:
 
 1. **Always query through an index.** A `.collect()` followed by a JS `.filter()`
    is a table scan.
-2. **Never fetch the whole ledger to render a dashboard.** Aggregate with
-   `summariseLedger` over an indexed, bounded range, and cache periodic rollups
-   into `impactSnapshots` once M6 lands.
+2. **Pilot M6 intentionally reads scoped ledger rows at query time.** Do not
+   create `impactSnapshots`; add pagination or a cache only after measured load
+   requires it, while keeping the ledger as the source of truth.
 
 ---
 
@@ -1055,7 +1055,7 @@ git push -u origin feat/<scope>
 
 Without `VITE_CONVEX_URL`, the app runs in placeholder mode against
 `mock-data.ts`. That is useful for UI-only work but must never be presented as a
-working backend. M1–M5 source requires a configured Convex deployment for real
+working backend. M1–M6 source requires a configured Convex deployment for real
 data.
 
 ---

@@ -8,7 +8,7 @@
 | **Backend** | Convex (`convex/surplusItems.ts`, `convex/orders.ts`, `convex/merchants.ts`, `convex/impact.ts`, `convex/recoveryBatches.ts`) |
 | **Verification gate** | All listing and fulfilment functions require `merchants.verificationStatus === 'verified'` |
 | **Status legend** | ✅ implemented · 📋 planned |
-| **Implemented today** | Merchant Rescue Item lifecycle, pickup confirmation, recovery/routing visibility, and M6-01 Merchant impact query are implemented with server-side ownership guards. Processing-only and Admin operations remain planned. |
+| **Implemented today** | Merchant Rescue Item lifecycle, pickup confirmation, recovery/routing visibility, and M6 Merchant impact dashboard/query are implemented with server-side ownership guards. Processing-only and Admin operations remain planned. |
 | **Conventions** | [`API.md`](./API.md) §7 units · §9 errors · §15 ledger contract |
 
 ---
@@ -38,11 +38,11 @@ A Merchant is the origin of every gram of material Cirquo tracks. They:
 2. optionally consult **Dynamic Rescue Pricing** for a suggested `currentPrice`;
 3. publish the listing, which writes the `LISTED` ledger event — **the first entry in that item's material chain**;
 4. receive reservations; the quantity decrements automatically at reservation, not at payment;
-5. **M4 target:** verify a consumer's **pickup code** inside the pickup window
+5. verify a consumer's **pickup code** inside the pickup window
    and confirm collection → `RESCUED`;
-6. **M4 target:** report a no-show so the material enters **Circular Routing**,
+6. report a no-show so the material enters **Circular Routing**,
    not waste;
-7. **M6-01 source:** query impact accumulated from the ledger; rendering is M6-02.
+7. query impact accumulated from the ledger; M6 renders it reactively.
 
 Three invariants dominate this file:
 

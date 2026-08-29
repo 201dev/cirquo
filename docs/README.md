@@ -13,7 +13,9 @@
 ### Start Here
 
 - **[AGENTS.md](project/AGENTS.md)** — AI agent guide for developing this project
-- **[IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md)** — source-backed M1–M8 status and M4 handoff
+- **[IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md)** — source-backed M1–M8 status
+- **[M6_UAT.md](project/M6_UAT.md)** — bukti otomatis dan checklist UAT impact
+- **[M6_HANDOFF.md](project/M6_HANDOFF.md)** — kontrak impact stabil untuk M7
 - **[PRD.md](product/PRD.md)** — Product Requirements Document (source of truth)
 - **[README.md](../README.md)** — Repository root README
 
@@ -65,7 +67,7 @@ Backend function contracts per role.
 - [API_MERCHANT.md](api/API_MERCHANT.md) — Merchant-facing queries/mutations
 - [API_PROCESSOR.md](api/API_PROCESSOR.md) — Processor-facing queries/mutations
 - [API_ADMIN.md](api/API_ADMIN.md) — Admin-facing queries/mutations
-- [API_IMPACT.md](api/API_IMPACT.md) — M6-01 impact query and reconciliation contract
+- [API_IMPACT.md](api/API_IMPACT.md) — M6 impact query and reconciliation contract
 
 ### 🏗️ Architecture
 
@@ -119,6 +121,8 @@ Version history, contribution workflow.
 - [IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md) — verified source snapshot and planned milestone boundaries
 - [CHANGELOG.md](project/CHANGELOG.md) — Semantic versioning + release notes
 - [CONTRIBUTING.md](project/CONTRIBUTING.md) — Branch strategy, PR checklist, development workflow
+- [M6_UAT.md](project/M6_UAT.md) — evidence source/automation dan checklist deployment M6
+- [M6_HANDOFF.md](project/M6_HANDOFF.md) — kontrak impact yang diteruskan ke M7
 
 ---
 

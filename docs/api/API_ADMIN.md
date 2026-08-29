@@ -27,7 +27,7 @@ Cirquo runs on Convex. There are no REST endpoints for admins. Every function be
 
 | Function | Type | Auth | PRD ref | Status |
 | --- | --- | --- | --- | --- |
-| [`impact.getPlatformSummary`](API_IMPACT.md) | `query` | Admin | IMP-02 | ✅ Source M6-01 |
+| [`impact.getPlatformSummary`](API_IMPACT.md) | `query` | Admin | IMP-02 | ✅ Source M6 |
 | [`admin.listUsers`](#2-adminlistusers-) | `query` | Admin | ADM-01 | 📋 Planned |
 | [`admin.listPendingVerifications`](#3-adminlistpendingverifications-) | `query` | Admin | ADM-01 | 📋 Planned |
 | [`admin.verifyMerchant`](#4-adminverifymerchant-) | `mutation` | Admin | ADM-01 | 📋 Planned |

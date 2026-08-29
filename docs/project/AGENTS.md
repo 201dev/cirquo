@@ -255,7 +255,7 @@ Based on PRD Section 6 (MoSCoW priorities), implement in this order:
 |---:|---|---|
 | 1 | M3 UAT: Sandbox webhook, hold expiry, ledger, and mobile evidence | 🧪 Required before M3 sign-off |
 | 2 | M3–M5 UAT: Sandbox/browser and mobile evidence | 🧪 Required before sign-off |
-| 3 | M6: ledger-derived impact surfaces | 📋 Next feature milestone |
+| 3 | M6 UAT: browser/mobile evidence for ledger-derived impact surfaces | 🧪 Required before sign-off |
 | 4 | M7–M8: Admin operations, notifications, Android/demo assets | 📋 Target |
 
 ---

@@ -65,7 +65,7 @@ convex/
 | `payments.ts` | Midtrans Snap token creation (action) and pending payment context. | Direct DB writes from the action | 🧪 M3 UAT |
 | `recoveryBatches.ts` | Circular Routing lifecycle: create, offer, accept, decline, intake, outcome. | Ranking algorithm (lives in `src/lib/routing.ts`) | ✅ partial |
 | `ledger.ts` | Read-only ledger queries: per item, per order, per actor, per event type. | Any public write function | 📋 |
-| `impact.ts` | Role-scoped aggregation queries built on `summariseLedger` and `estimateCo2e`. | Its own arithmetic (delegates to `src/lib/impact.ts`) | ✅ M6-01 source |
+| `impact.ts` | Role-scoped aggregation queries built on `summariseLedger` and `estimateCo2e`. | Its own arithmetic (delegates to `src/lib/impact.ts`) | ✅ M6 source |
 | `notifications.ts` | User notification reads and internal creation/fan-out. | Business state transitions | 📋 |
 | `disputes.ts` | Dispute opening and resolution. | Refund execution (delegates to payments) | 📋 |
 | `admin.ts` | Verification queue, moderation, admin overrides, integrity reports. | Anything callable without `requireRole(ctx, "admin")` | 📋 |

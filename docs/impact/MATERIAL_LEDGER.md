@@ -1,9 +1,9 @@
 # Material Flow Ledger — Cirquo
 
 **Document type:** Technical specification  
-**Status:** Living ledger contract — implemented M1–M5 writes and M6-01 aggregation
+**Status:** Living ledger contract — implemented M1–M5 writes and M6 impact contract
 **Last updated:** 2026-08-29
-**Implementation status:** ✅ M1–M5 write paths and M6-01 aggregation available; dashboard rendering and Admin inspection remain pending
+**Implementation status:** ✅ M1–M5 write paths, M6 aggregation, and all role dashboards available in source; Admin inspection remains M7 work
 
 > The Material Flow Ledger is Cirquo's core differentiator. Every impact number the product displays is derived from it and from nothing else. If the ledger has gaps, the platform's central claim — *we know where every kilogram went* — is false.
 
@@ -11,8 +11,9 @@
 > `recordLedgerEvent()` exist in source. M1–M4 currently emit `LISTED`,
 > `PRICE_ADJUSTED`, `RESERVED`, `PAID`, `RESCUED`, `CANCELLED`, `EXPIRED`,
 > `ROUTED`, `ROUTING_FAILED`, `INTAKE_ACCEPTED`, `INTAKE_DECLINED`, and
-> `PROCESSED` on their implemented paths. M6-01 provides pure aggregation and
-> role-scoped queries; Admin integrity UI remains target work. See
+> `PROCESSED` on their implemented paths. M6 provides pure aggregation,
+> role-scoped queries, and Consumer, Merchant, Processor, and Admin dashboard
+> projections; Admin integrity UI remains target work. See
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
