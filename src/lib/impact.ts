@@ -24,7 +24,9 @@ export type ImpactIntegrityIssue = {
 }
 
 export type ImpactSummary = {
+  listedItemCount: number
   listedGrams: number
+  rescuedQuantity: number | null
   rescuedGrams: number
   recoveredGrams: number | null
   residualGrams: number | null
@@ -108,8 +110,10 @@ export function summariseLedger(entries: readonly ImpactLedgerEntry[]): ImpactSu
   let measurementComplete = true
   let revenueComplete = true
   let savingsComplete = true
+  let rescuedQuantityComplete = true
   let revenueRecoveredIdr = 0
   let consumerSavingsIdr = 0
+  let rescuedQuantity = 0
 
   const addIssue = (
     entry: ImpactLedgerEntry,
@@ -130,6 +134,12 @@ export function summariseLedger(entries: readonly ImpactLedgerEntry[]): ImpactSu
     if (entry.eventType === 'RESCUED') {
       totals.rescuedGrams += Math.abs(entry.weightDeltaGrams)
       const data = metadata(entry.metadata)
+      if (!data || !integer(data.quantity, 1)) {
+        rescuedQuantityComplete = false
+        addIssue(entry, 'MALFORMED_RESCUED_METADATA', 'RESCUED memerlukan quantity utuh untuk jumlah paket terselamatkan.')
+      } else {
+        rescuedQuantity += data.quantity
+      }
       if (!data || !integer(data.totalPrice)) {
         revenueComplete = false
         addIssue(entry, 'MALFORMED_RESCUED_METADATA', 'RESCUED memerlukan totalPrice IDR utuh untuk revenue recovered.')
@@ -252,7 +262,9 @@ export function summariseLedger(entries: readonly ImpactLedgerEntry[]): ImpactSu
     : roundedPercent(recoveredGrams, totals.listedGrams - totals.rescuedGrams)
 
   return {
+    listedItemCount: [...items.values()].filter((item) => item.hasListed).length,
     listedGrams: totals.listedGrams,
+    rescuedQuantity: rescuedQuantityComplete ? rescuedQuantity : null,
     rescuedGrams: totals.rescuedGrams,
     recoveredGrams,
     residualGrams,

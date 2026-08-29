@@ -12,7 +12,9 @@ const integrityIssue = v.object({
 })
 
 const impactSummary = v.object({
+  listedItemCount: v.number(),
   listedGrams: v.number(),
+  rescuedQuantity: v.union(v.number(), v.null()),
   rescuedGrams: v.number(),
   recoveredGrams: v.union(v.number(), v.null()),
   residualGrams: v.union(v.number(), v.null()),
