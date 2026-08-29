@@ -713,6 +713,16 @@ test("expiry pickup membuat satu batch, menjaga hold M3, dan aman saat refund ga
       ctx.db.query("payments").withIndex("by_order", (q) => q.eq("orderId", ids.paidOrderId)).unique(),
     ),
   ).toMatchObject({ refundStatus: "failed", refundError: "Sandbox unavailable" });
+  const noShowDetail = await t.query(api.orders.get, {
+    orderId: ids.paidOrderId,
+    sessionToken: consumerToken,
+  });
+  expect(noShowDetail).toMatchObject({ status: "expired", refundStatus: "failed" });
+  expect(noShowDetail?.pickupCode).toBeUndefined();
+  const noShowSummary = (await t.query(api.orders.listMine, { sessionToken: consumerToken }))
+    .find((order) => order._id === ids.paidOrderId);
+  expect(noShowSummary).toMatchObject({ refundStatus: "failed" });
+  expect(Object.keys(noShowSummary ?? {})).not.toContain("pickupCode");
 
   await t.mutation(internal.orders.expireHold, { orderId: ids.heldOrderId });
   await t.mutation(internal.orders.expireHold, { orderId: ids.heldOrderId });
