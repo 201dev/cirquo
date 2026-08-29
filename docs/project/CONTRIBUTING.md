@@ -789,12 +789,13 @@ hardcoded figures. An agent touching these must:
 
 Do not invent APIs that do not exist. As of 2026-08-29:
 
-- M1–M5 include guarded mutations, authentication, the Material Flow Ledger,
+- M1–M6 include guarded mutations, authentication, the Material Flow Ledger,
   Mapbox discovery, reservation/payment holds, Midtrans Sandbox source,
-  pickup/recovery/routing, and Processor intake/outcome workflow.
-- M3–M5 deployment/Sandbox UAT remains required; recurring M4 cron jobs are
+  pickup/recovery/routing, Processor intake/outcome workflow, and all four
+  ledger-derived impact dashboards.
+- M3–M6 deployment/Sandbox UAT remains required; recurring M4 cron jobs are
   registered in `convex/crons.ts`.
-- M6 impact aggregation and M7 Admin operations remain planned.
+- M7 Admin operations remain planned.
 
 Read [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md), then inspect the
 matching export in `convex/`, before using an API.

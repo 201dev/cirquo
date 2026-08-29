@@ -140,6 +140,7 @@ test("reservasi unit terakhir dan retry idempoten tidak menggandakan stok atau l
   expect(retriedOrderId).toEqual(firstOrderId);
   expect(await t.run((ctx) => ctx.db.get(firstOrderId))).toMatchObject({
     totalPrice: 12_000,
+    originalPriceSnapshot: 20_000,
     rescuedWeightGrams: 450,
   });
   const firstOrder = await t.run((ctx) => ctx.db.get(firstOrderId));
@@ -422,6 +423,7 @@ test("merchant mengonfirmasi pickup sekali tanpa menerima kode dari antrean", as
         surplusItemId,
         quantity: 1,
         totalPrice: 12_000,
+        originalPriceSnapshot: 20_000,
         rescuedWeightGrams: 500,
         pickupCode,
         status,
@@ -501,6 +503,10 @@ test("merchant mengonfirmasi pickup sekali tanpa menerima kode dari antrean", as
   expect(rescuedEvents).toMatchObject([
     { eventType: "RESCUED", weightDeltaGrams: -500, actorRole: "merchant" },
   ]);
+  expect(JSON.parse(rescuedEvents[0]!.metadata!)).toMatchObject({
+    originalPriceSnapshot: 20_000,
+    totalPrice: 12_000,
+  });
 
   await expect(
     t.mutation(api.orders.confirmPickup, {

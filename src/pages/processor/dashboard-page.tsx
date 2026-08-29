@@ -1,17 +1,24 @@
-import { ArrowRight, ClipboardCheck, Recycle, Scale, Settings2, Sprout } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  ArrowRight,
+  ClipboardCheck,
+  Leaf,
+  Recycle,
+  Scale,
+  Settings2,
+  Sprout,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { ImpactBreakdown } from "@/components/common/impact-breakdown";
 import { PageHeader } from "@/components/common/page-header";
 import { QueryErrorBoundary } from "@/components/common/query-error-boundary";
-import { StatusBadge } from "@/components/common/status-badge";
 import { SummaryCard } from "@/components/common/summary-card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
-import { formatDistance, formatKg, formatPercent } from "@/lib/format";
+import { formatKg, formatPercent } from "@/lib/format";
 
 const outputLabels = {
   compost: "Kompos",
@@ -20,78 +27,149 @@ const outputLabels = {
   biogas: "Biogas",
 };
 
-function DashboardSkeleton() {
-  return <div role="status" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><span className="sr-only">Memuat ringkasan fasilitas...</span>{[0, 1, 2, 3].map((item) => <Skeleton key={item} className="h-36 rounded-xl" />)}</div>;
+function valueOrDash(value: number | null, formatter: (value: number) => string) {
+  return value === null ? "—" : formatter(value);
 }
 
-function DashboardContent() {
-  const { sessionToken, user } = useAuth();
-  const [now, setNow] = useState(Date.now());
-  const isVerified = user?.profile?.verificationStatus === "verified";
-  const dashboard = useQuery(
-    api.recoveryBatches.getDashboard,
-    sessionToken && isVerified ? { sessionToken, now } : "skip",
-  );
-  const offers = useQuery(
-    api.recoveryBatches.listQueue,
-    sessionToken && isVerified ? { sessionToken, tab: "offered", limit: 3 } : "skip",
-  );
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  if (!isVerified) return (
-    <div role="status" className="rounded-xl border border-dashed p-8 text-center">
-      <p className="font-semibold">Menunggu verifikasi fasilitas</p>
-      <p className="mt-1 text-sm text-muted-foreground">Ringkasan operasional tersedia setelah profil Organic Processor terverifikasi.</p>
-      <Button asChild variant="outline" className="mt-4"><Link to="/processor/profile">Tinjau profil</Link></Button>
+function DashboardSkeleton() {
+  return (
+    <div role="status" aria-label="Memuat ringkasan fasilitas" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <span className="sr-only">Memuat ringkasan fasilitas...</span>
+      {Array.from({ length: 8 }, (_, index) => <Skeleton key={index} className="h-32 rounded-xl" />)}
     </div>
   );
-  if (dashboard === undefined || offers === undefined) return <DashboardSkeleton />;
+}
 
-  const offeredWeightGrams = offers.reduce((total, batch) => total + batch.offeredWeightGrams, 0);
-  const capacityProgress = Math.min(100, dashboard.capacityUsagePercent);
-  const capacityLimited = dashboard.capacityUsagePercent >= 90;
+function ProcessorDashboardContent() {
+  const { sessionToken, user } = useAuth();
+  const isVerified = user?.profile?.type === "processor" && user.profile.verificationStatus === "verified";
+  const summary = useQuery(
+    api.impact.getProcessorSummary,
+    sessionToken && isVerified ? { sessionToken } : "skip",
+  );
+
+  if (!isVerified) {
+    return (
+      <section role="status" className="rounded-xl border border-dashed bg-card px-5 py-12 text-center">
+        <Recycle className="mx-auto size-9 text-muted-foreground" aria-hidden="true" />
+        <h2 className="mt-4 text-lg font-semibold">Menunggu verifikasi fasilitas</h2>
+        <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+          Ringkasan operasional tersedia setelah profil Organic Processor terverifikasi.
+        </p>
+        <Button asChild variant="outline" className="mt-5">
+          <Link to="/processor/profile">Tinjau profil</Link>
+        </Button>
+      </section>
+    );
+  }
+
+  if (summary === undefined) return <DashboardSkeleton />;
+
+  const operations = summary.processor;
+  const capacityWarning = operations.capacityUtilizationPercent !== null
+    && operations.capacityUtilizationPercent >= 90;
+
+  if (!operations.hasBatches) {
+    return (
+      <section role="status" className="rounded-xl border border-dashed bg-card px-5 py-12 text-center">
+        <Recycle className="mx-auto size-9 text-muted-foreground" aria-hidden="true" />
+        <h2 className="mt-4 text-lg font-semibold">Belum ada batch recovery</h2>
+        <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+          Saat material yang sesuai selesai masa pickup, Circular Routing dapat menawarkan batch ke fasilitasmu berdasarkan material, radius, dan kapasitas harian.
+        </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <Button asChild><Link to="/processor/recovery">Buka antrean <ArrowRight /></Link></Button>
+          <Button asChild variant="outline"><Link to="/processor/profile">Atur kapasitas</Link></Button>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <>
-      <PageHeader
-        title={`Ringkasan ${user?.profile?.name ?? "fasilitas"}`}
-        description="Pantau kapasitas, antrean recovery, dan hasil pengolahan yang sudah tercatat."
-        action={<div className="flex gap-2"><Button asChild variant="outline"><Link to="/processor/profile"><Settings2 />Atur profil</Link></Button><Button asChild><Link to="/processor/recovery">Buka antrean</Link></Button></div>}
-      />
+    <section aria-labelledby="processor-impact-title">
+      {!summary.integrity.isValid ? (
+        <p role="alert" className="rounded-lg border border-warning-border bg-warning px-3 py-2 text-sm text-warning-foreground">
+          {summary.integrity.issues.length} catatan ledger perlu diperiksa. Nilai yang belum dapat dipastikan ditampilkan sebagai —.
+        </p>
+      ) : null}
+      {capacityWarning ? (
+        <p role="alert" className="mt-4 rounded-lg border border-warning-border bg-warning px-3 py-2 text-sm text-warning-foreground">
+          Kapasitas intake hari ini sudah {formatPercent(operations.capacityUtilizationPercent!)}. Offer baru dapat dibatasi.
+        </p>
+      ) : null}
+      <p className="sr-only" role="status" aria-live="polite">
+        Ringkasan fasilitas diperbarui: {formatKg(operations.totalMeasuredIntakeGrams ?? 0)} intake terukur.
+      </p>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label="Offer baru" value={`${dashboard.offeredCount} batch`} description={offeredWeightGrams ? `${formatKg(offeredWeightGrams)} menunggu` : "Tidak ada berat menunggu"} icon={<Recycle />} tone="blue" />
-        <SummaryCard label="Menunggu intake" value={`${dashboard.acceptedCount} batch`} description={`${dashboard.collectedCount} batch siap dicatat outcome`} icon={<ClipboardCheck />} />
-        <SummaryCard label="Intake hari ini" value={formatKg(dashboard.todayIntakeGrams)} description={`Komitmen ${formatKg(dashboard.capacityCommittedGrams)}`} icon={<Scale />} tone="green" />
-        <SummaryCard label="Efisiensi recovery" value={dashboard.recoveryRatePercent === null ? "—" : formatPercent(dashboard.recoveryRatePercent)} description={`${dashboard.processedCount} batch selesai diproses`} icon={<Sprout />} tone="amber" />
+        <SummaryCard label="Offer aktif" value={operations.offeredBatchCount.toLocaleString("id-ID")} description="Menunggu keputusan fasilitas" icon={<Recycle />} tone="blue" />
+        <SummaryCard label="Menunggu intake" value={operations.acceptedBatchCount.toLocaleString("id-ID")} description="Batch sudah diterima" icon={<ClipboardCheck />} />
+        <SummaryCard label="Menunggu outcome" value={operations.collectedBatchCount.toLocaleString("id-ID")} description="Intake sudah diukur" icon={<Scale />} />
+        <SummaryCard label="Batch terproses" value={operations.processedBatchCount.toLocaleString("id-ID")} description="Outcome final tercatat" icon={<Sprout />} tone="green" />
+        <SummaryCard label="Intake terukur" value={valueOrDash(operations.totalMeasuredIntakeGrams, formatKg)} description="Total dari event INTAKE_ACCEPTED" icon={<Scale />} tone="green" />
+        <SummaryCard label="Efisiensi recovery" value={valueOrDash(operations.recoveryEfficiencyPercent, formatPercent)} description="Output usable dari intake batch terproses" icon={<Sprout />} tone="green" />
+        <SummaryCard label="Residu terukur" value={valueOrDash(summary.residualGrams, formatKg)} description={`Laju residu ${valueOrDash(operations.residualRatePercent, formatPercent)}`} icon={<Scale />} tone="amber" />
+        <SummaryCard label="Estimated CO2e avoided" value={valueOrDash(summary.estimatedCo2eGrams, formatKg)} description={`Estimasi berdasarkan ${summary.methodologyVersion}`} icon={<Leaf />} tone="blue" />
       </div>
 
-      <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="rounded-xl bg-card p-5 shadow-sm sm:p-6">
-          <div className="flex flex-wrap items-baseline justify-between gap-2"><div><h2 className="font-semibold">Kapasitas hari ini</h2><p className="mt-1 text-sm text-muted-foreground">Komitmen batch diterima menentukan eligibility Circular Routing.</p></div><p className="font-semibold">{formatKg(dashboard.capacityCommittedGrams)} / {formatKg(dashboard.dailyCapacityGrams)}</p></div>
-          <Progress className="mt-5" value={capacityProgress} aria-label="Pemakaian kapasitas harian" />
-          <p role="status" className={`mt-3 text-sm ${capacityLimited ? "text-warning-foreground" : "text-muted-foreground"}`}>
-            {dashboard.dailyCapacityGrams === 0 ? "Intake sedang dijeda; kapasitas harian diatur 0 gram." : capacityLimited ? "Kapasitas sudah mencapai 90%; offer baru dapat dibatasi." : `${formatPercent(dashboard.capacityUsagePercent)} kapasitas telah terikat.`}
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <h2 id="processor-impact-title" className="font-semibold">Kapasitas intake hari ini</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Berat intake terukur dibanding kapasitas harian fasilitas.</p>
+            </div>
+            <p className="font-semibold">
+              {valueOrDash(operations.todayIntakeGrams, formatKg)} / {valueOrDash(operations.dailyCapacityGrams, formatKg)}
+            </p>
+          </div>
+          <Progress className="mt-5" value={Math.min(100, operations.capacityUtilizationPercent ?? 0)} aria-label="Pemakaian kapasitas intake hari ini" />
+          <p role="status" className="mt-3 text-sm text-muted-foreground">
+            {operations.dailyCapacityGrams === 0
+              ? "Intake sedang dijeda; kapasitas harian diatur 0 gram."
+              : operations.capacityUtilizationPercent === null
+                ? "Kapasitas atau intake belum dapat dipastikan."
+                : `${formatPercent(operations.capacityUtilizationPercent)} kapasitas telah digunakan.`}
           </p>
         </div>
         <div className="rounded-xl bg-card p-5 shadow-sm sm:p-6">
-          <h2 className="font-semibold">Hasil terolah</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Berdasarkan event outcome yang sudah final.</p>
-          <dl className="mt-4 space-y-3 text-sm">{Object.entries(outputLabels).map(([type, label]) => <div key={type} className="flex justify-between gap-4"><dt className="text-muted-foreground">{label}</dt><dd className="font-medium">{formatKg(dashboard.outputByType[type as keyof typeof outputLabels])}</dd></div>)}</dl>
-          <div className="mt-4 border-t pt-4 text-sm"><p className="flex justify-between gap-4"><span className="text-muted-foreground">Output usable</span><span className="font-medium">{formatKg(dashboard.outputWeightGrams)}</span></p><p className="mt-2 flex justify-between gap-4"><span className="text-muted-foreground">Residual</span><span className="font-medium">{formatKg(dashboard.residualWeightGrams)}</span></p></div>
+          <h2 className="font-semibold">Output terolah</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Berdasarkan outcome yang telah final.</p>
+          <dl className="mt-4 space-y-3 text-sm">
+            {Object.entries(outputLabels).map(([type, label]) => (
+              <div key={type} className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">{label}</dt>
+                <dd className="font-medium">{summary.recoveredByOutputType === null ? "—" : formatKg(summary.recoveredByOutputType[type as keyof typeof outputLabels])}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
-
-      <section className="mt-8">
-        <div className="mb-4 flex items-end justify-between gap-4"><div><h2 className="text-xl font-semibold">Permintaan terbaru</h2><p className="mt-1 text-sm text-muted-foreground">Offer aktif yang ditugaskan ke fasilitasmu.</p></div><Button asChild variant="ghost"><Link to="/processor/recovery">Lihat semua <ArrowRight /></Link></Button></div>
-        {!offers.length ? <div className="rounded-xl border border-dashed px-5 py-10 text-center text-sm text-muted-foreground">Belum ada offer aktif. Kesesuaian material, radius, dan kapasitas menentukan offer berikutnya.</div> : <div className="space-y-3">{offers.map((batch) => <Link to={`/processor/recovery/${batch._id}`} key={batch._id} className="flex flex-wrap items-center gap-4 rounded-xl bg-card p-4 shadow-sm transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="grid size-11 place-items-center rounded-xl bg-secondary text-primary"><Recycle className="size-5" /></span><div className="min-w-0 flex-1"><p className="font-medium">{batch.itemName}</p><p className="text-xs text-muted-foreground">{batch.merchantName} · {batch.distanceMeters === null ? "Jarak belum tersedia" : formatDistance(batch.distanceMeters)}</p></div><StatusBadge status={batch.status} /><p className="font-semibold">{formatKg(batch.offeredWeightGrams)}</p></Link>)}</div>}
-      </section>
-    </>
+      <div className="mt-6">
+        <ImpactBreakdown
+          rescuedGrams={summary.rescuedGrams}
+          recoveredGrams={summary.recoveredGrams}
+          residualGrams={summary.residualGrams}
+          inProgressGrams={summary.inProgressGrams}
+        />
+      </div>
+    </section>
   );
 }
 
 export default function ProcessorDashboardPage() {
-  return <QueryErrorBoundary title="Ringkasan fasilitas tidak dapat dimuat"><DashboardContent /></QueryErrorBoundary>;
+  const { user } = useAuth();
+  const processorName = user?.profile?.type === "processor" ? user.profile.name : "fasilitas";
+
+  return (
+    <>
+      <PageHeader
+        title={`Ringkasan ${processorName}`}
+        description="Pantau offer, kapasitas, dan outcome berdasarkan batch serta Material Flow Ledger fasilitasmu."
+        action={<div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link to="/processor/profile"><Settings2 />Atur profil</Link></Button><Button asChild><Link to="/processor/recovery">Buka antrean</Link></Button></div>}
+      />
+      <QueryErrorBoundary title="Ringkasan fasilitas tidak dapat dimuat">
+        <ProcessorDashboardContent />
+      </QueryErrorBoundary>
+    </>
+  );
 }

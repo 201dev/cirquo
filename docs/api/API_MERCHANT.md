@@ -8,7 +8,7 @@
 | **Backend** | Convex (`convex/surplusItems.ts`, `convex/orders.ts`, `convex/merchants.ts`, `convex/impact.ts`, `convex/recoveryBatches.ts`) |
 | **Verification gate** | All listing and fulfilment functions require `merchants.verificationStatus === 'verified'` |
 | **Status legend** | ✅ implemented · 📋 planned |
-| **Implemented today** | Merchant Rescue Item create, publish, update, cancel, and `listMine` are implemented with server-side ownership/verification guards. Processing-only, fulfilment, routing, and impact functions remain planned. |
+| **Implemented today** | Merchant Rescue Item lifecycle, pickup confirmation, recovery/routing visibility, and M6 Merchant impact dashboard/query are implemented with server-side ownership guards. Processing-only and Admin operations remain planned. |
 | **Conventions** | [`API.md`](./API.md) §7 units · §9 errors · §15 ledger contract |
 
 ---
@@ -26,6 +26,7 @@
 | `surplusItems.update` | mutation | Verified owner | `{ id, ...partialFields, sessionToken? }`; rejects reserved items and records zero-weight `PRICE_ADJUSTED` only for an active price change. |
 | `surplusItems.cancel` | mutation | Verified owner | `{ id, sessionToken? }`; closes an untouched draft or active item. An active item appends negative `CANCELLED`; a draft appends nothing. |
 | `surplusItems.listMine` | query | Merchant | `{ sessionToken? }`; resolves ownership from the session and returns the Merchant's own summaries. Pending Merchants may read their history. |
+| `impact.getMerchantSummary` | query | Merchant | `{ sessionToken? }`; resolves owned Rescue Items then reduces their ledger events. See [API_IMPACT.md](API_IMPACT.md). |
 
 ---
 
@@ -37,11 +38,11 @@ A Merchant is the origin of every gram of material Cirquo tracks. They:
 2. optionally consult **Dynamic Rescue Pricing** for a suggested `currentPrice`;
 3. publish the listing, which writes the `LISTED` ledger event — **the first entry in that item's material chain**;
 4. receive reservations; the quantity decrements automatically at reservation, not at payment;
-5. **M4 target:** verify a consumer's **pickup code** inside the pickup window
+5. verify a consumer's **pickup code** inside the pickup window
    and confirm collection → `RESCUED`;
-6. **M4 target:** report a no-show so the material enters **Circular Routing**,
+6. report a no-show so the material enters **Circular Routing**,
    not waste;
-7. **M6 target:** watch impact accumulated from the ledger.
+7. query impact accumulated from the ledger; M6 renders it reactively.
 
 Three invariants dominate this file:
 

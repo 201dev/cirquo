@@ -10,7 +10,8 @@
 
 > **Current source boundary — 2026-08-29.** M1 and M2 source is available;
 > M3 source awaits Sandbox/mobile UAT; M4 dan M5 source tersedia tetapi masih
-> membutuhkan UAT deployment/browser. M6–M8 remain target work. The dates and
+> membutuhkan UAT deployment/browser. M6 source tersedia; M7–M8 remain target
+> work. The dates and
 > estimates below are the original planning baseline, not a live burndown. See
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 

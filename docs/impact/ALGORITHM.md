@@ -1,15 +1,15 @@
 # Algorithms — Cirquo
 
 **Document type:** Technical specification  
-**Status:** Algorithm contract — pricing/discovery/routing subset implemented
+**Status:** Algorithm contract — pricing/discovery/routing and M6 impact aggregation implemented
 **Last updated:** 2026-08-29
-**Implementation status:** ✅ Dynamic Rescue Pricing, Haversine distance, discovery ranking/filtering, and deterministic Circular Routing offers; 📋 impact aggregation
+**Implementation status:** ✅ Dynamic Rescue Pricing, Haversine distance, discovery ranking/filtering, deterministic Circular Routing offers, and M6 impact aggregation
 
 > Five algorithms drive Cirquo's behaviour. All are **deliberately rule-based and explainable**. None is machine learning. This is a design decision, not a limitation — see §7.
 
 > The current source implements Dynamic Rescue Pricing, Haversine distance,
-> discovery ranking/filtering, and M4-03 Circular Routing offers. Ledger-impact
-> aggregation remains target work; see
+> discovery ranking/filtering, M4-03 Circular Routing offers, and M6
+> ledger-impact aggregation consumed by all role dashboards. See
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 | Algorithm | Purpose | Priority |
@@ -36,7 +36,7 @@ src/lib/geo.ts         → haversineMeters()
 
 Convex functions load data, call the pure function, persist the result. Three reasons:
 
-1. **Testable** without a Convex runtime — critical given no automated test suite exists ([RISKS.md](../business/RISKS.md) TECH-08)
+1. **Testable** without a Convex runtime — pure checks cover the edge cases ([RISKS.md](../business/RISKS.md) TECH-08)
 2. **Portable** if the backend ever migrates ([DATABASE.md](../domain/DATABASE.md) §8)
 3. **Explainable** — a judge asking "show me the pricing formula" gets one readable file, not a mutation with logic interleaved into database calls
 
@@ -380,6 +380,9 @@ Input: ledger entries for a scope (user, merchant, processor, platform) and a pe
 | `rescuedGrams` | Σ \|delta\| where `eventType == 'RESCUED'` |
 | `recoveredGrams` | Σ `metadata.outputWeightGrams` where `eventType == 'PROCESSED'` |
 | `residualGrams` | Σ `metadata.residualWeightGrams` (`PROCESSED`, `ROUTING_FAILED`) + Σ \|delta\| (`MODERATED`) |
+| `processLossGrams` | Σ `|PROCESSED.delta| − outputWeightGrams − residualWeightGrams` |
+| `measurementAdjustmentGrams` | Σ `INTAKE_ACCEPTED.delta − metadata.declaredWeightGrams` |
+| `inProgressGrams` | Reconciliation remainder, never Residual |
 | `circularityRate` | `(rescued + recovered) / listed × 100` |
 | `diversionRate` | `recovered / (listed − rescued) × 100` |
 | `revenueRecovered` | Σ `metadata.totalPrice` where `eventType == 'RESCUED'` |
@@ -387,52 +390,14 @@ Input: ledger entries for a scope (user, merchant, processor, platform) and a pe
 
 `PROCESSED` is the only event that splits across two outcomes, which is why its metadata is parsed rather than its delta being taken wholesale. Treating the full delta as "recovered" would silently hide residual waste — the precise dishonesty this document exists to avoid.
 
-### 5.3 Reference Implementation
+### 5.3 Source implementation
 
-```typescript
-// src/lib/impact.ts
-
-export function summariseLedger(entries: LedgerEntry[]): ImpactSummary {
-  let listed = 0, rescued = 0, recovered = 0, residual = 0, revenue = 0
-
-  for (const e of entries) {
-    const meta = e.metadata ? JSON.parse(e.metadata) : {}
-
-    switch (e.eventType) {
-      case 'LISTED':
-        listed += e.weightDeltaGrams
-        break
-      case 'RESCUED':
-        rescued += Math.abs(e.weightDeltaGrams)
-        revenue += meta.totalPrice ?? 0
-        break
-      case 'PROCESSED':
-        recovered += meta.outputWeightGrams ?? 0
-        residual  += meta.residualWeightGrams ?? 0
-        break
-      case 'ROUTING_FAILED':
-        residual += meta.residualWeightGrams ?? 0
-        break
-      case 'MODERATED':
-        residual += Math.abs(e.weightDeltaGrams)
-        break
-    }
-  }
-
-  const unrescued = Math.max(0, listed - rescued)
-
-  return {
-    listedGrams: listed,
-    rescuedGrams: rescued,
-    recoveredGrams: recovered,
-    residualGrams: residual,
-    circularityRate: listed > 0 ? ((rescued + recovered) / listed) * 100 : 0,
-    diversionRate: unrescued > 0 ? (recovered / unrescued) * 100 : 0,
-    revenueRecovered: revenue,
-    co2eAvoidedGrams: estimateCo2e(rescued, recovered),
-  }
-}
-```
+`src/lib/impact.ts` is the sole implementation of `summariseLedger()` and
+`estimateCo2e()`. It parses required JSON metadata defensively and returns
+explicit integrity issues plus `null` for dependent metrics when evidence is
+malformed; it never substitutes a flattering zero. The four Convex queries only
+establish role ownership and pass their ledger projection to this pure reducer.
+See [API_IMPACT.md](../api/API_IMPACT.md) for the exact return contract.
 
 ### 5.4 In-Flight Material
 
@@ -493,7 +458,7 @@ Deferring is the right call: configuring a formula that has never run against re
 
 ## 9. Testing Priority
 
-Given no automated suite exists, these are the tests worth writing first — all pure functions, no Convex runtime required.
+The source has Bun and Convex checks. These remain the highest-value regression cases.
 
 | # | Function | Cases |
 |--:|---|---|

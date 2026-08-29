@@ -75,6 +75,7 @@ async function completePickup(
     metadata: {
       quantity: order.quantity,
       totalPrice: order.totalPrice,
+      originalPriceSnapshot: order.originalPriceSnapshot,
       adminOverride: Boolean(args.overrideReason),
       ...(args.overrideReason ? { overrideReason: args.overrideReason } : {}),
     },
@@ -161,6 +162,7 @@ export const reserve = mutation({
     }
 
     const totalPrice = item.currentPrice * args.quantity
+    const originalPriceSnapshot = item.originalPrice
     const rescuedWeightGrams = item.weightPerItemGrams * args.quantity
     
     const remainingQuantity = item.remainingQuantity - args.quantity
@@ -177,6 +179,7 @@ export const reserve = mutation({
       surplusItemId: item._id,
       quantity: args.quantity,
       totalPrice,
+      originalPriceSnapshot,
       rescuedWeightGrams,
       pickupCode,
       status: 'reserved',

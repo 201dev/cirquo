@@ -10,6 +10,11 @@
 
 This document specifies every Convex function available to an **Admin** account. The admin surface has three jobs, in order of importance:
 
+> **Source exception M6.** `impact.getPlatformSummary({ sessionToken? })` is a
+> read-only, Admin-guarded ledger aggregation consumed reactively by `/admin`.
+> Ledger-inspector UI in this document remains M7 target work; its exact
+> impact contract is in [API_IMPACT.md](API_IMPACT.md).
+
 1. **Prove the numbers.** `admin.getItemLedger`, `admin.checkWeightConservation`, and `admin.checkLedgerCompleteness` let anyone — an operator, a judge, an auditor — take a claimed impact figure and trace it back to individual weighed events. This is the difference between a platform that says it recovered food and a platform that can show it.
 2. **Gate the network.** Merchants and processors do not self-verify. An admin reviews each application, and only `verified` accounts can list material or receive routed batches.
 3. **Repair what breaks.** Moderate unsafe listings, resolve disputes, and manually re-route batches that Circular Routing could not place.
@@ -22,6 +27,7 @@ Cirquo runs on Convex. There are no REST endpoints for admins. Every function be
 
 | Function | Type | Auth | PRD ref | Status |
 | --- | --- | --- | --- | --- |
+| [`impact.getPlatformSummary`](API_IMPACT.md) | `query` | Admin | IMP-02 | ✅ Source M6 |
 | [`admin.listUsers`](#2-adminlistusers-) | `query` | Admin | ADM-01 | 📋 Planned |
 | [`admin.listPendingVerifications`](#3-adminlistpendingverifications-) | `query` | Admin | ADM-01 | 📋 Planned |
 | [`admin.verifyMerchant`](#4-adminverifymerchant-) | `mutation` | Admin | ADM-01 | 📋 Planned |
@@ -798,7 +804,7 @@ type Result = {
 
 - `RESCUED` → `rescuedGrams += |delta|`
 - `PROCESSED` → `recoveredGrams += metadata.outputWeightGrams`, `residualGrams += metadata.residualWeightGrams`, `processLossGrams += |delta| − output − residual`
-- `ROUTING_FAILED` → `residualGrams += |delta|`
+- `ROUTING_FAILED` → `residualGrams += metadata.residualWeightGrams`
 - `MODERATED` → `residualGrams += |delta|`
 - Non-terminal items → the unresolved remainder is `inFlightGrams`, counted in neither numerator nor denominator of the headline circularity rate
 

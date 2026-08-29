@@ -13,7 +13,9 @@
 ### Start Here
 
 - **[AGENTS.md](project/AGENTS.md)** — AI agent guide for developing this project
-- **[IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md)** — source-backed M1–M8 status and M4 handoff
+- **[IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md)** — source-backed M1–M8 status
+- **[M6_UAT.md](project/M6_UAT.md)** — bukti otomatis dan checklist UAT impact
+- **[M6_HANDOFF.md](project/M6_HANDOFF.md)** — kontrak impact stabil untuk M7
 - **[PRD.md](product/PRD.md)** — Product Requirements Document (source of truth)
 - **[README.md](../README.md)** — Repository root README
 
@@ -65,6 +67,7 @@ Backend function contracts per role.
 - [API_MERCHANT.md](api/API_MERCHANT.md) — Merchant-facing queries/mutations
 - [API_PROCESSOR.md](api/API_PROCESSOR.md) — Processor-facing queries/mutations
 - [API_ADMIN.md](api/API_ADMIN.md) — Admin-facing queries/mutations
+- [API_IMPACT.md](api/API_IMPACT.md) — M6 impact query and reconciliation contract
 
 ### 🏗️ Architecture
 
@@ -118,6 +121,8 @@ Version history, contribution workflow.
 - [IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md) — verified source snapshot and planned milestone boundaries
 - [CHANGELOG.md](project/CHANGELOG.md) — Semantic versioning + release notes
 - [CONTRIBUTING.md](project/CONTRIBUTING.md) — Branch strategy, PR checklist, development workflow
+- [M6_UAT.md](project/M6_UAT.md) — evidence source/automation dan checklist deployment M6
+- [M6_HANDOFF.md](project/M6_HANDOFF.md) — kontrak impact yang diteruskan ke M7
 
 ---
 
@@ -136,11 +141,17 @@ Version history, contribution workflow.
 
 ## For Developers
 
-**Current implementation status (2026-08-29):** source includes M1–M5: authentication, Rescue Item lifecycle, discovery/reservation/payment holds, pickup/recovery/routing, dan alur Processor sampai outcome beserta dashboard operasional dan profil kapasitas. Midtrans, browser, dan mobile end-to-end UAT tetap diperlukan; M6 ledger-derived dashboards lintas peran serta M7 Admin operations masih target work. See [IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md) before representing a feature as complete.
+**Current implementation status (2026-08-29):** source includes M1–M6:
+authentication, Rescue Item lifecycle, discovery/reservation/payment holds,
+pickup/recovery/routing, Processor outcome, agregasi impact murni, serta
+dashboard scoped untuk seluruh peran. Midtrans, browser, dan mobile end-to-end
+UAT tetap diperlukan; operasi Admin M7 masih target work.
+See [IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md) before
+representing a feature as complete.
 
 **Next priorities:**
 1. Jalankan UAT deployment untuk M3–M5
-2. Replace remaining dashboard placeholders with ledger-derived impact
+2. Jalankan UAT browser/mobile untuk seluruh dashboard impact
 3. Complete Admin operations and notifications
 4. Verify end-to-end web and Android UAT
 

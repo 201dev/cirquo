@@ -207,16 +207,16 @@ Work planned across milestones M1–M8. Nothing here has shipped.
 - `INTAKE_ACCEPTED`, `INTAKE_DECLINED`, and `PROCESSED` ledger events
 
 **M6 — Impact dashboards**
-- `src/lib/impact.ts` with `summariseLedger`, `estimateCo2e`, and `IMPACT_CONFIG`
-- Consumer impact view: meals rescued, kg rescued, CO₂e avoided
-- Merchant impact view: kg listed, kg rescued, kg recovered, revenue, circularity
-  rate
-- Processor impact view: kg intake, kg recovered, kg residual, conversion rate by
-  method
-- Admin platform view: totals and overall circularity rate
-- `impactSnapshots` table caching periodic rollups
-- **All hardcoded dashboard figures removed**; every number derives from the
-  Material Flow Ledger
+- `src/lib/impact.ts` provides the pure `summariseLedger`, `estimateCo2e`, and
+  Processor/Admin operational projections; all four role queries have
+  server-side scope guards
+- `RESCUED` metadata preserves an immutable original-price snapshot for
+  Consumer savings; malformed metric metadata is surfaced as an integrity issue
+- `PROCESSED` output, residual, process loss, and intake measurement adjustment
+  are reconciled explicitly; no `impactSnapshots` counters are created
+- Consumer, Merchant, Processor, and Admin dashboards render reactive,
+  ledger-derived values; capacity and circularity data-quality warnings are
+  visible without hardcoded impact figures
 
 **M7 — Admin and polish**
 - Merchant and processor verification queue
@@ -237,14 +237,12 @@ Work planned across milestones M1–M8. Nothing here has shipped.
   residual
 
 ### Changed
-- Impact dashboards move from hardcoded constants to ledger-derived values (M6)
-- Placeholder pages move from `src/constants/mock-data.ts` to live Convex queries
-  (M2–M6)
+- Completed M6 impact dashboards move from hardcoded constants to ledger-derived
+  values
 - `impact.getPlaceholderSummary` is replaced by a real `summariseLedger`-backed
   query (M6)
 
 ### Removed
-- `src/constants/mock-data.ts`, once every page reads live data (M6)
 - `impact.getPlaceholderSummary` (M6)
 
 ### Security
@@ -263,7 +261,8 @@ Work planned across milestones M1–M8. Nothing here has shipped.
 - **M3**: add `payments`; add reservation-hold fields to `orders`
 - **M4**: add routing attempt and TTL fields to `recoveryBatches`
 - **M5**: add `processors`; add intake and outcome fields to `recoveryBatches`
-- **M6**: add `impactSnapshots`
+- **M6**: no `impactSnapshots`; pilot impact queries reduce scoped ledger rows
+  at read time
 - **M7**: add `notifications`, `disputes`
 
 Historical planning target: **12 tables**, from the 5-table scaffold that
@@ -475,7 +474,7 @@ M1–M5 source availability is recorded below and still requires the stated UAT.
 | **0.4.0** | 2026-08-17 | M3 | 🧪 Source available; Sandbox UAT pending. Consumer discovery and Midtrans payment. Mapbox map, `haversineMeters`, `rankListings`, geolocation with denial fallback, reservation with a 15-minute hold, Midtrans Sandbox QRIS, webhook with signature verification |
 | **0.5.0** | 2026-08-20 | M4 | 🧪 Source available; deployment UAT pending. Pickup, scheduler, and Circular Routing. Pickup code confirmation with live consumer updates, cron jobs, `rankEligibleProcessors`, 3-attempt limit with 6-hour offer TTL |
 | **0.6.0** | 2026-08-23 | M5 | 🧪 Source available; deployment UAT pending. Organic Processor intake and outcome. `processors` table, offer inbox, measured intake logging, outcome by method with recorded residual |
-| **0.7.0** | 2026-08-26 | M6 | 📋 Impact dashboards. `summariseLedger`, `estimateCo2e`, `impact-v1` methodology, all four dashboards ledger-derived, hardcoded figures removed, `mock-data.ts` deleted |
+| **0.7.0** | 2026-08-26 | M6 | 🧪 Source and automated checks available; deployment UAT pending. `summariseLedger`, `estimateCo2e`, `impact-v1`, and all four dashboards are ledger-derived. `mock-data.ts` remains only for no-backend and M7 placeholder surfaces. |
 | **0.8.0** | 2026-08-28 | M7 | 📋 Admin and polish. Verification queue, moderation, read-only ledger audit trail, disputes, accessibility pass, empty and error states |
 | **0.9.0** | 2026-08-30 | M8 | 📋 Mobile build and demo readiness. Signed APK, geolocation paths verified on hardware, offline shell, performance tuning, demo seed at ~0.93 circularity. **48-hour code freeze begins.** |
 | **1.0.0** | Post-competition | — | 📋 Hardening after a real pilot. Playwright E2E for the four critical journeys, production Midtrans, stable public API, proven ledger integrity over real data |
