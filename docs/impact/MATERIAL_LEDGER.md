@@ -1,17 +1,17 @@
 # Material Flow Ledger — Cirquo
 
 **Document type:** Technical specification  
-**Status:** Living ledger contract — implemented M1–M3 writes plus target paths
+**Status:** Living ledger contract — implemented M1–M4 writes plus target paths
 **Last updated:** 2026-08-29
-**Implementation status:** ✅ M1–M3 write paths available; M4–M7 paths and aggregation pending
+**Implementation status:** ✅ M1–M4 write paths available; M5–M7 paths and aggregation pending
 
 > The Material Flow Ledger is Cirquo's core differentiator. Every impact number the product displays is derived from it and from nothing else. If the ledger has gaps, the platform's central claim — *we know where every kilogram went* — is false.
 
 > **Implementation boundary.** `materialFlowLedger` and
-> `recordLedgerEvent()` exist in source. M1–M3 currently emit `LISTED`,
-> `PRICE_ADJUSTED`, `RESERVED`, `PAID`, and zero-delta `CANCELLED` events on
-> their implemented paths. `RESCUED`, routing, recovery, aggregation, and Admin
-> integrity queries remain M4–M7 target work. See
+> `recordLedgerEvent()` exist in source. M1–M4 currently emit `LISTED`,
+> `PRICE_ADJUSTED`, `RESERVED`, `PAID`, `RESCUED`, `CANCELLED`, `EXPIRED`,
+> `ROUTED`, and `ROUTING_FAILED` on their implemented paths. Aggregation and
+> Admin integrity queries remain target work. See
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
@@ -81,7 +81,10 @@ materialFlowLedger: defineTable({
 
 ### Why `weightDeltaGrams` is signed
 
-Material enters the system once (`LISTED`, positive) and leaves through terminal events (`RESCUED`, `PROCESSED`, `ROUTING_FAILED`, negative). Non-material events (`PRICE_ADJUSTED`, `RESERVED`) carry `0`.
+Material enters the system once (`LISTED`, positive). In the current M4 source,
+unclaimed material leaves marketplace accounting at `EXPIRED` (negative); later
+routing state audits carry `0` so the immutable batch weight is never debited
+twice.
 
 This makes the conservation invariant a single sum:
 
@@ -111,9 +114,9 @@ Thirteen event types. Each maps to exactly one transition in [STATE_MACHINE.md](
 | `PAID` | Midtrans webhook | `0` | — | `amount`, `method`, `providerTransactionId` |
 | `RESCUED` | Merchant verifies pickup code | `−quantity × weightPerItemGrams` | ✅ | `quantity`, `totalPrice`, `pickupCode` |
 | `CANCELLED` | Consumer hold expiry or Merchant cancellation | `0` for a reservation/hold; `−remainingQuantity × weightPerItemGrams` when an active Rescue Item is cancelled by its Merchant | Merchant cancellation only | `quantity` returned, `reason`, `cancelledBy` |
-| `EXPIRED` | Scheduler | `0` | — | `remainingQuantity`, `pickupEndAt` |
+| `EXPIRED` | Scheduler | `−unclaimedWeightGrams` | — | `remainingQuantity`, no-show weight, `pickupEndAt` |
 | `ROUTED` | Circular Routing | `0` | — | `processorId`, `rank`, `distanceMeters`, `attempt` |
-| `ROUTING_FAILED` | Circular Routing | `−unrouted weight` | ✅ | `attempts`, `declinedBy[]`, `reason` |
+| `ROUTING_FAILED` | Circular Routing | `0` | ✅ | `attempts`, attempted/declined IDs, `residualWeightGrams`, `reason` |
 | `INTAKE_ACCEPTED` | Processor accepts | `0` | — | `processorId`, `acceptedWeightGrams` (measured) |
 | `INTAKE_DECLINED` | Processor declines or TTL | `0` | — | `processorId`, `reason` |
 | `PROCESSED` | Processor logs outcome | `−(outputWeight + residualWeight)` | ✅ | `outputType`, `outputWeightGrams`, `residualWeightGrams` |
@@ -127,7 +130,7 @@ Only four events attribute material to a final outcome:
 |---|---|
 | `RESCUED` | **Rescued** weight |
 | `PROCESSED` | **Recovered** weight (the `outputWeightGrams` portion) and **Residual** weight (the `residualWeightGrams` portion) |
-| `ROUTING_FAILED` | **Residual** weight |
+| `ROUTING_FAILED` | **Residual** weight from `metadata.residualWeightGrams` |
 | `MODERATED` | **Residual** weight |
 
 `PROCESSED` is the only event that splits across two outcomes. This is why the metric layer parses its metadata for the residual portion rather than treating the whole delta as recovered — an important detail for honest reporting. See [IMPACT.md](IMPACT.md) §3.

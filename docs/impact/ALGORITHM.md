@@ -1,15 +1,15 @@
 # Algorithms — Cirquo
 
 **Document type:** Technical specification  
-**Status:** Algorithm contract — pricing/discovery subset implemented
+**Status:** Algorithm contract — pricing/discovery/routing subset implemented
 **Last updated:** 2026-08-29
-**Implementation status:** ✅ Dynamic Rescue Pricing, Haversine distance, and discovery ranking/filtering; 📋 routing and impact aggregation
+**Implementation status:** ✅ Dynamic Rescue Pricing, Haversine distance, discovery ranking/filtering, and deterministic Circular Routing offers; 📋 impact aggregation
 
 > Five algorithms drive Cirquo's behaviour. All are **deliberately rule-based and explainable**. None is machine learning. This is a design decision, not a limitation — see §7.
 
-> The current source implements Dynamic Rescue Pricing, Haversine distance, and
-> discovery ranking/filtering. Circular Routing and ledger-impact aggregation
-> remain target work; see
+> The current source implements Dynamic Rescue Pricing, Haversine distance,
+> discovery ranking/filtering, and M4-03 Circular Routing offers. Ledger-impact
+> aggregation remains target work; see
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 | Algorithm | Purpose | Priority |
@@ -244,82 +244,23 @@ Applied before ranking. A Processor failing any of these is excluded entirely.
 | E2 | `item.materialType ∈ processor.acceptedMaterialTypes` | RB-2 — never send meat waste to a vegetable-only composter |
 | E3 | `distance ≤ processor.maxPickupRadiusMeters` | Transport is off-platform; distance must be workable |
 | E4 | `todayAcceptedGrams + offeredGrams ≤ dailyCapacityGrams` | RB-3 — never exceed physical capacity |
-| E5 | `processorId ∉ batch.declinedByProcessorIds` | Never re-offer to a processor that already declined |
-| E6 | Facility open within the next 24h | An offer to a closed facility expires unanswered |
+| E5 | `processorId ∉ attemptedProcessorIds ∪ declinedByProcessorIds` | Never re-offer to a processor that already received or declined the batch |
 
-**E2 and E4 are the ones that matter most in practice.** Routing to a facility that cannot handle the material type produces a decline, wasting a routing attempt and 6 hours of offer TTL — during which the material is degrading.
+Operating-hours and reliability scoring remain deferred because M4-03 has no
+Processor acceptance/notification surface. The five constraints above are the
+implemented offer contract.
 
-### 3.3 Ranking Score
+### 3.3 Deterministic ranking
 
-```
-score = w_d × proximity + w_c × capacityHeadroom + w_r × reliability + w_m × materialFit
-```
+`src/lib/routing.ts` sorts eligible candidates in this fixed order:
 
-| Weight | Value | Component |
-|---|---:|---|
-| `w_d` | 0.40 | Proximity |
-| `w_c` | 0.25 | Capacity headroom |
-| `w_r` | 0.25 | Historical reliability |
-| `w_m` | 0.10 | Material specialisation |
+1. shortest Haversine distance;
+2. greatest `dailyCapacityGrams - committedGrams`;
+3. ascending Processor ID.
 
-**Proximity** — `1 − (distance / maxRadius)`. Nearest gets 1.0. Weighted highest because transport friction is the dominant real-world reason a routed batch never gets collected.
-
-**Capacity headroom** — `1 − (todayAccepted / dailyCapacity)`. Spreads load across the network instead of saturating the closest facility. A processor at 90% capacity scores 0.1 even if adjacent.
-
-**Reliability** — `acceptedCount / (acceptedCount + declinedCount + expiredOfferCount)`, defaulting to 0.7 for processors with fewer than 5 historical offers. This is the term that self-corrects: a processor that habitually ignores offers stops receiving them.
-
-**Material fit** — `1.0` if the processor accepts fewer than 3 material types (specialist), `0.5` otherwise. Mildly prefers specialists, who typically produce higher-quality output from matched feedstock.
-
-### 3.4 Reference Implementation
-
-```typescript
-// src/lib/routing.ts
-
-export const ROUTING_CONFIG = {
-  weights: { proximity: 0.40, capacity: 0.25, reliability: 0.25, material: 0.10 },
-  MAX_ATTEMPTS: 3,
-  OFFER_TTL_MS: 6 * 60 * 60 * 1000,   // 6 hours
-  DEFAULT_RELIABILITY: 0.7,
-  MIN_HISTORY_FOR_RELIABILITY: 5,
-} as const
-
-export function rankEligibleProcessors(
-  item: { materialType: MaterialType; weightGrams: number; lat: number; lng: number },
-  batch: { declinedByProcessorIds: string[] },
-  processors: ProcessorWithStats[],
-  now: number,
-): RankedProcessor[] {
-  const w = ROUTING_CONFIG.weights
-
-  return processors
-    .map(p => ({ p, distance: haversineMeters(item.lat, item.lng, p.latitude, p.longitude) }))
-    .filter(({ p, distance }) =>
-      p.verificationStatus === 'verified' &&
-      p.acceptedMaterialTypes.includes(item.materialType) &&
-      distance <= p.maxPickupRadiusMeters &&
-      p.todayAcceptedGrams + item.weightGrams <= p.dailyCapacityGrams &&
-      !batch.declinedByProcessorIds.includes(p._id) &&
-      opensWithin24h(p, now))
-    .map(({ p, distance }) => {
-      const proximity = 1 - distance / p.maxPickupRadiusMeters
-      const capacity = 1 - p.todayAcceptedGrams / p.dailyCapacityGrams
-      const history = p.acceptedCount + p.declinedCount + p.expiredOfferCount
-      const reliability = history >= ROUTING_CONFIG.MIN_HISTORY_FOR_RELIABILITY
-        ? p.acceptedCount / history
-        : ROUTING_CONFIG.DEFAULT_RELIABILITY
-      const material = p.acceptedMaterialTypes.length < 3 ? 1.0 : 0.5
-
-      return {
-        processorId: p._id,
-        distance,
-        score: w.proximity * proximity + w.capacity * capacity +
-               w.reliability * reliability + w.material * material,
-        breakdown: { proximity, capacity, reliability, material },
-      }
-    })
-    .sort((a, b) => b.score - a.score)
-}
-```
+No randomisation or history score is used, so equal inputs always produce the
+same offer. The server supplies current committed-offer grams; the pure function
+has no Convex dependency.
 
 ### 3.5 Retry Loop
 
@@ -438,7 +379,7 @@ Input: ledger entries for a scope (user, merchant, processor, platform) and a pe
 | `listedGrams` | Σ delta where `eventType == 'LISTED'` |
 | `rescuedGrams` | Σ \|delta\| where `eventType == 'RESCUED'` |
 | `recoveredGrams` | Σ `metadata.outputWeightGrams` where `eventType == 'PROCESSED'` |
-| `residualGrams` | Σ `metadata.residualWeightGrams` (PROCESSED) + Σ \|delta\| (`ROUTING_FAILED`, `MODERATED`) |
+| `residualGrams` | Σ `metadata.residualWeightGrams` (`PROCESSED`, `ROUTING_FAILED`) + Σ \|delta\| (`MODERATED`) |
 | `circularityRate` | `(rescued + recovered) / listed × 100` |
 | `diversionRate` | `recovered / (listed − rescued) × 100` |
 | `revenueRecovered` | Σ `metadata.totalPrice` where `eventType == 'RESCUED'` |
@@ -470,6 +411,8 @@ export function summariseLedger(entries: LedgerEntry[]): ImpactSummary {
         residual  += meta.residualWeightGrams ?? 0
         break
       case 'ROUTING_FAILED':
+        residual += meta.residualWeightGrams ?? 0
+        break
       case 'MODERATED':
         residual += Math.abs(e.weightDeltaGrams)
         break
