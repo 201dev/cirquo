@@ -14,9 +14,8 @@
 
 > **Implementation status.** Requirements in this PRD are target scope, not
 > proof of shipped functionality. M1–M5 source exists; M3–M5 masih memerlukan
-> UAT deployment/browser sebelum sign-off. M6-01 agregasi serta dashboard
-> Consumer/Merchant M6-02 tersedia di source; M6-03 dan M7–M8 tetap
-> direncanakan. See
+> UAT deployment/browser sebelum sign-off. M6 agregasi dan dashboard seluruh
+> peran tersedia di source; M7–M8 tetap direncanakan. See
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---

@@ -206,15 +206,17 @@ Work planned across milestones M1–M8. Nothing here has shipped.
 - Validation rejecting an outcome where recovered + residual exceeds intake
 - `INTAKE_ACCEPTED`, `INTAKE_DECLINED`, and `PROCESSED` ledger events
 
-**M6 — Impact aggregation**
-- **M6-01 source contract implemented:** `src/lib/impact.ts` provides the pure
-  `summariseLedger` and `estimateCo2e` path; Consumer, Merchant, Processor, and
-  Admin queries use it with server-side ownership guards
+**M6 — Impact dashboards**
+- `src/lib/impact.ts` provides the pure `summariseLedger`, `estimateCo2e`, and
+  Processor/Admin operational projections; all four role queries have
+  server-side scope guards
 - `RESCUED` metadata preserves an immutable original-price snapshot for
   Consumer savings; malformed metric metadata is surfaced as an integrity issue
 - `PROCESSED` output, residual, process loss, and intake measurement adjustment
   are reconciled explicitly; no `impactSnapshots` counters are created
-- Dashboard rendering and removal of hardcoded client figures remain M6-02/M6-03
+- Consumer, Merchant, Processor, and Admin dashboards render reactive,
+  ledger-derived values; capacity and circularity data-quality warnings are
+  visible without hardcoded impact figures
 
 **M7 — Admin and polish**
 - Merchant and processor verification queue

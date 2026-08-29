@@ -1,6 +1,6 @@
 # API Organic Processor — Cirquo
 
-**Status:** Kontrak source M5 · 2026-08-29
+**Status:** Kontrak source M5 dan dashboard impact M6 · 2026-08-29
 **PRD:** PRC-01 sampai PRC-06
 
 Semua fungsi memakai `sessionToken` opsional pada argumen, tetapi token valid
@@ -18,7 +18,7 @@ dalam gram utuh; semua waktu adalah epoch-ms UTC.
 | `recoveryBatches.decline` | mutation | Processor terverifikasi yang ditugaskan | PRC-02 | ✅ |
 | `recoveryBatches.logIntake` | mutation | Processor terverifikasi yang ditugaskan | PRC-03 | ✅ |
 | `recoveryBatches.logOutcome` | mutation | Processor terverifikasi yang ditugaskan | PRC-04 | ✅ |
-| `impact.getProcessorSummary` | query | Processor dengan profil | PRC-05 | ✅ |
+| `impact.getProcessorSummary` | query | Processor terverifikasi | PRC-05 | ✅ |
 | `processors.getMine` | query | Processor pemilik | PRC-06 | ✅ |
 | `processors.updateProfile` | mutation | Processor pemilik | PRC-06 | ✅ |
 
@@ -32,6 +32,10 @@ di-snapshot saat batch diterima.
 
 `get({ batchId })` memiliki proyeksi yang sama untuk satu batch. Batch dari
 Processor lain ditolak `FORBIDDEN`.
+
+`getDashboard({ now })` adalah proyeksi operasional M5 yang tetap tersedia
+untuk kompatibilitas. Halaman `/processor` memakai `impact.getProcessorSummary`
+di bawah sebagai satu-satunya sumber metrik dashboard M6.
 
 `getDashboard({ now })` memakai waktu klien yang tervalidasi supaya batas hari
 WIB tidak tersangkut cache query. Ia mengembalikan:
@@ -52,9 +56,11 @@ Flow Ledger milik Processor. Status antrean dan komitmen kapasitas berasal dari
 batch yang ditugaskan kepadanya. Offer yang belum diterima tidak mengunci
 kapasitas.
 
-`impact.getProcessorSummary()` adalah ringkasan impact M6-01 untuk recovery
-batch yang ditugaskan ke Processor. Lihat [API_IMPACT.md](API_IMPACT.md) untuk
-kontrak ringkasan bersama dan penanganan integritas metadata.
+`impact.getProcessorSummary()` adalah ringkasan impact M6 untuk recovery batch
+yang ditugaskan ke Processor dan menolak profil yang belum terverifikasi. Ia
+menambahkan `processor` untuk count batch, intake harian/total, penggunaan
+kapasitas, output per jenis, laju residual, dan efisiensi recovery. Lihat
+[API_IMPACT.md](API_IMPACT.md) untuk kontrak dan penanganan integritas metadata.
 
 ## Mutasi recovery
 

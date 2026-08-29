@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | **Document type** | Design strategy / principles |
-| **Status** | Design target with implemented M1–M5 Consumer/Merchant/Processor subset |
+| **Status** | Design target with implemented M1–M6 role-scoped dashboard subset |
 | **Last updated** | 2026-08-29 |
 | **Owner** | Design & Frontend |
 | **Applies to** | All four role surfaces (Consumer, Merchant, Organic Processor, Admin) |
@@ -11,8 +11,9 @@
 
 > **Implementation boundary.** The Consumer discovery, Rescue Item detail,
 > reservation/checkout, and owned order surfaces are source-backed. Merchant
-> listing is source-backed. Processor, Admin, impact, and pickup confirmation
-> screens are still target or placeholder surfaces. See
+> listing, pickup/recovery, Processor workflow, and role-scoped impact
+> dashboards are source-backed. Admin operations beyond the read-only platform
+> dashboard remain target work. See
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---

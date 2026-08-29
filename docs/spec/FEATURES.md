@@ -1348,7 +1348,7 @@ The processor logs output type (`compost`, `bsf_larvae`, `biogas`, `animal_feed`
 - [x] GIVEN `output + residual < acceptedWeight` WHEN submitted THEN it is accepted and the gap is returned as explicit `processLossGrams`
 - [x] GIVEN `residualWeightGrams = 0` WHEN submitted THEN it is allowed but requires explicit confirmation, since zero residual is unusual
 - [x] GIVEN outcome WHEN it commits THEN Merchant dashboard updates live (M6-02)
-- [ ] GIVEN outcome WHEN it commits THEN Admin dashboard updates live (M6-03)
+- [x] GIVEN outcome WHEN it commits THEN Admin dashboard updates live (M6-03)
 - [x] GIVEN a `processed` batch WHEN outcome logging is attempted again THEN it is rejected — terminal states are final
 
 **Ledger events emitted** — `PROCESSED` (terminal; metadata splits recovered vs residual)
@@ -1373,12 +1373,12 @@ The processor logs output type (`compost`, `bsf_larvae`, `biogas`, `animal_feed`
 
 ### F-34 — Processor dashboard
 
-**PRD refs:** PRC-05, IMP-03 · **Priority:** S · **Status:** ✅ Source implementation available · deployment UAT pending
+**PRD refs:** PRC-05, IMP-03 · **Priority:** S · **Status:** ✅ Source implementation M6-03 available · deployment UAT pending
 
 **Objective** — Show a processor their throughput, capacity utilisation, and recovery performance.
 
 **Description**
-Summary cards for pending offers, accepted batches awaiting collection, collected batches awaiting outcome, today's intake against daily capacity, total processed weight, output by type, and recovery efficiency (`output / accepted`). Output, residual, intake, and recovery rate are read from the Processor's own Material Flow Ledger events; queue counts and capacity commitments are read from its assigned batches.
+Summary cards for offer, accepted, collected, and processed batch; intake hari ini dan total; output per jenis; residual; serta efisiensi recovery (`output / input batch yang sudah diproses`). `/processor` hanya mengonsumsi `impact.getProcessorSummary`; output, residual, intake, dan rate berasal dari Material Flow Ledger batch Processor, sedangkan count status dan kapasitas berasal dari batch yang ditugaskan serta profilnya.
 
 **Actors** — Organic Processor (verified)
 
@@ -1399,7 +1399,7 @@ Summary cards for pending offers, accepted batches awaiting collection, collecte
 
 | Case | Expected behaviour |
 |---|---|
-| New processor with no history | Reliability shows the 0.7 default with an explanation |
+| New processor with no history | Empty state menjelaskan bagaimana Circular Routing menawarkan batch; tidak ada performa palsu |
 | Capacity exceeded by a manual admin re-route | Displayed as over-capacity; routing still excludes them |
 | Zero processed batches | Efficiency shows "—", not 0% |
 
@@ -1583,12 +1583,12 @@ Search by item id, merchant, or date range, then view a chronological event list
 
 ### F-43 — Platform impact dashboard
 
-**PRD refs:** ADM-04, IMP-03 · **Priority:** M · **Status:** 🚧 Partial (route `/admin` renders mock summary cards)
+**PRD refs:** ADM-04, IMP-03 · **Priority:** M · **Status:** ✅ Source implementation M6-03 available · deployment UAT pending
 
 **Objective** — Present platform-wide circular performance for operators, judges, and stakeholders.
 
 **Description**
-Totals for listed, rescued, recovered, residual, and in-flight weight; circularity rate; diversion rate; CO2e avoided; counts of merchants, consumers, and processors; unroutable batch count; and open disputes. All derived from the ledger, scoped platform-wide.
+Totals for listed, rescued, recovered, residual, and in-flight weight; circularity rate; diversion rate; Estimated CO2e avoided; counts of active merchants, consumers, and processors; and unroutable batch count. Material metrics are ledger-derived, while role and batch counts are read server-side without stored counters.
 
 **Circularity rate is expected between 85% and 95%, with 93% as the demo target.** A dashboard reading 100% would mean either no residual was ever logged or the aggregation is hiding it. The presence of a visible residual figure is the evidence that the rest of the numbers are real.
 
@@ -1597,13 +1597,13 @@ Totals for listed, rescued, recovered, residual, and in-flight weight; circulari
 **User story** — As an Admin, I want a platform-wide impact view, so that I can report performance credibly and spot systemic problems.
 
 **Acceptance criteria**
-- [ ] GIVEN the dashboard WHEN it loads THEN all metrics derive from ledger aggregation, with no stored counters
-- [ ] GIVEN residual weight WHEN displayed THEN it is shown with equal prominence to rescued and recovered
-- [ ] GIVEN in-flight material WHEN displayed THEN it is a separate figure so the totals reconcile
-- [ ] GIVEN circularity rate WHEN it computes above 99% THEN a data-quality warning is raised for investigation
-- [ ] GIVEN unroutable batches WHEN any exist THEN the count links to the manual re-route queue
-- [ ] GIVEN any state change anywhere on the platform WHEN it commits THEN the dashboard reflects it live
-- [ ] GIVEN CO2e WHEN displayed THEN the methodology version is shown
+- [x] GIVEN the dashboard WHEN it loads THEN all metrics derive from ledger aggregation, with no stored counters
+- [x] GIVEN residual weight WHEN displayed THEN it is shown with equal prominence to rescued and recovered
+- [x] GIVEN in-flight material WHEN displayed THEN it is a separate figure so the totals reconcile
+- [x] GIVEN circularity rate WHEN it computes above 99% THEN a data-quality warning is raised for investigation
+- [x] GIVEN unroutable batches WHEN any exist THEN the count is visible; manual re-route remains M7
+- [x] GIVEN any state change anywhere on the platform WHEN it commits THEN the dashboard reflects it live
+- [x] GIVEN CO2e WHEN displayed THEN the methodology version is shown
 
 **Ledger events emitted** — none (read-only)
 

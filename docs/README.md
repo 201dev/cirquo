@@ -137,17 +137,17 @@ Version history, contribution workflow.
 
 ## For Developers
 
-**Current implementation status (2026-08-29):** source includes M1–M5 and
-M6-01/M6-02: authentication, Rescue Item lifecycle, discovery/reservation/payment
-holds, pickup/recovery/routing, Processor outcome, agregasi impact murni, serta
-dashboard Consumer/Merchant scoped. Midtrans, browser, dan mobile end-to-end
-UAT tetap diperlukan; dashboard M6-03 dan M7 Admin operations masih target work.
+**Current implementation status (2026-08-29):** source includes M1–M6:
+authentication, Rescue Item lifecycle, discovery/reservation/payment holds,
+pickup/recovery/routing, Processor outcome, agregasi impact murni, serta
+dashboard scoped untuk seluruh peran. Midtrans, browser, dan mobile end-to-end
+UAT tetap diperlukan; operasi Admin M7 masih target work.
 See [IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md) before
 representing a feature as complete.
 
 **Next priorities:**
 1. Jalankan UAT deployment untuk M3–M5
-2. Replace remaining dashboard placeholders with ledger-derived impact
+2. Jalankan UAT browser/mobile untuk seluruh dashboard impact
 3. Complete Admin operations and notifications
 4. Verify end-to-end web and Android UAT
 

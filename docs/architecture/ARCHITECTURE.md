@@ -53,7 +53,7 @@ These principles are load-bearing. Every decision later in this document traces 
 
 | # | Principle | Practical consequence | Status |
 | --- | --- | --- | --- |
-| P1 | **The ledger is the truth** | No mutable impact counters. All metrics are reductions over `materialFlowLedger`. | ✅ M6-01 shared aggregation; M6-02 Consumer/Merchant rendering |
+| P1 | **The ledger is the truth** | No mutable impact counters. All metrics are reductions over `materialFlowLedger`. | ✅ M6 shared aggregation and all role dashboard rendering |
 | P2 | **Ledger writes are transactional with the state change** | `recordLedgerEvent` is called inside the same Convex mutation that mutates state. Never from an action, never from the client. | ✅ Implemented M1–M5 transitions |
 | P3 | **Business logic is framework-agnostic** | Algorithms live in `src/lib/*.ts` with zero Convex imports. Convex functions load data, call the pure function, persist the result. | ✅ Pricing, geo, routing, recovery, and impact |
 | P4 | **Weight is an integer in grams; money is an integer in IDR; time is epoch milliseconds UTC** | No floats in persisted domain data. No `Date` objects in the database. WIB conversion happens only at render. | ✅ Implemented M1–M5 contracts |
@@ -64,8 +64,8 @@ These principles are load-bearing. Every decision later in this document traces 
 
 ### 2.1 Honest Implementation Status
 
-The system is a **partially implemented MVP**. M1–M5 source is available;
-M3–M5 still need Sandbox/browser/mobile UAT before sign-off. M6 onward is
+The system is a **partially implemented MVP**. M1–M6 source is available;
+M3–M6 still need Sandbox/browser/mobile UAT before sign-off. M7 onward is
 target work. [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md)
 is the authoritative documentation snapshot.
 
@@ -77,7 +77,7 @@ is the authoritative documentation snapshot.
 | React routes | ✅ M1–M5 plus later placeholders | Auth, Consumer, Merchant, dan Processor flows M5 terhubung ke data; Admin routes tidak membuktikan backend Admin. |
 | Layouts | ✅ Implemented | `ConsumerLayout`, `RoleShell` (used by Merchant/Processor/Admin layouts) |
 | UI primitives | ✅ 17 shadcn/ui components | new-york style, neutral base |
-| Pure-logic modules | ✅ Partial | `pricing.ts`, `geo.ts`, `discovery.ts`, payment-hold, order grouping, formatting, and validation exist; routing/impact aggregation do not. |
+| Pure-logic modules | ✅ M6 source | `pricing.ts`, `geo.ts`, `discovery.ts`, routing, payment-hold, order grouping, formatting, validation, dan agregasi impact tersedia. |
 | Auth | ✅ Implemented | Registration, login, logout, session restoration, onboarding, and guards are present. |
 | Mapbox | ✅ Implemented | Consumer Mapbox discovery has a list fallback. |
 | Midtrans | 🧪 UAT required | Sandbox Snap and verified webhook source are present; deployment credentials/callback must be tested. |
@@ -201,8 +201,8 @@ graph TB
 
 | Container | Technology | Responsibility | Deployment | Status |
 | --- | --- | --- | --- | --- |
-| **React SPA** | React 19.2, Vite 8, TS 6 | UI, routing, forms, and Consumer map | Static bundle on CDN | ✅ M1–M5 source; later Admin screens vary |
-| **Pure Logic** | Plain TypeScript | Pricing, discovery/ranking, geo, recovery, validation, impact | Bundled into SPA and imported by Convex | ✅ M6-01 source; M6-02 Consumer/Merchant dashboards |
+| **React SPA** | React 19.2, Vite 8, TS 6 | UI, routing, forms, and Consumer map | Static bundle on CDN | ✅ M1–M6 source; M7 Admin operations remain target |
+| **Pure Logic** | Plain TypeScript | Pricing, discovery/ranking, geo, recovery, validation, impact | Bundled into SPA and imported by Convex | ✅ M6 source; all role dashboards consume scoped impact queries |
 | **Capacitor Shell** | Capacitor 8 | Android WebView host, native permissions | Play Store / APK | ✅ Configured |
 | **Service Worker** | Vanilla SW | Shell caching, PROD only | Served with the SPA | ✅ Registered |
 | **Convex Queries** | Convex 1.43 | Reactive reads | Convex cloud | ✅ M1–M5 queries exist |

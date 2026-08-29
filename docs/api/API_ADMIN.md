@@ -10,10 +10,10 @@
 
 This document specifies every Convex function available to an **Admin** account. The admin surface has three jobs, in order of importance:
 
-> **Source exception M6-01.** `impact.getPlatformSummary({ sessionToken? })`
-> is implemented as a read-only, Admin-guarded ledger aggregation. Dashboard
-> and ledger-inspector UI in this document remain M6-03/M7 target work; its
-> exact contract is in [API_IMPACT.md](API_IMPACT.md).
+> **Source exception M6.** `impact.getPlatformSummary({ sessionToken? })` is a
+> read-only, Admin-guarded ledger aggregation consumed reactively by `/admin`.
+> Ledger-inspector UI in this document remains M7 target work; its exact
+> impact contract is in [API_IMPACT.md](API_IMPACT.md).
 
 1. **Prove the numbers.** `admin.getItemLedger`, `admin.checkWeightConservation`, and `admin.checkLedgerCompleteness` let anyone — an operator, a judge, an auditor — take a claimed impact figure and trace it back to individual weighed events. This is the difference between a platform that says it recovered food and a platform that can show it.
 2. **Gate the network.** Merchants and processors do not self-verify. An admin reviews each application, and only `verified` accounts can list material or receive routed batches.
