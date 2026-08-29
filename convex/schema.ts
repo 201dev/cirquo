@@ -58,6 +58,7 @@ export const rescueItemStatus = v.union(
   v.literal('recovered'),
   v.literal('residual'),
   v.literal('closed'),
+  v.literal('moderated'),
 )
 
 export const orderStatus = v.union(
@@ -76,6 +77,7 @@ export const recoveryBatchStatus = v.union(
   v.literal('rejected'),
   v.literal('processed'),
   v.literal('unroutable'),
+  v.literal('cancelled'),
 )
 
 export const ledgerEventType = v.union(
@@ -141,9 +143,13 @@ export default defineSchema({
     legalName: v.optional(v.string()),
     registrationNumber: v.optional(v.string()),
     verificationStatus: verificationStatus,
+    rejectionReason: v.optional(v.string()),
+    verificationNote: v.optional(v.string()),
+    verifiedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
-    .index('by_owner', ['ownerId']),
+    .index('by_owner', ['ownerId'])
+    .index('by_verification', ['verificationStatus']),
 
   processors: defineTable({
     ownerId: v.id('users'),
@@ -165,6 +171,9 @@ export default defineSchema({
     capacityGrams: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
     verificationStatus: verificationStatus,
+    rejectionReason: v.optional(v.string()),
+    verificationNote: v.optional(v.string()),
+    verifiedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index('by_owner', ['ownerId'])
@@ -187,10 +196,12 @@ export default defineSchema({
     dietaryTags: v.array(v.string()),
     processingOnly: v.boolean(),
     status: rescueItemStatus,
+    moderationReason: v.optional(v.string()),
     publishedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index('by_merchant', ['merchantId'])
+    .index('by_created_at', ['createdAt'])
     .index('by_status', ['status'])
     .index('by_status_pickup_end', ['status', 'pickupEndAt']),
 
@@ -296,4 +307,25 @@ export default defineSchema({
   })
     .index('by_order', ['orderId'])
     .index('by_provider_txn', ['providerTxnId']),
+
+  notifications: defineTable({
+    userId: v.id('users'),
+    type: v.string(),
+    title: v.string(),
+    body: v.string(),
+    href: v.optional(v.string()),
+    visibleAt: v.number(),
+    readAt: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index('by_user_and_visible_at', ['userId', 'visibleAt']),
+
+  adminActions: defineTable({
+    adminId: v.id('users'),
+    action: v.string(),
+    targetTable: v.string(),
+    targetId: v.string(),
+    reason: v.optional(v.string()),
+    note: v.optional(v.string()),
+    occurredAt: v.number(),
+  }).index('by_admin_and_occurred_at', ['adminId', 'occurredAt']),
 })

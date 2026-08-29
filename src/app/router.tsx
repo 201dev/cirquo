@@ -62,6 +62,7 @@ const RecoveryPage = lazy(() => import("@/pages/processor/recovery-page"));
 const PendingVerificationPage = lazy(
   () => import("@/pages/auth/pending-verification-page"),
 );
+const NotificationsPage = lazy(() => import("@/pages/notifications-page"));
 export const router = createBrowserRouter([
   // --- Guest-only routes (login, register) ---
   {
@@ -134,6 +135,7 @@ export const router = createBrowserRouter([
           { path: "item/:id", element: <ItemDetailPage /> },
           { path: "impact", element: <ImpactPage /> },
           { path: "profile", element: <ProfilePage /> },
+          { path: "notifications", element: <NotificationsPage /> },
         ],
       },
     ],
@@ -150,6 +152,7 @@ export const router = createBrowserRouter([
           { index: true, element: <MerchantDashboardPage /> },
           { path: "surplus", element: <MerchantSurplusPage /> },
           { path: "impact", element: <MerchantImpactPage /> },
+          { path: "notifications", element: <NotificationsPage /> },
           {
             element: <RoleRoute role="merchant" requiresVerified />,
             children: [
@@ -174,6 +177,7 @@ export const router = createBrowserRouter([
           { index: true, element: <ProcessorDashboardPage /> },
           { path: "history", element: <ProcessorHistoryPage /> },
           { path: "profile", element: <ProcessorProfilePage /> },
+          { path: "notifications", element: <NotificationsPage /> },
           {
             element: <RoleRoute role="processor" requiresVerified />,
             children: [
@@ -204,7 +208,7 @@ export const router = createBrowserRouter([
             element: <ReviewQueuePage type="moderation" />,
           },
           { path: "ledger", element: <LedgerPage /> },
-          { path: "disputes", element: <ReviewQueuePage type="disputes" /> },
+          { path: "notifications", element: <NotificationsPage /> },
         ],
       },
     ],

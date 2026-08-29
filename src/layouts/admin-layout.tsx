@@ -1,8 +1,8 @@
 import {
   BookOpenCheck,
+  Bell,
   FileWarning,
   LayoutDashboard,
-  MessageSquareWarning,
   ShieldCheck,
 } from "lucide-react";
 import { RoleShell } from "@/components/common/role-shell";
@@ -21,7 +21,7 @@ const navigation = [
   },
   { href: "/admin/moderation", label: "Moderasi", icon: FileWarning },
   { href: "/admin/ledger", label: "Material Flow Ledger", icon: BookOpenCheck },
-  { href: "/admin/disputes", label: "Sengketa", icon: MessageSquareWarning },
+  { href: "/admin/notifications", label: "Notifikasi", icon: Bell },
 ];
 
 export function AdminLayout() {

@@ -7,6 +7,7 @@ import {
   Search,
   ShoppingBag,
   Leaf,
+  Bell,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AppLogo } from "@/components/common/app-logo";
@@ -31,6 +32,7 @@ import { useState, type FormEvent } from "react";
 const quickNavigation = [
   { href: "/orders", label: "Pesanan", icon: ShoppingBag },
   { href: "/impact", label: "Dampak", icon: Leaf },
+  { href: "/notifications", label: "Notifikasi", icon: Bell },
 ];
 
 const mobileNavigation = [
@@ -134,6 +136,12 @@ export function ConsumerLayout() {
                 <NavLink to="/impact" className="flex items-center gap-2">
                   <Leaf className="size-4" />
                   Dampak Saya
+                </NavLink>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <NavLink to="/notifications" className="flex items-center gap-2">
+                  <Bell className="size-4" />
+                  Notifikasi
                 </NavLink>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

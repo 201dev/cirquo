@@ -2,10 +2,11 @@ import { internalMutation, internalQuery, mutation, query } from './_generated/s
 import { v, ConvexError } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import type { MutationCtx } from './_generated/server'
-import { internal } from './_generated/api'
 import { rescueItemStatus, materialType } from './schema'
 import { requireVerifiedMerchant, requireOwnership, requireRole } from './lib/guards'
 import { recordLedgerEvent } from './lib/ledger'
+import { createNotification } from './lib/notifications'
+import { queueSandboxRefund } from './lib/refunds'
 
 export const listByStatus = internalQuery({
   args: { status: rescueItemStatus },
@@ -53,43 +54,6 @@ type PickupExpiryResult = {
   batchesCreated: number
   deferredHolds: number
   noShowsExpired: number
-}
-
-async function queueSandboxRefund(
-  ctx: MutationCtx,
-  order: Doc<'orders'>,
-  now: number,
-) {
-  const payment = await ctx.db
-    .query('payments')
-    .withIndex('by_order', (q) => q.eq('orderId', order._id))
-    .first()
-  if (payment?.refundStatus) return
-
-  const refundKey = `pickup-expiry-${order._id}`
-  if (payment) {
-    await ctx.db.patch(payment._id, {
-      refundStatus: 'pending',
-      refundKey,
-      refundRequestedAt: now,
-      updatedAt: now,
-    })
-  } else {
-    await ctx.db.insert('payments', {
-      orderId: order._id,
-      provider: 'midtrans',
-      amount: order.totalPrice,
-      providerStatus: 'settlement',
-      refundStatus: 'pending',
-      refundKey,
-      refundRequestedAt: now,
-      createdAt: now,
-      updatedAt: now,
-    })
-  }
-  await ctx.scheduler.runAfter(0, internal.payments.requestSandboxRefund, {
-    orderId: order._id,
-  })
 }
 
 async function executePickupWindowExpiry(ctx: MutationCtx): Promise<PickupExpiryResult> {
@@ -164,7 +128,11 @@ async function executePickupWindowExpiry(ctx: MutationCtx): Promise<PickupExpiry
         weightDeltaGrams: 0,
         metadata: { reason: 'PICKUP_WINDOW_EXPIRED', refundRequired: true },
       })
-      await queueSandboxRefund(ctx, order, now)
+      await queueSandboxRefund(ctx, order, 'pickup-expiry', now)
+      await createNotification(ctx, {
+        userId: order.userId, type: 'pickup_expired', title: 'Waktu pickup berakhir',
+        body: `${item.name} tidak diambil dan refund Sandbox sedang diproses.`, href: `/orders/${order._id}`,
+      })
       noShowsExpired += 1
     }
 
@@ -178,6 +146,12 @@ async function executePickupWindowExpiry(ctx: MutationCtx): Promise<PickupExpiry
         noShowWeightGrams,
         reason: 'PICKUP_WINDOW_EXPIRED',
       },
+    })
+    const merchant = await ctx.db.get(item.merchantId)
+    if (merchant) await createNotification(ctx, {
+      userId: merchant.ownerId, type: 'item_expired', title: 'Rescue Item masuk Circular Routing',
+      body: `${item.name} melewati waktu pickup dengan ${unclaimedWeightGrams.toLocaleString('id-ID')} g material belum terselesaikan.`,
+      href: `/merchant/surplus/${item._id}`,
     })
     batchesCreated += 1
   }
@@ -452,6 +426,7 @@ export const listMine = query({
       pickupStartAt: item.pickupStartAt,
       pickupEndAt: item.pickupEndAt,
       status: item.status,
+      moderationReason: item.moderationReason,
       processingOnly: item.processingOnly,
       publishedAt: item.publishedAt,
       createdAt: item.createdAt,
@@ -485,6 +460,7 @@ export const getMine = query({
       pickupStartAt: item.pickupStartAt,
       pickupEndAt: item.pickupEndAt,
       status: item.status,
+      moderationReason: item.moderationReason,
       processingOnly: item.processingOnly,
       publishedAt: item.publishedAt,
       createdAt: item.createdAt,

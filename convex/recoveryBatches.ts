@@ -8,6 +8,7 @@ import { MAX_ROUTING_ATTEMPTS, OFFER_TTL_MS, rankEligibleProcessors, type Routin
 import { materialType, outputType, recoveryBatchStatus } from './schema'
 import { requireRole, requireVerifiedMerchant, requireVerifiedProcessor } from './lib/guards'
 import { recordLedgerEvent } from './lib/ledger'
+import { createNotification } from './lib/notifications'
 
 const ROUTING_BATCH_SIZE = 50
 const NOTE_MAX_LENGTH = 500
@@ -105,6 +106,12 @@ async function markUnroutable(ctx: MutationCtx, batch: Doc<'recoveryBatches'>, r
     surplusItemId: batch.surplusItemId, recoveryBatchId: batch._id, eventType: 'ROUTING_FAILED', weightDeltaGrams: 0,
     metadata: { reason, attempts: batch.routingAttempts ?? 0, attemptedProcessorIds: history.attemptedProcessorIds, declinedByProcessorIds: history.declinedByProcessorIds, residualWeightGrams: batch.offeredWeightGrams },
   })
+  const [merchant, item] = await Promise.all([ctx.db.get(batch.merchantId), ctx.db.get(batch.surplusItemId)])
+  if (merchant) await createNotification(ctx, {
+    userId: merchant.ownerId, type: 'routing_failed', title: 'Circular Routing belum berhasil',
+    body: `${item?.name ?? 'Rescue Item'} belum menemukan Organic Processor dan tercatat sebagai Residual.`,
+    href: `/merchant/surplus/${batch.surplusItemId}`,
+  })
   return 'unroutable'
 }
 
@@ -155,6 +162,11 @@ async function routePendingBatch(ctx: MutationCtx, batch: Doc<'recoveryBatches'>
   await recordLedgerEvent(ctx, {
     surplusItemId: batch.surplusItemId, recoveryBatchId: batch._id, eventType: 'ROUTED', weightDeltaGrams: 0,
     metadata: { processorId, distanceMeters: winner.distanceMeters, remainingCapacityGrams: winner.remainingCapacityGrams, attempt: routingAttempts, offerExpiresAt },
+  })
+  const processorProfile = await ctx.db.get(processorId)
+  if (processorProfile) await createNotification(ctx, {
+    userId: processorProfile.ownerId, type: 'batch_routed', title: 'Batch recovery baru',
+    body: `${item.name} telah dirutekan ke fasilitas Anda.`, href: `/processor/recovery/${batch._id}`,
   })
   await ctx.scheduler.runAt(offerExpiresAt, internal.recoveryBatches.expireOffer, { batchId: batch._id, offerExpiresAt })
   return 'offered'
@@ -337,6 +349,12 @@ export const logOutcome = mutation({
       surplusItemId: batch.surplusItemId, recoveryBatchId: batch._id, eventType: 'PROCESSED', weightDeltaGrams: -batch.acceptedWeightGrams,
       actorId: user._id, actorRole: 'processor',
       metadata: { processorId: processor._id, outputType: args.outputType, outputWeightGrams: args.outputWeightGrams, residualWeightGrams: args.residualWeightGrams, processLossGrams: result.processLossGrams, conversionRatePercent: result.conversionRatePercent, note },
+    })
+    const merchant = await ctx.db.get(batch.merchantId)
+    if (merchant) await createNotification(ctx, {
+      userId: merchant.ownerId, type: 'recovery_completed', title: 'Outcome recovery tercatat',
+      body: `${args.outputWeightGrams.toLocaleString('id-ID')} g berhasil di-recover dan ${args.residualWeightGrams.toLocaleString('id-ID')} g menjadi Residual.`,
+      href: `/merchant/surplus/${batch.surplusItemId}`,
     })
     return result
   },

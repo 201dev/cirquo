@@ -5,6 +5,7 @@ import type { MutationCtx } from './_generated/server'
 import { requireRole, requireVerifiedMerchant } from './lib/guards'
 import { recordLedgerEvent } from './lib/ledger'
 import { internal } from './_generated/api'
+import { createNotification } from './lib/notifications'
 
 const PAYMENT_HOLD_MS = 15 * 60 * 1000
 const PICKUP_CODE_PATTERN = /^\d{6}$/
@@ -196,6 +197,22 @@ export const reserve = mutation({
       actorId: user._id,
       actorRole: 'consumer',
     })
+
+    await Promise.all([
+      createNotification(ctx, {
+        userId: user._id, type: 'reservation_confirmed', title: 'Reservasi berhasil',
+        body: `${item.name} sudah direservasi. Selesaikan pembayaran sebelum batas waktu.`, href: `/orders/${orderId}`,
+      }),
+      createNotification(ctx, {
+        userId: merchant.ownerId, type: 'merchant_reservation', title: 'Reservasi baru',
+        body: `${args.quantity} porsi ${item.name} baru saja direservasi.`, href: '/merchant/pickup',
+      }),
+      createNotification(ctx, {
+        userId: user._id, type: 'pickup_reminder', title: 'Pengingat pickup',
+        body: `Waktu pickup ${item.name} segera dimulai. Buka pesanan untuk melihat detail.`, href: `/orders/${orderId}`,
+        visibleAt: Math.max(now, item.pickupStartAt - 60 * 60 * 1_000),
+      }),
+    ])
 
     await ctx.scheduler.runAt(paymentHoldExpiresAt, internal.orders.expireHold, { orderId })
 
