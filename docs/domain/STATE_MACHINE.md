@@ -1,14 +1,15 @@
 # State Machines — Cirquo
 
 **Document type:** Domain reference  
-**Status:** Target state model with implemented M1–M3 subset
+**Status:** Target state model with implemented M1–M5 subset
 **Last updated:** 2026-08-29
 
 > Every status transition in Cirquo is defined here. If a transition is not in this document, it is not permitted. Each transition names the actor allowed to trigger it, the guard conditions that must hold, and the [Material Flow Ledger](../impact/MATERIAL_LEDGER.md) event it emits.
 
 > **Implementation boundary.** M1–M3 currently implement Merchant listing,
 > Consumer reservation, Midtrans settlement, and payment-hold expiry. M4 owns
-> `paid → picked_up`, Rescue Item expiry/routing, and all Processor transitions.
+> `paid → picked_up` and Rescue Item expiry/routing; M5 implements Processor
+> acceptance, intake, and outcome transitions.
 > The full tables below remain the target contract; source is authoritative for
 > the implemented subset. See [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 

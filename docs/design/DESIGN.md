@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | **Document type** | Design strategy / principles |
-| **Status** | Design target with implemented M1–M3 Consumer/Merchant subset |
+| **Status** | Design target with implemented M1–M5 Consumer/Merchant/Processor subset |
 | **Last updated** | 2026-08-29 |
 | **Owner** | Design & Frontend |
 | **Applies to** | All four role surfaces (Consumer, Merchant, Organic Processor, Admin) |

@@ -464,16 +464,17 @@ Checklist before tagging:
 ## Version History
 
 Target dates are aligned to the roadmap and the DSDC ANFORCOM 2026 preliminary
-deadline of **31 August 2026**. Dates after `0.1.0` are planned, not achieved.
+deadline of **31 August 2026**. They are roadmap markers, not release tags;
+M1–M5 source availability is recorded below and still requires the stated UAT.
 
 | Version | Target date | Milestone | Summary |
 | --- | --- | --- | --- |
 | **0.1.0** | 2026-08-06 | — | ✅ **Released.** Scaffold, design system, 5-table schema, 6 read-only queries, 9 placeholder pages, Capacitor Android, documentation system |
 | **0.2.0** | 2026-08-10 | M1 | 📋 Material Flow Ledger and authentication. `materialFlowLedger` table, `recordLedgerEvent`, integrity invariants, four roles, server-side guards, `ConvexError` catalogue, CI ledger guard |
 | **0.3.0** | 2026-08-13 | M2 | 📋 Merchant listing and Dynamic Rescue Pricing. Rescue Item creation, `suggestRescuePrice` with floor and max-discount clamps, merchant dashboard on live data |
-| **0.4.0** | 2026-08-17 | M3 | 📋 Consumer discovery and Midtrans payment. Mapbox map, `haversineMeters`, `rankListings`, geolocation with denial fallback, reservation with a 15-minute hold, Midtrans Sandbox QRIS, webhook with signature verification |
-| **0.5.0** | 2026-08-20 | M4 | 📋 Pickup, scheduler, and Circular Routing. Pickup code confirmation with live consumer updates, cron jobs, `rankEligibleProcessors`, 3-attempt limit with 6-hour offer TTL |
-| **0.6.0** | 2026-08-23 | M5 | 📋 Organic Processor intake and outcome. `processors` table, offer inbox, measured intake logging, outcome by method with recorded residual |
+| **0.4.0** | 2026-08-17 | M3 | 🧪 Source available; Sandbox UAT pending. Consumer discovery and Midtrans payment. Mapbox map, `haversineMeters`, `rankListings`, geolocation with denial fallback, reservation with a 15-minute hold, Midtrans Sandbox QRIS, webhook with signature verification |
+| **0.5.0** | 2026-08-20 | M4 | 🧪 Source available; deployment UAT pending. Pickup, scheduler, and Circular Routing. Pickup code confirmation with live consumer updates, cron jobs, `rankEligibleProcessors`, 3-attempt limit with 6-hour offer TTL |
+| **0.6.0** | 2026-08-23 | M5 | 🧪 Source available; deployment UAT pending. Organic Processor intake and outcome. `processors` table, offer inbox, measured intake logging, outcome by method with recorded residual |
 | **0.7.0** | 2026-08-26 | M6 | 📋 Impact dashboards. `summariseLedger`, `estimateCo2e`, `impact-v1` methodology, all four dashboards ledger-derived, hardcoded figures removed, `mock-data.ts` deleted |
 | **0.8.0** | 2026-08-28 | M7 | 📋 Admin and polish. Verification queue, moderation, read-only ledger audit trail, disputes, accessibility pass, empty and error states |
 | **0.9.0** | 2026-08-30 | M8 | 📋 Mobile build and demo readiness. Signed APK, geolocation paths verified on hardware, offline shell, performance tuning, demo seed at ~0.93 circularity. **48-hour code freeze begins.** |

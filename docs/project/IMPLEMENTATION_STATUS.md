@@ -59,7 +59,7 @@ Semua status di bawah adalah **source-level** kecuali dinyatakan lain.
 | Milestone | Status | Yang masih harus dibangun |
 |---|---|---|
 | M4 | 🧪 UAT deployment diperlukan | Konfirmasi pickup, expiry/recovery batch, refund Sandbox no-show, Circular Routing, dan UI status reaktif Merchant/Consumer tersedia di source. Kontrak M5 ada di `M5_HANDOFF.md`; UAT browser/Midtrans masih diperlukan. |
-| M5 | 📋 Target | Queue Processor, accept/decline, intake terukur, dan outcome logging. Profil Processor sudah ada, tetapi alur pemulihan belum ada. |
+| M5 | 🧪 UAT deployment diperlukan | Queue dan detail batch Processor, accept/decline, intake terukur, outcome, dashboard operasional, serta edit profil kapasitas tersedia di source. UAT browser pada deployment masih diperlukan. |
 | M6 | 📋 Target | Agregasi impact dari ledger dan semua dashboard tanpa angka mock. `impact.getPlaceholderSummary` bukan kontrak dashboard produksi. |
 | M7 | 📋 Target | Operasi Admin, ledger inspector, moderasi, dan notifikasi. Route halaman bukan bukti mutasi/query Admin telah tersedia. |
 | M8 | 📋 Target | Validasi Android, seed demo, video, dan aset submission. Konfigurasi Capacitor sudah ada. |
@@ -88,6 +88,23 @@ Semua status di bawah adalah **source-level** kecuali dinyatakan lain.
 7. Circular Routing hanya menawarkan satu Processor terverifikasi pada satu waktu.
    Kandidat diurutkan secara deterministik: jarak, kapasitas tersisa, lalu ID.
    Tiga offer yang kedaluwarsa menjadikan batch `unroutable`.
+
+## Kontrak source M5
+
+1. Processor terverifikasi hanya dapat membaca dan mengubah recovery batch yang
+   ditugaskan kepadanya. Queue, detail, dashboard, dan riwayat memakai query
+   Convex reaktif.
+2. `accept` tidak menulis `INTAKE_ACCEPTED`: berat fisik belum diterima. Offer
+   yang ditolak menulis `INTAKE_DECLINED (0 g)`, sedangkan intake terukur menulis
+   satu `INTAKE_ACCEPTED (+M)` dan outcome final menulis satu `PROCESSED (-M)`.
+3. Berat intake dan outcome adalah integer gram. `output + residual` tidak dapat
+   melampaui intake; residual nol memerlukan konfirmasi server-side.
+4. Dashboard Processor menjumlahkan output, residual, intake, dan recovery rate
+   dari event ledger miliknya. Komitmen kapasitas memakai batch yang telah
+   diterima hari ini; offer aktif belum mengunci kapasitas.
+5. Profil Processor dapat mengubah material, kapasitas, radius, output, dan jam
+   operasional untuk routing berikutnya. `acceptedOutputTypes` pada batch menjaga
+   agar perubahan profil tidak membatalkan batch yang telah diterima.
 
 ---
 

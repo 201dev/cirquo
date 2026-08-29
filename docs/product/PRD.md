@@ -13,8 +13,8 @@
 > **Note to the AI coding agent:** This document is the source of truth for *what* to build and *why*. It intentionally does not prescribe database schemas, API contracts, or component-level architecture — those belong in dedicated follow-up documents (`DATABASE.md`, `API.md`, `ARCHITECTURE.md`, `ALGORITHM.md`, `DESIGN.md`, etc.) that can be generated next using this PRD as their source. When a requirement here is ambiguous, prefer the interpretation that best serves the circular-economy mission described in Section 1, and flag the assumption you made rather than silently guessing.
 
 > **Implementation status.** Requirements in this PRD are target scope, not
-> proof of shipped functionality. M1–M3 source exists with M3 UAT pending;
-> M4–M8 remain planned. See
+> proof of shipped functionality. M1–M5 source exists; M3–M5 masih memerlukan
+> UAT deployment/browser sebelum sign-off. M6–M8 tetap direncanakan. See
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---

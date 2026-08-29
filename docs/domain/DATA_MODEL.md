@@ -154,8 +154,8 @@ Business identity and, critically, **location**.
 ### 2.3 `processors` — Processor Profile
 
 **This table exists in the current 10-table schema.** Its owner, verification,
-and routing-profile fields are available for onboarding; M4–M5 still own the
-logic that uses those fields for routing and intake.
+and routing-profile fields are used by M4 routing and M5 intake/outcome. M6
+consumes the stable batch and ledger contract for impact aggregation.
 
 | Rule | Requires |
 |---|---|
@@ -243,10 +243,10 @@ Impact calculations prefer `acceptedWeightGrams` over `offeredWeightGrams` whene
 
 ### 2.7 `materialFlowLedger` — Material Flow Ledger
 
-**This table exists and is append-only in the current source.** Implemented M1–M3
-mutations write the events needed for listing, reservation, payment, and
-payment-hold expiry. Ledger aggregation and the later lifecycle write paths
-remain target work.
+**This table exists and is append-only in the current source.** Implemented M1–M5
+mutations write the listing, reservation, payment-hold, pickup, recovery,
+routing, intake, and outcome transitions. Ledger aggregation remains target M6
+work.
 
 | Relationship | Cardinality |
 |---|---|

@@ -203,7 +203,7 @@ Every mutation that changes a Rescue Item's lifecycle must write to the ledger. 
 ## Testing Strategy
 
 **Runnable checks:** Every non-trivial change needs the smallest runnable check
-that would fail on regression. Existing Bun and Convex tests cover M1–M3
+that would fail on regression. Existing Bun and Convex tests cover M1–M5
 invariants; use [TESTING.md](../engineering/TESTING.md) for the current suite.
 
 **Manual E2E testing:** Required. Test every user flow before marking a feature complete:
@@ -254,10 +254,9 @@ Based on PRD Section 6 (MoSCoW priorities), implement in this order:
 | Priority | Scope | Current state |
 |---:|---|---|
 | 1 | M3 UAT: Sandbox webhook, hold expiry, ledger, and mobile evidence | 🧪 Required before M3 sign-off |
-| 2 | M4: pickup confirmation, Rescue Item expiry, and Circular Routing | 📋 Next feature milestone |
-| 3 | M5: Processor intake and outcome | 📋 Target |
-| 4 | M6: ledger-derived impact surfaces | 📋 Target |
-| 5 | M7–M8: Admin operations, notifications, Android/demo assets | 📋 Target |
+| 2 | M3–M5 UAT: Sandbox/browser and mobile evidence | 🧪 Required before sign-off |
+| 3 | M6: ledger-derived impact surfaces | 📋 Next feature milestone |
+| 4 | M7–M8: Admin operations, notifications, Android/demo assets | 📋 Target |
 
 ---
 

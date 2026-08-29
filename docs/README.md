@@ -136,14 +136,13 @@ Version history, contribution workflow.
 
 ## For Developers
 
-**Current implementation status (2026-08-29):** source includes the M1/M2 foundations and M3 Consumer surfaces: a 10-table Convex schema, session authentication and role guards, Material Flow Ledger writes, Merchant Rescue Item lifecycle, Mapbox discovery, reservation/payment-hold logic, Midtrans Sandbox webhook code, and Consumer order history. Midtrans and mobile end-to-end UAT remain required; M4 pickup/routing, M5 Processor workflow, M6 ledger-derived dashboards, and M7 Admin operations remain target work. See [IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md) before representing a feature as complete.
+**Current implementation status (2026-08-29):** source includes M1–M5: authentication, Rescue Item lifecycle, discovery/reservation/payment holds, pickup/recovery/routing, dan alur Processor sampai outcome beserta dashboard operasional dan profil kapasitas. Midtrans, browser, dan mobile end-to-end UAT tetap diperlukan; M6 ledger-derived dashboards lintas peran serta M7 Admin operations masih target work. See [IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md) before representing a feature as complete.
 
 **Next priorities:**
-1. Complete pickup confirmation and Circular Routing
-2. Complete Processor intake and outcome logging
-3. Replace remaining dashboard placeholders with ledger-derived impact
-4. Complete Admin operations and notifications
-5. Verify end-to-end web and Android UAT
+1. Jalankan UAT deployment untuk M3–M5
+2. Replace remaining dashboard placeholders with ledger-derived impact
+3. Complete Admin operations and notifications
+4. Verify end-to-end web and Android UAT
 
 **For judges/stakeholders:** Start with [PRODUCT.md](product/PRODUCT.md) → [PRD.md](product/PRD.md) → [IMPACT.md](impact/IMPACT.md) → [ARCHITECTURE.md](architecture/ARCHITECTURE.md).
 

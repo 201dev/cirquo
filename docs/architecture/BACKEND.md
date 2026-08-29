@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | **Document Type** | Architecture Specification |
-| **Status** | Target backend architecture with implemented M1–M3 subset |
+| **Status** | Target backend architecture with implemented M1–M5 subset |
 | **Last Updated** | 2026-08-29 |
 | **Owner** | Backend Engineering |
 | **Platform** | Convex 1.43 |
