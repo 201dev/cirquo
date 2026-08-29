@@ -44,8 +44,8 @@ Per-role function documentation lives in five sibling files:
 | [`API_ADMIN.md`](./API_ADMIN.md) | Verification, moderation, ledger audit, disputes, integrity checks, system health |
 | [`API_IMPACT.md`](./API_IMPACT.md) | M6-01 ledger-derived summaries and scope contract |
 
-> **Source boundary — 2026-08-29.** M1–M5 exports and M6-01 ledger summaries
-> are implemented in source. M3–M5 still require deployment/Sandbox UAT;
+> **Source boundary — 2026-08-29.** M1–M5 exports, M6-01 ledger summaries,
+> and M6-02 Consumer/Merchant views are implemented in source. M3–M5 still require deployment/Sandbox UAT;
 > sections labelled 📋 are target contracts for later milestones. See
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 

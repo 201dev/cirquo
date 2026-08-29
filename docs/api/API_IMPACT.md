@@ -1,6 +1,6 @@
 # API Impact — Cirquo
 
-**Status:** Kontrak source M6-01 · 2026-08-29
+**Status:** Kontrak M6-01 dan dashboard Consumer/Merchant M6-02 tersedia di source · 2026-08-29
 
 Empat query impact bersifat reaktif, hanya-baca, dan seluruh angka berasal dari
 Material Flow Ledger. Tidak ada counter, snapshot agregasi, atau aritmetika
@@ -25,7 +25,7 @@ bukan menggantinya dengan nol.
 
 ```ts
 {
-  listedGrams, rescuedGrams,
+  listedItemCount, listedGrams, rescuedQuantity, rescuedGrams,
   recoveredGrams, residualGrams, processLossGrams,
   measurementAdjustmentGrams, inProgressGrams,
   circularityRatePercent, diversionRatePercent,
@@ -72,4 +72,6 @@ Consumer dihitung hanya dari snapshot ini. Metadata `PROCESSED`,
 `ROUTING_FAILED`, `INTAKE_ACCEPTED`, atau `RESCUED` yang diperlukan tetapi
 malformed menghasilkan `integrity.issues` dan metrik dependen bernilai `null`.
 
-M6-01 hanya menyediakan kontrak dan query. Rendering dashboard, chart, export, dan UI Admin inspector tetap milik M6-02/M6-03 dan M7.
+M6-02 merender kontrak ini secara reaktif di `/impact`, `/merchant`, dan
+`/merchant/impact`. Dashboard Processor/Admin, chart, export, dan UI Admin
+inspector tetap milik M6-03/M7.

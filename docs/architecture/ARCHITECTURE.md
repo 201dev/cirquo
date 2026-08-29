@@ -53,7 +53,7 @@ These principles are load-bearing. Every decision later in this document traces 
 
 | # | Principle | Practical consequence | Status |
 | --- | --- | --- | --- |
-| P1 | **The ledger is the truth** | No mutable impact counters. All metrics are reductions over `materialFlowLedger`. | ✅ M6-01 shared aggregation; dashboard rendering remains target |
+| P1 | **The ledger is the truth** | No mutable impact counters. All metrics are reductions over `materialFlowLedger`. | ✅ M6-01 shared aggregation; M6-02 Consumer/Merchant rendering |
 | P2 | **Ledger writes are transactional with the state change** | `recordLedgerEvent` is called inside the same Convex mutation that mutates state. Never from an action, never from the client. | ✅ Implemented M1–M5 transitions |
 | P3 | **Business logic is framework-agnostic** | Algorithms live in `src/lib/*.ts` with zero Convex imports. Convex functions load data, call the pure function, persist the result. | ✅ Pricing, geo, routing, recovery, and impact |
 | P4 | **Weight is an integer in grams; money is an integer in IDR; time is epoch milliseconds UTC** | No floats in persisted domain data. No `Date` objects in the database. WIB conversion happens only at render. | ✅ Implemented M1–M5 contracts |
@@ -202,7 +202,7 @@ graph TB
 | Container | Technology | Responsibility | Deployment | Status |
 | --- | --- | --- | --- | --- |
 | **React SPA** | React 19.2, Vite 8, TS 6 | UI, routing, forms, and Consumer map | Static bundle on CDN | ✅ M1–M5 source; later Admin screens vary |
-| **Pure Logic** | Plain TypeScript | Pricing, discovery/ranking, geo, recovery, validation, impact | Bundled into SPA and imported by Convex | ✅ M6-01 source; dashboard rendering pending |
+| **Pure Logic** | Plain TypeScript | Pricing, discovery/ranking, geo, recovery, validation, impact | Bundled into SPA and imported by Convex | ✅ M6-01 source; M6-02 Consumer/Merchant dashboards |
 | **Capacitor Shell** | Capacitor 8 | Android WebView host, native permissions | Play Store / APK | ✅ Configured |
 | **Service Worker** | Vanilla SW | Shell caching, PROD only | Served with the SPA | ✅ Registered |
 | **Convex Queries** | Convex 1.43 | Reactive reads | Convex cloud | ✅ M1–M5 queries exist |

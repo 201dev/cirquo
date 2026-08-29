@@ -19,8 +19,8 @@ This document specifies how Convex functions are organised, when to use each fun
 
 **Current state — 2026-08-29.** The backend now has a 10-table schema, session
 authentication and guards, Material Flow Ledger writes, Merchant and Consumer
-flows, M4 pickup/recovery/routing, M5 Processor intake/outcome, and M6-01
-role-scoped aggregation. Sections marked 📋 in this document remain target
+flows, M4 pickup/recovery/routing, M5 Processor intake/outcome, M6-01
+role-scoped aggregation, and M6-02 Consumer/Merchant dashboard reads. Sections marked 📋 in this document remain target
 architecture; verify `convex/` before treating them as implemented.
 
 ---
@@ -856,7 +856,7 @@ The mutation is now orchestration around one function call: load, compute, persi
 | `src/lib/pricing.ts` | `suggestRescuePrice` | price-tick cron, merchant preview UI | 📋 |
 | `src/lib/routing.ts` | `rankEligibleProcessors` | routing engine cron, admin explainer | 📋 |
 | `src/lib/ranking.ts` | `rankListings` | `surplusItems.listNearby`, Explore sort | 📋 |
-| `src/lib/impact.ts` | `summariseLedger`, `estimateCo2e` | impact queries, impact UI | ✅ M6-01 source |
+| `src/lib/impact.ts` | `summariseLedger`, `estimateCo2e` | impact queries, Consumer/Merchant impact UI | ✅ M6-01/M6-02 source |
 | `src/lib/geo.ts` | `haversineMeters` | nearby filtering, routing eligibility, distance display | 📋 |
 
 **Justification, restated for judges.** Unit-testable without a Convex runtime. Portable if the backend migrates. Explainable in isolation — a reader can understand Dynamic Rescue Pricing from `suggestRescuePrice` without knowing what Convex is. And critically, **the server and the client compute identical numbers**, so a merchant's price preview can never disagree with the price the cron actually sets.

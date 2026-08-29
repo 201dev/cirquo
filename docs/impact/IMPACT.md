@@ -2,14 +2,14 @@
 
 **Document type:** Methodology specification  
 **Methodology version:** `impact-v1`  
-**Status:** Methodology contract — M6-01 aggregation available; dashboard rendering pending
+**Status:** Methodology contract — M6-01 aggregation and M6-02 Consumer/Merchant dashboards available in source
 **Last updated:** 2026-08-29
 
 > This document defines how Cirquo measures environmental impact, what assumptions underpin those numbers, and — critically — **what they do not prove**. Every figure the product displays traces back to this methodology. If a judge, auditor, or partner challenges an impact claim, this document is the answer.
 
-> **Implementation boundary.** M6-01 now provides pure ledger aggregation and
-> role-scoped Convex queries. Rendering the Consumer, Merchant, Processor, and
-> Admin dashboards remains M6-02/M6-03 work; see
+> **Implementation boundary.** M6-01 provides pure ledger aggregation and
+> role-scoped Convex queries. M6-02 renders Consumer and Merchant summaries;
+> Processor and Admin dashboards remain M6-03 work; see
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---

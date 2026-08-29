@@ -138,10 +138,10 @@ Version history, contribution workflow.
 ## For Developers
 
 **Current implementation status (2026-08-29):** source includes M1–M5 and
-M6-01: authentication, Rescue Item lifecycle, discovery/reservation/payment
-holds, pickup/recovery/routing, Processor outcome, serta agregasi impact murni
-dan scoped. Midtrans, browser, dan mobile end-to-end UAT tetap diperlukan;
-rendering dashboard M6-02/M6-03 serta M7 Admin operations masih target work.
+M6-01/M6-02: authentication, Rescue Item lifecycle, discovery/reservation/payment
+holds, pickup/recovery/routing, Processor outcome, agregasi impact murni, serta
+dashboard Consumer/Merchant scoped. Midtrans, browser, dan mobile end-to-end
+UAT tetap diperlukan; dashboard M6-03 dan M7 Admin operations masih target work.
 See [IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md) before
 representing a feature as complete.
 

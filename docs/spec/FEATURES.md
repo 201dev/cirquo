@@ -65,7 +65,7 @@ The complete current/future boundary is in
 | F-13 | Processing-only listing | MER-07 | S | 📋 |
 | F-14 | Merchant listing management view | MER-06 | M | ✅ |
 | F-15 | Pickup confirmation via manual code | MER-04 | M | 📋 |
-| F-16 | Merchant dashboard & impact | MER-06, IMP-03 | M | 🚧 |
+| F-16 | Merchant dashboard & impact | MER-06, IMP-03 | M | 🧪 |
 | F-17 | Merchant recovery visibility | MER-05, PRC-04 | S | 📋 |
 
 ### Module C — Consumer
@@ -79,7 +79,7 @@ The complete current/future boundary is in
 | F-24 | Pickup code display after verified payment | CON-05 | M | 🧪 |
 | F-25 | Order history + realtime status | CON-06, PAY-02 | M | 🧪 |
 | F-26 | Cancellation within grace period | CON-08 | S | 📋 |
-| F-27 | Consumer impact dashboard | CON-07, IMP-03 | M | 🚧 |
+| F-27 | Consumer impact dashboard | CON-07, IMP-03 | M | 🧪 |
 | F-28 | Rate a pickup | CON-09 | C | 📋 |
 
 ### Module D — Organic Processor
@@ -724,7 +724,7 @@ The merchant enters the Consumer-presented 6-digit pickup code. The mutation val
 
 ### F-16 — Merchant dashboard & impact
 
-**PRD refs:** MER-06, IMP-03 · **Priority:** M · **Status:** 🚧 Partial (route `/merchant` renders `SummaryCard` with mock values)
+**PRD refs:** MER-06, IMP-03 · **Priority:** M · **Status:** 🧪 Source implementation available at `/merchant` and `/merchant/impact`; browser UAT pending
 
 **Objective** — Show a merchant what their surplus actually became, in kilograms and rupiah.
 
@@ -738,12 +738,12 @@ Revenue recovered is the honest commercial argument: this merchant turned materi
 **User story** — As a Merchant, I want to see how much food I saved and how much revenue I recovered, so that I can justify continuing to participate.
 
 **Acceptance criteria**
-- [ ] GIVEN a merchant WHEN the dashboard loads THEN all metrics are computed from ledger entries scoped to their items
-- [ ] GIVEN in-flight material WHEN metrics are rendered THEN it is shown as "in progress", never folded into residual
-- [ ] GIVEN circularity rate WHEN displayed THEN it is `(rescued + recovered) / listed × 100`, rounded to one decimal
-- [ ] GIVEN a new merchant with no listings WHEN the dashboard loads THEN an onboarding empty state is shown, not zeros presented as achievement
-- [ ] GIVEN a pickup is confirmed WHEN it commits THEN dashboard figures update live
-- [ ] GIVEN the codebase is grepped for hardcoded figures WHEN M6 completes THEN none remain in rendered merchant output
+- [x] GIVEN a merchant WHEN the dashboard loads THEN all metrics are computed from ledger entries scoped to their items
+- [x] GIVEN in-flight material WHEN metrics are rendered THEN it is shown as "in progress", never folded into residual
+- [x] GIVEN circularity rate WHEN displayed THEN it is `(rescued + recovered) / listed × 100`, rounded to one decimal
+- [x] GIVEN a new merchant with no listings WHEN the dashboard loads THEN an onboarding empty state is shown, not zeros presented as achievement
+- [x] GIVEN a pickup is confirmed WHEN it commits THEN dashboard figures update live
+- [x] GIVEN the codebase is grepped for hardcoded figures WHEN M6 completes THEN none remain in rendered merchant output
 
 **Ledger events emitted** — none (read-only)
 
@@ -1113,12 +1113,12 @@ The dual condition matters: a consumer who pays at 18:30 for a window closing at
 
 ### F-27 — Consumer impact dashboard
 
-**PRD refs:** CON-07, IMP-03 · **Priority:** M · **Status:** 🚧 Partial (home route renders mock impact numbers)
+**PRD refs:** CON-07, IMP-03 · **Priority:** M · **Status:** 🧪 Source implementation available at `/impact`; browser UAT pending
 
 **Objective** — Convert individual rescues into a running personal contribution, the primary non-monetary retention mechanism.
 
 **Description**
-Personal totals: meals rescued, kg rescued, CO2e avoided, IDR saved versus original prices, and how the consumer's rescues sit within platform totals. All derived from `RESCUED` ledger events where the consumer was the actor.
+Personal totals: meals rescued, kg rescued, CO2e avoided, and IDR saved versus original prices. All derive from `RESCUED` ledger events reached through Consumer-owned orders; the Merchant is the `RESCUED` event actor.
 
 Consumer scope counts **rescued** weight only, never recovered weight. A consumer did not cause the compost outcome of food they failed to collect, and attributing it to them would be flattery rather than measurement.
 
@@ -1127,12 +1127,12 @@ Consumer scope counts **rescued** weight only, never recovered weight. A consume
 **User story** — As a Consumer, I want to see my cumulative rescue impact, so that I feel my choices matter and keep making them.
 
 **Acceptance criteria**
-- [ ] GIVEN a consumer WHEN the dashboard loads THEN metrics derive from `RESCUED` ledger entries scoped to them
-- [ ] GIVEN a completed pickup WHEN it commits THEN totals increase live
-- [ ] GIVEN CO2e WHEN displayed THEN the methodology version and an "estimated" qualifier are shown with a link to [IMPACT.md](../impact/IMPACT.md)
-- [ ] GIVEN a new consumer WHEN the dashboard loads THEN an encouraging empty state is shown, not zeros framed as achievement
-- [ ] GIVEN money saved WHEN displayed THEN it is the sum of (original − paid) across picked-up orders, in IDR with Indonesian locale formatting
-- [ ] GIVEN reserved-but-not-collected orders WHEN metrics compute THEN they contribute nothing
+- [x] GIVEN a consumer WHEN the dashboard loads THEN metrics derive from `RESCUED` ledger entries scoped to them
+- [x] GIVEN a completed pickup WHEN it commits THEN totals increase live
+- [x] GIVEN CO2e WHEN displayed THEN the methodology version and an "estimated" qualifier are shown with a reference to [IMPACT.md](../impact/IMPACT.md)
+- [x] GIVEN a new consumer WHEN the dashboard loads THEN an encouraging empty state is shown, not zeros framed as achievement
+- [x] GIVEN money saved WHEN displayed THEN it is the sum of (original − paid) across picked-up orders, in IDR with Indonesian locale formatting
+- [x] GIVEN reserved-but-not-collected orders WHEN metrics compute THEN they contribute nothing
 
 **Ledger events emitted** — none (read-only)
 
@@ -1347,7 +1347,8 @@ The processor logs output type (`compost`, `bsf_larvae`, `biogas`, `animal_feed`
 - [x] GIVEN `output + residual > acceptedWeight` WHEN submitted THEN validation rejects — matter is not created
 - [x] GIVEN `output + residual < acceptedWeight` WHEN submitted THEN it is accepted and the gap is returned as explicit `processLossGrams`
 - [x] GIVEN `residualWeightGrams = 0` WHEN submitted THEN it is allowed but requires explicit confirmation, since zero residual is unusual
-- [ ] GIVEN outcome WHEN it commits THEN Merchant and Admin impact dashboards update live (M6-02/M6-03)
+- [x] GIVEN outcome WHEN it commits THEN Merchant dashboard updates live (M6-02)
+- [ ] GIVEN outcome WHEN it commits THEN Admin dashboard updates live (M6-03)
 - [x] GIVEN a `processed` batch WHEN outcome logging is attempted again THEN it is rejected — terminal states are final
 
 **Ledger events emitted** — `PROCESSED` (terminal; metadata splits recovered vs residual)
