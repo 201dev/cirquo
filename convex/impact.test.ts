@@ -14,7 +14,7 @@ test('ringkasan impact membatasi bukti ledger ke pemilik peran yang benar', asyn
   const now = Date.now()
   const tokens = {
     consumer: 'c'.repeat(43), merchant: 'm'.repeat(43), processor: 'p'.repeat(43),
-    admin: 'a'.repeat(43), otherMerchant: 'o'.repeat(43),
+    admin: 'a'.repeat(43), otherMerchant: 'o'.repeat(43), otherConsumer: 'u'.repeat(43), otherProcessor: 'r'.repeat(43),
   }
   const ids = await t.run(async (ctx) => {
     const users = await Promise.all([
@@ -23,16 +23,19 @@ test('ringkasan impact membatasi bukti ledger ke pemilik peran yang benar', asyn
       ['Processor', 'processor.impact@example.com', 'processor'],
       ['Admin', 'admin.impact@example.com', 'admin'],
       ['Merchant Lain', 'other.impact@example.com', 'merchant'],
+      ['Consumer Lain', 'other.consumer.impact@example.com', 'consumer'],
+      ['Processor Lain', 'other.processor.impact@example.com', 'processor'],
     ].map(([name, email, role]) => ctx.db.insert('users', {
       name, email, passwordHash: 'test', role: role as 'consumer' | 'merchant' | 'processor' | 'admin', status: 'active', createdAt: now,
     })))
     await Promise.all(Object.values(tokens).map(async (token, index) => ctx.db.insert('sessions', {
       userId: users[index]!, tokenHash: await hashSessionToken(token), expiresAt: now + HOUR_MS, createdAt: now,
     })))
-    const [merchantId, otherMerchantId, processorId] = await Promise.all([
+    const [merchantId, otherMerchantId, processorId, otherProcessorId] = await Promise.all([
       ctx.db.insert('merchants', { ownerId: users[1]!, name: 'Merchant', address: 'Semarang', verificationStatus: 'verified', createdAt: now }),
       ctx.db.insert('merchants', { ownerId: users[4]!, name: 'Merchant Lain', address: 'Semarang', verificationStatus: 'verified', createdAt: now }),
       ctx.db.insert('processors', { ownerId: users[2]!, name: 'Processor', dailyCapacityGrams: 1_000, verificationStatus: 'verified', createdAt: now }),
+      ctx.db.insert('processors', { ownerId: users[6]!, name: 'Processor Lain', dailyCapacityGrams: 1_000, verificationStatus: 'verified', createdAt: now }),
     ])
     const item = {
       name: 'Roti impact', originalPrice: 12_000, floorPrice: 8_000, currentPrice: 8_000,
@@ -42,16 +45,28 @@ test('ringkasan impact membatasi bukti ledger ke pemilik peran yang benar', asyn
     }
     const [itemId, otherItemId] = await Promise.all([
       ctx.db.insert('surplusItems', { ...item, merchantId }),
-      ctx.db.insert('surplusItems', { ...item, merchantId: otherMerchantId, name: 'Roti lain' }),
+      ctx.db.insert('surplusItems', { ...item, merchantId: otherMerchantId, name: 'Roti lain', initialQuantity: 2, weightPerItemGrams: 500 }),
     ])
-    const orderId = await ctx.db.insert('orders', {
+    const [orderId, otherOrderId] = await Promise.all([
+      ctx.db.insert('orders', {
       userId: users[0]!, surplusItemId: itemId, quantity: 1, totalPrice: 8_000,
       originalPriceSnapshot: 12_000, rescuedWeightGrams: 200, pickupCode: '123456', status: 'picked_up', createdAt: now,
-    })
-    const batchId = await ctx.db.insert('recoveryBatches', {
+      }),
+      ctx.db.insert('orders', {
+        userId: users[5]!, surplusItemId: otherItemId, quantity: 1, totalPrice: 8_000,
+        originalPriceSnapshot: 12_000, rescuedWeightGrams: 500, pickupCode: '654321', status: 'picked_up', createdAt: now,
+      }),
+    ])
+    const [batchId, otherBatchId] = await Promise.all([
+      ctx.db.insert('recoveryBatches', {
       merchantId, surplusItemId: itemId, processorId, offeredWeightGrams: 800,
       status: 'processed', routingAttempts: 1, attemptedProcessorIds: [processorId], declinedByProcessorIds: [], createdAt: now,
-    })
+      }),
+      ctx.db.insert('recoveryBatches', {
+        merchantId: otherMerchantId, surplusItemId: otherItemId, processorId: otherProcessorId, offeredWeightGrams: 500,
+        status: 'processed', routingAttempts: 1, attemptedProcessorIds: [otherProcessorId], declinedByProcessorIds: [], createdAt: now,
+      }),
+    ])
     const event = (input: {
       surplusItemId: typeof itemId
       eventType: 'LISTED' | 'RESCUED' | 'EXPIRED' | 'INTAKE_ACCEPTED' | 'PROCESSED'
@@ -71,7 +86,11 @@ test('ringkasan impact membatasi bukti ledger ke pemilik peran yang benar', asyn
       event({ surplusItemId: itemId, recoveryBatchId: batchId, eventType: 'EXPIRED', weightDeltaGrams: -800 }),
       event({ surplusItemId: itemId, recoveryBatchId: batchId, eventType: 'INTAKE_ACCEPTED', weightDeltaGrams: 800, actorId: users[2], actorRole: 'processor', metadata: { declaredWeightGrams: 800 } }),
       event({ surplusItemId: itemId, recoveryBatchId: batchId, eventType: 'PROCESSED', weightDeltaGrams: -800, actorId: users[2], actorRole: 'processor', metadata: { outputType: 'compost', outputWeightGrams: 600, residualWeightGrams: 100 } }),
-      event({ surplusItemId: otherItemId, eventType: 'LISTED', weightDeltaGrams: 500, actorId: users[4], actorRole: 'merchant' }),
+      event({ surplusItemId: otherItemId, eventType: 'LISTED', weightDeltaGrams: 1_000, actorId: users[4], actorRole: 'merchant' }),
+      event({ surplusItemId: otherItemId, orderId: otherOrderId, eventType: 'RESCUED', weightDeltaGrams: -500, actorId: users[4], actorRole: 'merchant', metadata: { quantity: 1, totalPrice: 8_000, originalPriceSnapshot: 12_000 } }),
+      event({ surplusItemId: otherItemId, recoveryBatchId: otherBatchId, eventType: 'EXPIRED', weightDeltaGrams: -500 }),
+      event({ surplusItemId: otherItemId, recoveryBatchId: otherBatchId, eventType: 'INTAKE_ACCEPTED', weightDeltaGrams: 500, actorId: users[6], actorRole: 'processor', metadata: { declaredWeightGrams: 500 } }),
+      event({ surplusItemId: otherItemId, recoveryBatchId: otherBatchId, eventType: 'PROCESSED', weightDeltaGrams: -500, actorId: users[6], actorRole: 'processor', metadata: { outputType: 'biogas', outputWeightGrams: 400, residualWeightGrams: 50 } }),
     ])
     return { itemId, otherItemId }
   })
@@ -85,7 +104,10 @@ test('ringkasan impact membatasi bukti ledger ke pemilik peran yang benar', asyn
     conservation: { itemBalances: [{ surplusItemId: String(ids.itemId), balanceGrams: 0 }] },
   })
   expect(await t.query(api.impact.getMerchantSummary, { sessionToken: tokens.otherMerchant })).toMatchObject({
-    listedGrams: 500, rescuedGrams: 0, recoveredGrams: 0,
+    listedGrams: 1_000, rescuedGrams: 500, recoveredGrams: 400, residualGrams: 50, processLossGrams: 50,
+  })
+  expect(await t.query(api.impact.getConsumerSummary, { sessionToken: tokens.otherConsumer })).toMatchObject({
+    rescuedQuantity: 1, rescuedGrams: 500, consumerSavingsIdr: 4_000,
   })
   expect(await t.query(api.impact.getProcessorSummary, { sessionToken: tokens.processor })).toMatchObject({
     listedGrams: 0, recoveredGrams: 600, residualGrams: 100, processLossGrams: 100,
@@ -96,9 +118,13 @@ test('ringkasan impact membatasi bukti ledger ke pemilik peran yang benar', asyn
       totalMeasuredIntakeGrams: 800, residualRatePercent: 12.5, recoveryEfficiencyPercent: 75,
     },
   })
+  expect(await t.query(api.impact.getProcessorSummary, { sessionToken: tokens.otherProcessor })).toMatchObject({
+    recoveredGrams: 400, residualGrams: 50,
+    processor: { processedBatchCount: 1, totalMeasuredIntakeGrams: 500, recoveryEfficiencyPercent: 80 },
+  })
   expect(await t.query(api.impact.getPlatformSummary, { sessionToken: tokens.admin })).toMatchObject({
-    listedGrams: 1_500, rescuedGrams: 200, recoveredGrams: 600, residualGrams: 100,
-    platform: { activeMerchantCount: 2, activeConsumerCount: 1, activeProcessorCount: 1, unroutableBatchCount: 0, circularityRequiresReview: false },
+    listedGrams: 2_000, rescuedGrams: 700, recoveredGrams: 1_000, residualGrams: 150,
+    platform: { activeMerchantCount: 2, activeConsumerCount: 2, activeProcessorCount: 2, unroutableBatchCount: 0, circularityRequiresReview: false },
   })
   await expect(t.query(api.impact.getConsumerSummary, { sessionToken: tokens.merchant })).rejects.toThrow('FORBIDDEN')
   await expect(t.query(api.impact.getPlatformSummary, { sessionToken: tokens.consumer })).rejects.toThrow('FORBIDDEN')

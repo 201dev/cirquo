@@ -62,6 +62,19 @@ describe('impact ledger summary', () => {
     ])).toMatchObject({ listedGrams: 0, inProgressGrams: 750, conservation: { identityDeltaGrams: 0 } })
   })
 
+  test('attributes an unroutable batch to residual without hiding it in progress', () => {
+    expect(summariseLedger([
+      { surplusItemId: 'routing-failed-a', eventType: 'LISTED', weightDeltaGrams: 250 },
+      { surplusItemId: 'routing-failed-a', eventType: 'EXPIRED', weightDeltaGrams: -250 },
+      { surplusItemId: 'routing-failed-a', eventType: 'ROUTING_FAILED', weightDeltaGrams: 0, metadata: JSON.stringify({ residualWeightGrams: 250 }) },
+    ])).toMatchObject({
+      residualGrams: 250,
+      inProgressGrams: 0,
+      integrity: { isValid: true },
+      conservation: { identityDeltaGrams: 0 },
+    })
+  })
+
   test('derives Processor capacity and Admin operational counts outside the browser', () => {
     const entries = [
       { surplusItemId: 'item-a', eventType: 'EXPIRED', weightDeltaGrams: -800, occurredAt: 1_000 },
