@@ -1,13 +1,24 @@
-import { ArrowRight, Recycle, Scale, Sprout } from "lucide-react";
+import { ArrowRight, Recycle } from "lucide-react";
 import { Link } from "react-router-dom";
-import { ImpactBreakdown } from "@/components/common/impact-breakdown";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { PageHeader } from "@/components/common/page-header";
 import { StatusBadge } from "@/components/common/status-badge";
 import { SummaryCard } from "@/components/common/summary-card";
 import { Button } from "@/components/ui/button";
-import { demoImpact, formatKg, recoveryBatches } from "@/constants/mock-data";
+import { useAuth } from "@/contexts/auth-context";
+import { formatDistance, formatKg } from "@/lib/format";
 
 export default function ProcessorDashboardPage() {
+  const { sessionToken, user } = useAuth();
+  const recoveryBatches = useQuery(
+    api.recoveryBatches.listQueue,
+    sessionToken && user?.profile?.verificationStatus === "verified"
+      ? { sessionToken, tab: "offered", limit: 3 }
+      : "skip",
+  );
+  const offered = recoveryBatches ?? [];
+  const offeredWeight = offered.reduce((total, batch) => total + batch.offeredWeightGrams, 0);
   return (
     <>
       <PageHeader
@@ -19,29 +30,14 @@ export default function ProcessorDashboardPage() {
           </Button>
         }
       />
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:max-w-sm">
         <SummaryCard
           label="Antrean baru"
-          value="1 batch"
-          description="8,2 kg menunggu"
+          value={`${offered.length} batch`}
+          description={`${formatKg(offeredWeight)} menunggu`}
           icon={<Recycle />}
           tone="blue"
         />
-        <SummaryCard
-          label="Intake bulan ini"
-          value="128,4 kg"
-          icon={<Scale />}
-        />
-        <SummaryCard
-          label="Terolah"
-          value="116,8 kg"
-          description="Data demo"
-          icon={<Sprout />}
-          tone="green"
-        />
-      </div>
-      <div className="mt-6">
-        <ImpactBreakdown {...demoImpact} />
       </div>
       <section className="mt-8">
         <div className="mb-4 flex items-end justify-between">
@@ -58,11 +54,11 @@ export default function ProcessorDashboardPage() {
           </Button>
         </div>
         <div className="space-y-3">
-          {recoveryBatches.map((batch) => (
+          {offered.map((batch) => (
             <Link
-              to={`/processor/recovery/${batch.id}`}
-              key={batch.id}
-              className="flex flex-wrap items-center gap-4 rounded-xl bg-card p-4 shadow-sm"
+              to={`/processor/recovery/${batch._id}`}
+              key={batch._id}
+              className="flex flex-wrap items-center gap-4 rounded-xl bg-card p-4 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <span className="grid size-11 place-items-center rounded-xl bg-secondary text-primary">
                 <Recycle className="size-5" />
@@ -70,8 +66,7 @@ export default function ProcessorDashboardPage() {
               <div className="min-w-48 flex-1">
                 <p className="font-medium">{batch.itemName}</p>
                 <p className="text-xs text-muted-foreground">
-                  {batch.merchantName} ·{" "}
-                  {batch.distanceKm.toLocaleString("id-ID")} km
+                  {batch.merchantName} · {batch.distanceMeters === null ? "Jarak belum tersedia" : formatDistance(batch.distanceMeters)}
                 </p>
               </div>
               <StatusBadge status={batch.status} />

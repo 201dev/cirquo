@@ -172,3 +172,170 @@ test('Merchant hanya melihat batch miliknya tanpa data pickup', async () => {
   expect(otherBatches[0]?._id).not.toEqual(ids.batchId)
   expect(await t.query(api.surplusItems.getMine, { id: ids.itemId, sessionToken: otherMerchantToken })).toBeNull()
 })
+
+test('Processor terverifikasi menyelesaikan offer, intake, outcome, dan decline secara aman', async () => {
+  const t = convexTest(schema, modules)
+  const now = Date.now()
+  const processorToken = 'p'.repeat(43)
+  const otherToken = 'q'.repeat(43)
+  const ids = await t.run(async (ctx) => {
+    const merchantOwnerId = await ctx.db.insert('users', {
+      name: 'Merchant M5', email: 'merchant.m5@example.com', passwordHash: 'test', role: 'merchant', status: 'active', createdAt: now,
+    })
+    const merchantId = await ctx.db.insert('merchants', {
+      ownerId: merchantOwnerId, name: 'Dapur M5', address: 'Jl. Pemuda, Semarang', latitude: -6.98, longitude: 110.41, verificationStatus: 'verified', createdAt: now,
+    })
+    const processorOwnerId = await ctx.db.insert('users', {
+      name: 'Processor M5', email: 'processor.m5@example.com', passwordHash: 'test', role: 'processor', status: 'active', createdAt: now,
+    })
+    const otherOwnerId = await ctx.db.insert('users', {
+      name: 'Processor Lain M5', email: 'processor.other.m5@example.com', passwordHash: 'test', role: 'processor', status: 'active', createdAt: now,
+    })
+    const processorId = await ctx.db.insert('processors', {
+      ownerId: processorOwnerId, name: 'Kompos M5', facilityType: 'composting', latitude: -6.98, longitude: 110.41,
+      acceptedMaterialTypes: ['bakery'], dailyCapacityGrams: 2_000, maxPickupRadiusMeters: 10_000,
+      outputTypes: ['compost'], verificationStatus: 'verified', createdAt: now,
+    })
+    const otherProcessorId = await ctx.db.insert('processors', {
+      ownerId: otherOwnerId, name: 'Kompos Lain M5', facilityType: 'composting', latitude: -6.99, longitude: 110.42,
+      acceptedMaterialTypes: ['bakery'], dailyCapacityGrams: 2_000, maxPickupRadiusMeters: 10_000,
+      outputTypes: ['compost'], verificationStatus: 'verified', createdAt: now,
+    })
+    await Promise.all([
+      ctx.db.insert('sessions', { userId: processorOwnerId, tokenHash: await hashSessionToken(processorToken), expiresAt: now + HOUR_MS, createdAt: now }),
+      ctx.db.insert('sessions', { userId: otherOwnerId, tokenHash: await hashSessionToken(otherToken), expiresAt: now + HOUR_MS, createdAt: now }),
+    ])
+    const itemId = await ctx.db.insert('surplusItems', {
+      merchantId, name: 'Roti M5', originalPrice: 20_000, floorPrice: 8_000, currentPrice: 10_000,
+      initialQuantity: 1, remainingQuantity: 0, weightPerItemGrams: 500,
+      pickupStartAt: now - HOUR_MS, pickupEndAt: now - 1, materialType: 'bakery', dietaryTags: [],
+      processingOnly: false, status: 'recovery_pending', createdAt: now,
+    })
+    const batchId = await ctx.db.insert('recoveryBatches', {
+      merchantId, surplusItemId: itemId, processorId, offeredWeightGrams: 500, status: 'offered',
+      offerExpiresAt: now + HOUR_MS, routingAttempts: 1, attemptedProcessorIds: [processorId], declinedByProcessorIds: [], createdAt: now,
+    })
+    const declineItemId = await ctx.db.insert('surplusItems', {
+      merchantId, name: 'Roti Decline', originalPrice: 20_000, floorPrice: 8_000, currentPrice: 10_000,
+      initialQuantity: 1, remainingQuantity: 0, weightPerItemGrams: 300,
+      pickupStartAt: now - HOUR_MS, pickupEndAt: now - 1, materialType: 'bakery', dietaryTags: [],
+      processingOnly: false, status: 'recovery_pending', createdAt: now,
+    })
+    const declineBatchId = await ctx.db.insert('recoveryBatches', {
+      merchantId, surplusItemId: declineItemId, processorId, offeredWeightGrams: 300, status: 'offered',
+      offerExpiresAt: now + HOUR_MS, routingAttempts: 1, attemptedProcessorIds: [processorId], declinedByProcessorIds: [], createdAt: now,
+    })
+    return { processorId, otherProcessorId, batchId, itemId, declineBatchId }
+  })
+
+  expect(await t.query(api.recoveryBatches.listQueue, { sessionToken: processorToken, tab: 'offered' })).toHaveLength(2)
+  expect(await t.query(api.recoveryBatches.listQueue, { sessionToken: otherToken, tab: 'offered' })).toHaveLength(0)
+  await t.run((ctx) => ctx.db.patch(ids.processorId, { verificationStatus: 'pending' }))
+  await expect(t.query(api.recoveryBatches.listQueue, { sessionToken: processorToken, tab: 'offered' })).rejects.toThrow('NOT_VERIFIED')
+  await t.run((ctx) => ctx.db.patch(ids.processorId, { verificationStatus: 'verified' }))
+  await expect(t.query(api.recoveryBatches.get, { sessionToken: otherToken, batchId: ids.batchId })).rejects.toThrow('FORBIDDEN')
+  await expect(t.mutation(api.recoveryBatches.accept, { sessionToken: otherToken, batchId: ids.batchId })).rejects.toThrow('FORBIDDEN')
+
+  await t.run((ctx) => ctx.db.patch(ids.batchId, { offerExpiresAt: now - 1 }))
+  await expect(t.mutation(api.recoveryBatches.accept, { sessionToken: processorToken, batchId: ids.batchId })).rejects.toThrow('OFFER_EXPIRED')
+  await t.run((ctx) => ctx.db.patch(ids.processorId, { acceptedMaterialTypes: ['protein'] }))
+  await t.run((ctx) => ctx.db.patch(ids.batchId, { offerExpiresAt: Date.now() + HOUR_MS }))
+  await expect(t.mutation(api.recoveryBatches.accept, { sessionToken: processorToken, batchId: ids.batchId })).rejects.toThrow('MATERIAL_TYPE_REJECTED')
+  await t.run((ctx) => ctx.db.patch(ids.processorId, { acceptedMaterialTypes: ['bakery'], dailyCapacityGrams: 400 }))
+  await expect(t.mutation(api.recoveryBatches.accept, { sessionToken: processorToken, batchId: ids.batchId })).rejects.toThrow('CAPACITY_EXCEEDED')
+  await t.run((ctx) => ctx.db.patch(ids.processorId, { dailyCapacityGrams: 2_000 }))
+
+  await t.mutation(api.recoveryBatches.accept, { sessionToken: processorToken, batchId: ids.batchId })
+  await expect(t.mutation(api.recoveryBatches.accept, { sessionToken: processorToken, batchId: ids.batchId })).rejects.toThrow('INVALID_TRANSITION')
+  for (const acceptedWeightGrams of [0, -1, 12.5, 751]) {
+    await expect(t.mutation(api.recoveryBatches.logIntake, { sessionToken: processorToken, batchId: ids.batchId, acceptedWeightGrams })).rejects.toThrow('VALIDATION_FAILED')
+  }
+  await expect(t.mutation(api.recoveryBatches.logIntake, { sessionToken: processorToken, batchId: ids.batchId, acceptedWeightGrams: 450, collectedAt: Date.now() + HOUR_MS })).rejects.toThrow('VALIDATION_FAILED')
+  const intake = await t.mutation(api.recoveryBatches.logIntake, { sessionToken: processorToken, batchId: ids.batchId, acceptedWeightGrams: 450 })
+  expect(intake).toMatchObject({ declaredWeightGrams: 500, varianceGrams: -50, variancePercent: -10 })
+  await expect(t.mutation(api.recoveryBatches.logIntake, { sessionToken: processorToken, batchId: ids.batchId, acceptedWeightGrams: 450 })).rejects.toThrow('INVALID_TRANSITION')
+
+  await expect(t.mutation(api.recoveryBatches.logOutcome, {
+    sessionToken: processorToken, batchId: ids.batchId, outputType: 'compost', outputWeightGrams: 400, residualWeightGrams: 100,
+  })).rejects.toThrow('VALIDATION_FAILED')
+  await expect(t.mutation(api.recoveryBatches.logOutcome, {
+    sessionToken: processorToken, batchId: ids.batchId, outputType: 'biogas', outputWeightGrams: 300, residualWeightGrams: 50,
+  })).rejects.toThrow('VALIDATION_FAILED')
+  await expect(t.mutation(api.recoveryBatches.logOutcome, {
+    sessionToken: processorToken, batchId: ids.batchId, outputType: 'compost', outputWeightGrams: 300.5, residualWeightGrams: 50,
+  })).rejects.toThrow('VALIDATION_FAILED')
+  await expect(t.mutation(api.recoveryBatches.logOutcome, {
+    sessionToken: processorToken, batchId: ids.batchId, outputType: 'compost', outputWeightGrams: -1, residualWeightGrams: 50,
+  })).rejects.toThrow('VALIDATION_FAILED')
+  await expect(t.mutation(api.recoveryBatches.logOutcome, {
+    sessionToken: processorToken, batchId: ids.batchId, outputType: 'compost', outputWeightGrams: 300, residualWeightGrams: 50, completedAt: Date.now() + HOUR_MS,
+  })).rejects.toThrow('VALIDATION_FAILED')
+  const outcome = await t.mutation(api.recoveryBatches.logOutcome, {
+    sessionToken: processorToken, batchId: ids.batchId, outputType: 'compost', outputWeightGrams: 300, residualWeightGrams: 50,
+  })
+  expect(outcome).toEqual({ processLossGrams: 100, conversionRatePercent: 66.7 })
+  expect(await t.query(api.recoveryBatches.listQueue, { sessionToken: processorToken, tab: 'collected' })).toMatchObject([{ _id: ids.batchId, status: 'processed' }])
+  await expect(t.mutation(api.recoveryBatches.logOutcome, {
+    sessionToken: processorToken, batchId: ids.batchId, outputType: 'compost', outputWeightGrams: 300, residualWeightGrams: 50,
+  })).rejects.toThrow('INVALID_TRANSITION')
+  expect(await t.run((ctx) => ctx.db.get(ids.itemId))).toMatchObject({ status: 'recovered' })
+
+  await expect(t.mutation(api.recoveryBatches.decline, {
+    sessionToken: processorToken, batchId: ids.declineBatchId, reason: 'invalid',
+  })).rejects.toThrow('VALIDATION_FAILED')
+  await t.mutation(api.recoveryBatches.decline, {
+    sessionToken: processorToken, batchId: ids.declineBatchId, reason: 'capacity', note: 'Kapasitas penuh',
+  })
+  const declined = await t.run((ctx) => ctx.db.get(ids.declineBatchId))
+  expect(declined).toMatchObject({ processorId: ids.otherProcessorId, status: 'offered', declinedByProcessorIds: [ids.processorId] })
+  const events = await t.run((ctx) => ctx.db.query('materialFlowLedger').withIndex('by_rescue_item', (q) => q.eq('surplusItemId', ids.itemId)).collect())
+  expect(events.filter((event) => event.eventType === 'INTAKE_ACCEPTED')).toMatchObject([{ weightDeltaGrams: 450 }])
+  expect(events.filter((event) => event.eventType === 'PROCESSED')).toMatchObject([{ weightDeltaGrams: -450 }])
+  const declineEvents = await t.run((ctx) => ctx.db.query('materialFlowLedger').withIndex('by_rescue_item', (q) => q.eq('surplusItemId', declined!.surplusItemId)).collect())
+  expect(declineEvents.filter((event) => event.eventType === 'INTAKE_DECLINED')).toHaveLength(1)
+  expect(declineEvents.find((event) => event.eventType === 'INTAKE_DECLINED')).toMatchObject({ weightDeltaGrams: 0 })
+})
+
+test('dua accept bersamaan tidak dapat melampaui kapasitas harian', async () => {
+  const t = convexTest(schema, modules)
+  const now = Date.now()
+  const token = 'c'.repeat(43)
+  const ids = await t.run(async (ctx) => {
+    const merchantOwnerId = await ctx.db.insert('users', {
+      name: 'Merchant Concurrency', email: 'merchant.concurrent@example.com', passwordHash: 'test', role: 'merchant', status: 'active', createdAt: now,
+    })
+    const merchantId = await ctx.db.insert('merchants', {
+      ownerId: merchantOwnerId, name: 'Dapur Concurrent', address: 'Semarang', verificationStatus: 'verified', createdAt: now,
+    })
+    const ownerId = await ctx.db.insert('users', {
+      name: 'Processor Concurrent', email: 'processor.concurrent@example.com', passwordHash: 'test', role: 'processor', status: 'active', createdAt: now,
+    })
+    const processorId = await ctx.db.insert('processors', {
+      ownerId, name: 'Kompos Concurrent', facilityType: 'composting', acceptedMaterialTypes: ['bakery'],
+      dailyCapacityGrams: 1_000, outputTypes: ['compost'], verificationStatus: 'verified', createdAt: now,
+    })
+    await ctx.db.insert('sessions', { userId: ownerId, tokenHash: await hashSessionToken(token), expiresAt: now + HOUR_MS, createdAt: now })
+    const batchIds = []
+    for (const name of ['Batch A', 'Batch B']) {
+      const surplusItemId = await ctx.db.insert('surplusItems', {
+        merchantId, name, originalPrice: 20_000, floorPrice: 8_000, currentPrice: 10_000,
+        initialQuantity: 1, remainingQuantity: 0, weightPerItemGrams: 600,
+        pickupStartAt: now - HOUR_MS, pickupEndAt: now - 1, materialType: 'bakery', dietaryTags: [],
+        processingOnly: false, status: 'recovery_pending', createdAt: now,
+      })
+      batchIds.push(await ctx.db.insert('recoveryBatches', {
+        merchantId, surplusItemId, processorId, offeredWeightGrams: 600, status: 'offered',
+        offerExpiresAt: now + HOUR_MS, routingAttempts: 1, attemptedProcessorIds: [processorId], declinedByProcessorIds: [], createdAt: now,
+      }))
+    }
+    return batchIds
+  })
+
+  const results = await Promise.allSettled(ids.map((batchId) =>
+    t.mutation(api.recoveryBatches.accept, { sessionToken: token, batchId }),
+  ))
+  expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
+  expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1)
+  const accepted = await t.run((ctx) => ctx.db.query('recoveryBatches').withIndex('by_status', (q) => q.eq('status', 'accepted')).collect())
+  expect(accepted).toHaveLength(1)
+})

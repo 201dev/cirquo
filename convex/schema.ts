@@ -55,6 +55,8 @@ export const rescueItemStatus = v.union(
   v.literal('sold_out'),
   v.literal('expired'),
   v.literal('recovery_pending'),
+  v.literal('recovered'),
+  v.literal('residual'),
   v.literal('closed'),
 )
 
@@ -70,6 +72,7 @@ export const recoveryBatchStatus = v.union(
   v.literal('pending'),
   v.literal('offered'),
   v.literal('accepted'),
+  v.literal('collected'),
   v.literal('rejected'),
   v.literal('processed'),
   v.literal('unroutable'),
@@ -236,7 +239,17 @@ export default defineSchema({
     processorId: v.optional(v.id('processors')),
     offeredWeightGrams: v.number(),
     acceptedWeightGrams: v.optional(v.number()),
+    acceptedAt: v.optional(v.number()),
+    estimatedCollectionAt: v.optional(v.number()),
+    acceptanceNote: v.optional(v.string()),
+    collectedAt: v.optional(v.number()),
+    intakeNote: v.optional(v.string()),
+    outputType: v.optional(outputType),
+    outputWeightGrams: v.optional(v.number()),
     residualWeightGrams: v.optional(v.number()),
+    processLossGrams: v.optional(v.number()),
+    conversionRatePercent: v.optional(v.number()),
+    outcomeNote: v.optional(v.string()),
     status: recoveryBatchStatus,
     // ponytail: fields are optional so existing M4-02 batches deploy safely.
     // The routing mutations initialise them before their first transition.
@@ -250,6 +263,7 @@ export default defineSchema({
     .index('by_merchant', ['merchantId'])
     .index('by_processor', ['processorId'])
     .index('by_processor_status', ['processorId', 'status'])
+    .index('by_processor_and_accepted_at', ['processorId', 'acceptedAt'])
     .index('by_status', ['status'])
     .index('by_item', ['surplusItemId']),
 
