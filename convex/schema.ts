@@ -182,7 +182,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index('by_merchant', ['merchantId'])
-    .index('by_status', ['status']),
+    .index('by_status', ['status'])
+    .index('by_status_pickup_end', ['status', 'pickupEndAt']),
 
   materialFlowLedger: defineTable({
     surplusItemId: v.id('surplusItems'),
@@ -237,13 +238,23 @@ export default defineSchema({
   })
     .index('by_merchant', ['merchantId'])
     .index('by_processor', ['processorId'])
-    .index('by_status', ['status']),
+    .index('by_status', ['status'])
+    .index('by_item', ['surplusItemId']),
 
   payments: defineTable({
     orderId: v.id('orders'),
     provider: v.literal('midtrans'),
     amount: v.number(),
     providerStatus: v.string(),
+    refundStatus: v.optional(v.union(
+      v.literal('pending'),
+      v.literal('succeeded'),
+      v.literal('failed'),
+    )),
+    refundKey: v.optional(v.string()),
+    refundRequestedAt: v.optional(v.number()),
+    refundCompletedAt: v.optional(v.number()),
+    refundError: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
     providerTxnId: v.optional(v.string()),
     rawPayload: v.optional(v.string()),

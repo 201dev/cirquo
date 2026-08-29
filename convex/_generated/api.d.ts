@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as authInternal from "../authInternal.js";
 import type * as authNode from "../authNode.js";
+import type * as crons from "../crons.js";
 import type * as discovery from "../discovery.js";
 import type * as http from "../http.js";
 import type * as impact from "../impact.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   authInternal: typeof authInternal;
   authNode: typeof authNode;
+  crons: typeof crons;
   discovery: typeof discovery;
   http: typeof http;
   impact: typeof impact;

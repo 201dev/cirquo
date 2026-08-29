@@ -211,6 +211,9 @@ export const expireHold = internalMutation({
 
     const item = await ctx.db.get(order.surplusItemId)
     if (!item) return
+    // M4 only moves items to recovery after all reserved holds were released.
+    // Keep a stale M3 timer from reviving an already-recovered item.
+    if (item.status === 'recovery_pending') return
 
     await ctx.db.patch(order._id, {
       status: 'expired'
