@@ -109,10 +109,7 @@ export function SiteFooter() {
 
         <div className="mt-10 flex flex-col gap-3 border-t border-leaf-700/60 pt-6 text-xs text-leaf-300 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} Cirquo · Semarang, Indonesia</p>
-          <p>
-            Prototipe DSDC ANFORCOM 2026. Angka dampak pada demo ini berasal
-            dari data demonstrasi.
-          </p>
+          <p>Prototipe DSDC ANFORCOM 2026. Angka dampak dihitung dari Material Flow Ledger.</p>
         </div>
       </div>
     </footer>
