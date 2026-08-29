@@ -4,7 +4,9 @@ import { estimateCo2e, summariseLedger } from '../src/lib/impact'
 describe('impact ledger summary', () => {
   test('returns zeros for an empty projection', () => {
     expect(summariseLedger([])).toMatchObject({
+      listedItemCount: 0,
       listedGrams: 0,
+      rescuedQuantity: 0,
       rescuedGrams: 0,
       recoveredGrams: 0,
       residualGrams: 0,
@@ -26,7 +28,9 @@ describe('impact ledger summary', () => {
     ])
 
     expect(summary).toMatchObject({
+      listedItemCount: 2,
       listedGrams: 1_300,
+      rescuedQuantity: 1,
       rescuedGrams: 200,
       recoveredGrams: 500,
       residualGrams: 100,
@@ -74,6 +78,7 @@ describe('impact ledger summary', () => {
       { surplusItemId: 'item-b', eventType: 'RESCUED', weightDeltaGrams: -100 },
     ])
     expect(rescued).toMatchObject({
+      rescuedQuantity: null,
       revenueRecoveredIdr: null,
       consumerSavingsIdr: null,
       integrity: { isValid: false },

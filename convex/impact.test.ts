@@ -77,10 +77,10 @@ test('ringkasan impact membatasi bukti ledger ke pemilik peran yang benar', asyn
   })
 
   expect(await t.query(api.impact.getConsumerSummary, { sessionToken: tokens.consumer })).toMatchObject({
-    listedGrams: 0, rescuedGrams: 200, revenueRecoveredIdr: 8_000, consumerSavingsIdr: 4_000,
+    listedItemCount: 0, rescuedQuantity: 1, listedGrams: 0, rescuedGrams: 200, revenueRecoveredIdr: 8_000, consumerSavingsIdr: 4_000,
   })
   expect(await t.query(api.impact.getMerchantSummary, { sessionToken: tokens.merchant })).toMatchObject({
-    listedGrams: 1_000, rescuedGrams: 200, recoveredGrams: 600, residualGrams: 100,
+    listedItemCount: 1, rescuedQuantity: 1, listedGrams: 1_000, rescuedGrams: 200, recoveredGrams: 600, residualGrams: 100,
     processLossGrams: 100, inProgressGrams: 0, revenueRecoveredIdr: 8_000,
     conservation: { itemBalances: [{ surplusItemId: String(ids.itemId), balanceGrams: 0 }] },
   })
