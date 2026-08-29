@@ -137,31 +137,42 @@ export function timeToMinutes(value: string): number {
   return hours * 60 + minutes;
 }
 
-export const processorOnboardingSchema = z
-  .object({
-    ...businessProfileBase,
-    facilityType: z.enum(facilityTypes, {
+const processorRoutingProfileFields = {
+  facilityType: z.enum(facilityTypes, {
       error: "Pilih jenis fasilitas",
     }),
-    acceptedMaterialTypes: z
-      .array(z.enum(materialTypes))
-      .min(1, "Pilih minimal satu jenis material"),
-    dailyCapacityGrams: z
-      .number({ error: "Kapasitas harian harus berupa angka" })
-      .int("Kapasitas harian harus berupa gram utuh")
-      .min(1, "Kapasitas harian minimal 1 gram")
-      .max(100_000_000, "Kapasitas harian maksimal 100.000.000 gram"),
-    maxPickupRadiusMeters: z
-      .number({ error: "Radius pickup harus berupa angka" })
-      .int("Radius pickup harus berupa meter utuh")
-      .min(500, "Radius pickup minimal 500 meter")
-      .max(100_000, "Radius pickup maksimal 100.000 meter"),
-    outputTypes: z
-      .array(z.enum(outputTypes))
-      .min(1, "Pilih minimal satu hasil pengolahan"),
-    operatingHoursStart: timeSchema,
-    operatingHoursEnd: timeSchema,
-  })
+  acceptedMaterialTypes: z
+    .array(z.enum(materialTypes))
+    .min(1, "Pilih minimal satu jenis material"),
+  dailyCapacityGrams: z
+    .number({ error: "Kapasitas harian harus berupa angka" })
+    .int("Kapasitas harian harus berupa gram utuh")
+    .min(0, "Kapasitas harian tidak boleh negatif")
+    .max(100_000_000, "Kapasitas harian maksimal 100.000.000 gram"),
+  maxPickupRadiusMeters: z
+    .number({ error: "Radius pickup harus berupa angka" })
+    .int("Radius pickup harus berupa meter utuh")
+    .min(1_000, "Radius pickup minimal 1.000 meter")
+    .max(50_000, "Radius pickup maksimal 50.000 meter"),
+  outputTypes: z
+    .array(z.enum(outputTypes))
+    .min(1, "Pilih minimal satu hasil pengolahan"),
+  operatingHoursStart: timeSchema,
+  operatingHoursEnd: timeSchema,
+};
+
+export const processorRoutingProfileSchema = z
+  .object(processorRoutingProfileFields)
+  .refine(
+    (data) => timeToMinutes(data.operatingHoursEnd) > timeToMinutes(data.operatingHoursStart),
+    {
+      path: ["operatingHoursEnd"],
+      message: "Jam selesai harus setelah jam mulai pada hari yang sama",
+    },
+  );
+
+export const processorOnboardingSchema = z
+  .object({ ...businessProfileBase, ...processorRoutingProfileFields })
   .refine(
     (data) => timeToMinutes(data.operatingHoursEnd) > timeToMinutes(data.operatingHoursStart),
     {
@@ -175,4 +186,7 @@ export type MerchantOnboardingValues = z.infer<
 >;
 export type ProcessorOnboardingValues = z.infer<
   typeof processorOnboardingSchema
+>;
+export type ProcessorRoutingProfileValues = z.infer<
+  typeof processorRoutingProfileSchema
 >;

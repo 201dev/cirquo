@@ -268,8 +268,16 @@ test('Processor terverifikasi menyelesaikan offer, intake, outcome, dan decline 
     sessionToken: processorToken, batchId: ids.batchId, outputType: 'compost', outputWeightGrams: -1, residualWeightGrams: 50,
   })).rejects.toThrow('VALIDATION_FAILED')
   await expect(t.mutation(api.recoveryBatches.logOutcome, {
+    sessionToken: processorToken, batchId: ids.batchId, outputType: 'compost', outputWeightGrams: 450, residualWeightGrams: 0,
+  })).rejects.toThrow('VALIDATION_FAILED')
+  await expect(t.mutation(api.recoveryBatches.logOutcome, {
     sessionToken: processorToken, batchId: ids.batchId, outputType: 'compost', outputWeightGrams: 300, residualWeightGrams: 50, completedAt: Date.now() + HOUR_MS,
   })).rejects.toThrow('VALIDATION_FAILED')
+  await t.mutation(api.processors.updateProfile, {
+    sessionToken: processorToken, facilityType: 'composting', acceptedMaterialTypes: ['bakery'],
+    dailyCapacityGrams: 2_000, maxPickupRadiusMeters: 10_000, outputTypes: ['biogas'],
+    operatingHoursStart: 0, operatingHoursEnd: 1_000,
+  })
   const outcome = await t.mutation(api.recoveryBatches.logOutcome, {
     sessionToken: processorToken, batchId: ids.batchId, outputType: 'compost', outputWeightGrams: 300, residualWeightGrams: 50,
   })
@@ -294,6 +302,53 @@ test('Processor terverifikasi menyelesaikan offer, intake, outcome, dan decline 
   const declineEvents = await t.run((ctx) => ctx.db.query('materialFlowLedger').withIndex('by_rescue_item', (q) => q.eq('surplusItemId', declined!.surplusItemId)).collect())
   expect(declineEvents.filter((event) => event.eventType === 'INTAKE_DECLINED')).toHaveLength(1)
   expect(declineEvents.find((event) => event.eventType === 'INTAKE_DECLINED')).toMatchObject({ weightDeltaGrams: 0 })
+})
+
+test('Processor mengubah profil kapasitas dan dashboard hanya menjumlahkan bukti miliknya', async () => {
+  const t = convexTest(schema, modules)
+  const now = Date.now()
+  const token = 'd'.repeat(43)
+  const ids = await t.run(async (ctx) => {
+    const ownerId = await ctx.db.insert('users', { name: 'Processor Dashboard', email: 'processor.dashboard@example.com', passwordHash: 'test', role: 'processor', status: 'active', createdAt: now })
+    const merchantOwnerId = await ctx.db.insert('users', { name: 'Merchant Dashboard', email: 'merchant.dashboard@example.com', passwordHash: 'test', role: 'merchant', status: 'active', createdAt: now })
+    const merchantId = await ctx.db.insert('merchants', { ownerId: merchantOwnerId, name: 'Dapur Dashboard', address: 'Semarang', verificationStatus: 'verified', createdAt: now })
+    const processorId = await ctx.db.insert('processors', {
+      ownerId, name: 'Kompos Dashboard', facilityType: 'composting', acceptedMaterialTypes: ['bakery'], dailyCapacityGrams: 2_000,
+      maxPickupRadiusMeters: 10_000, outputTypes: ['compost'], operatingHoursStart: 0, operatingHoursEnd: 1_000, verificationStatus: 'verified', createdAt: now,
+    })
+    await ctx.db.insert('sessions', { userId: ownerId, tokenHash: await hashSessionToken(token), expiresAt: now + HOUR_MS, createdAt: now })
+    const createBatch = async (name: string, status: 'offered' | 'accepted' | 'collected' | 'processed', offeredWeightGrams: number, acceptedAt?: number) => {
+      const surplusItemId = await ctx.db.insert('surplusItems', {
+        merchantId, name, originalPrice: 20_000, floorPrice: 8_000, currentPrice: 10_000, initialQuantity: 1, remainingQuantity: 0,
+        weightPerItemGrams: offeredWeightGrams, pickupStartAt: now - HOUR_MS, pickupEndAt: now - 1, materialType: 'bakery', dietaryTags: [], processingOnly: false, status: 'recovery_pending', createdAt: now,
+      })
+      return ctx.db.insert('recoveryBatches', { merchantId, surplusItemId, processorId, offeredWeightGrams, status, acceptedAt, createdAt: now })
+    }
+    const processedBatchId = await createBatch('Terolah', 'processed', 900, now)
+    await createBatch('Offer', 'offered', 400)
+    await createBatch('Diterima', 'accepted', 500, now)
+    await createBatch('Ditimbang', 'collected', 300, now)
+    await ctx.db.insert('materialFlowLedger', { surplusItemId: (await ctx.db.get(processedBatchId))!.surplusItemId, recoveryBatchId: processedBatchId, eventType: 'INTAKE_ACCEPTED', weightDeltaGrams: 800, actorId: ownerId, actorRole: 'processor', methodologyVersion: 'impact-v1', occurredAt: now })
+    await ctx.db.insert('materialFlowLedger', { surplusItemId: (await ctx.db.get(processedBatchId))!.surplusItemId, recoveryBatchId: processedBatchId, eventType: 'PROCESSED', weightDeltaGrams: -800, actorId: ownerId, actorRole: 'processor', metadata: JSON.stringify({ outputType: 'compost', outputWeightGrams: 600, residualWeightGrams: 100 }), methodologyVersion: 'impact-v1', occurredAt: now })
+    return { processorId }
+  })
+
+  expect(await t.query(api.processors.getMine, { sessionToken: token })).toMatchObject({ _id: ids.processorId, dailyCapacityGrams: 2_000 })
+  await t.mutation(api.processors.updateProfile, {
+    sessionToken: token, facilityType: 'composting', acceptedMaterialTypes: ['bakery'], dailyCapacityGrams: 0,
+    maxPickupRadiusMeters: 1_000, outputTypes: ['compost'], operatingHoursStart: 0, operatingHoursEnd: 1_000,
+  })
+  expect(await t.query(api.processors.getMine, { sessionToken: token })).toMatchObject({ dailyCapacityGrams: 0, maxPickupRadiusMeters: 1_000 })
+  await t.mutation(api.processors.updateProfile, {
+    sessionToken: token, facilityType: 'composting', acceptedMaterialTypes: ['bakery'], dailyCapacityGrams: 2_000,
+    maxPickupRadiusMeters: 10_000, outputTypes: ['compost'], operatingHoursStart: 0, operatingHoursEnd: 1_000,
+  })
+  expect(await t.query(api.recoveryBatches.getDashboard, { sessionToken: token, now })).toMatchObject({
+    offeredCount: 1, acceptedCount: 1, collectedCount: 1, processedCount: 1,
+    capacityCommittedGrams: 1_700, dailyCapacityGrams: 2_000, capacityUsagePercent: 85,
+    todayIntakeGrams: 800, processedIntakeGrams: 800, outputWeightGrams: 600, residualWeightGrams: 100,
+    outputByType: { compost: 600, bsf_larvae: 0, animal_feed: 0, biogas: 0 }, recoveryRatePercent: 75,
+  })
 })
 
 test('dua accept bersamaan tidak dapat melampaui kapasitas harian', async () => {

@@ -3,7 +3,7 @@ import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { calculateHaversineDistanceMeters } from '../src/lib/geo'
-import { getOfferProblem, intakeResult, outcomeResult, startOfWibDay } from '../src/lib/recovery'
+import { getOfferProblem, intakeResult, outcomeResult, startOfWibDay, summarizeProcessorDashboard } from '../src/lib/recovery'
 import { MAX_ROUTING_ATTEMPTS, OFFER_TTL_MS, rankEligibleProcessors, type RoutingProcessor } from '../src/lib/routing'
 import { materialType, outputType, recoveryBatchStatus } from './schema'
 import { requireRole, requireVerifiedMerchant, requireVerifiedProcessor } from './lib/guards'
@@ -26,6 +26,13 @@ const batchView = v.object({
   collectedAt: v.optional(v.number()), completedAt: v.optional(v.number()),
   routingAttempts: v.number(), attemptedProcessorCount: v.number(),
   declinedProcessorCount: v.number(), allowedOutputTypes: v.array(outputType),
+})
+const dashboardView = v.object({
+  offeredCount: v.number(), acceptedCount: v.number(), collectedCount: v.number(), processedCount: v.number(),
+  capacityCommittedGrams: v.number(), capacityUsagePercent: v.number(), dailyCapacityGrams: v.number(),
+  todayIntakeGrams: v.number(), processedIntakeGrams: v.number(), outputWeightGrams: v.number(), residualWeightGrams: v.number(),
+  outputByType: v.object({ compost: v.number(), bsf_larvae: v.number(), animal_feed: v.number(), biogas: v.number() }),
+  recoveryRatePercent: v.union(v.number(), v.null()),
 })
 
 type RouteResult = 'offered' | 'unroutable' | 'skipped'
@@ -83,7 +90,7 @@ async function toBatchView(ctx: QueryCtx, batch: Doc<'recoveryBatches'>, process
     completedAt: batch.completedAt, routingAttempts: batch.routingAttempts ?? 0,
     attemptedProcessorCount: (batch.attemptedProcessorIds ?? []).length,
     declinedProcessorCount: (batch.declinedByProcessorIds ?? []).length,
-    allowedOutputTypes: processor.outputTypes ?? [],
+    allowedOutputTypes: batch.acceptedOutputTypes ?? processor.outputTypes ?? [],
   }
 }
 
@@ -108,11 +115,8 @@ async function loadRoutingProcessors(ctx: MutationCtx): Promise<LoadedRoutingPro
   const candidates: LoadedRoutingProcessor[] = []
   for (const processor of processors) {
     if (processor.latitude === undefined || processor.longitude === undefined || processor.acceptedMaterialTypes === undefined || processor.dailyCapacityGrams === undefined || processor.maxPickupRadiusMeters === undefined) continue
-    const [activeOffers, acceptedToday] = await Promise.all([
-      ctx.db.query('recoveryBatches').withIndex('by_processor_status', (q) => q.eq('processorId', processor._id).eq('status', 'offered')).collect(),
-      ctx.db.query('recoveryBatches').withIndex('by_processor_and_accepted_at', (q) => q.eq('processorId', processor._id).gte('acceptedAt', today).lte('acceptedAt', now)).collect(),
-    ])
-    const committedGrams = [...activeOffers, ...acceptedToday].reduce((total, batch) => total + batch.offeredWeightGrams, 0)
+    const acceptedToday = await ctx.db.query('recoveryBatches').withIndex('by_processor_and_accepted_at', (q) => q.eq('processorId', processor._id).gte('acceptedAt', today).lte('acceptedAt', now)).collect()
+    const committedGrams = acceptedToday.reduce((total, batch) => total + batch.offeredWeightGrams, 0)
     candidates.push({
       id: String(processor._id), processorId: processor._id,
       verificationStatus: processor.verificationStatus, acceptedMaterialTypes: processor.acceptedMaterialTypes,
@@ -215,6 +219,28 @@ export const get = query({
   },
 })
 
+export const getDashboard = query({
+  args: { sessionToken: v.optional(v.string()), now: v.number() },
+  returns: dashboardView,
+  handler: async (ctx, args) => {
+    if (!Number.isInteger(args.now)) fail('VALIDATION_FAILED', 'Waktu dashboard tidak valid.')
+    const user = await requireRole(ctx, args.sessionToken, ['processor'])
+    const processor = await requireVerifiedProcessor(ctx, user)
+    // ponytail: dashboard M5 reads the facility's complete pilot-scale history.
+    // Replace with M6 ledger aggregates before an unbounded production history.
+    const [batches, events] = await Promise.all([
+      ctx.db.query('recoveryBatches').withIndex('by_processor', (q) => q.eq('processorId', processor._id)).collect(),
+      ctx.db.query('materialFlowLedger').withIndex('by_actor', (q) => q.eq('actorId', user._id)).collect(),
+    ])
+    return summarizeProcessorDashboard({
+      batches,
+      events,
+      dailyCapacityGrams: processor.dailyCapacityGrams ?? 0,
+      now: args.now,
+    })
+  },
+})
+
 export const accept = mutation({
   args: { sessionToken: v.optional(v.string()), batchId: v.id('recoveryBatches'), estimatedCollectionAt: v.optional(v.number()), note: v.optional(v.string()) },
   returns: v.object({ status: v.literal('accepted'), acceptedAt: v.number() }),
@@ -236,7 +262,11 @@ export const accept = mutation({
       FORBIDDEN: 'Batch tidak ditugaskan ke Processor ini.',
     }[problem])
     if (args.estimatedCollectionAt !== undefined && (!Number.isInteger(args.estimatedCollectionAt) || args.estimatedCollectionAt < now)) fail('VALIDATION_FAILED', 'Estimasi pengambilan harus berada di masa depan.')
-    await ctx.db.patch(batch._id, { status: 'accepted', acceptedAt: now, offerExpiresAt: undefined, estimatedCollectionAt: args.estimatedCollectionAt, acceptanceNote: validateNote(args.note) })
+    await ctx.db.patch(batch._id, {
+      status: 'accepted', acceptedAt: now, offerExpiresAt: undefined,
+      estimatedCollectionAt: args.estimatedCollectionAt, acceptanceNote: validateNote(args.note),
+      acceptedOutputTypes: processor.outputTypes ?? [],
+    })
     return { status: 'accepted' as const, acceptedAt: now }
   },
 })
@@ -272,23 +302,27 @@ export const logIntake = mutation({
     if (!processor.facilityType) fail('VALIDATION_FAILED', 'Jenis fasilitas Processor belum tersedia.')
     const collectedAt = validatePastTime(args.collectedAt, Date.now(), 'Waktu penerimaan')
     const note = validateNote(args.note)
-    await ctx.db.patch(batch._id, { status: 'collected', acceptedWeightGrams: args.acceptedWeightGrams, collectedAt, intakeNote: note })
+    const varianceRequiresReview = Math.abs(result.variancePercent) > 30
+    await ctx.db.patch(batch._id, {
+      status: 'collected', acceptedWeightGrams: args.acceptedWeightGrams, collectedAt, intakeNote: note, varianceRequiresReview,
+    })
     await recordLedgerEvent(ctx, {
       surplusItemId: batch.surplusItemId, recoveryBatchId: batch._id, eventType: 'INTAKE_ACCEPTED', weightDeltaGrams: args.acceptedWeightGrams,
       actorId: user._id, actorRole: 'processor',
-      metadata: { processorId: processor._id, facilityType: processor.facilityType, declaredWeightGrams: batch.offeredWeightGrams, varianceGrams: result.varianceGrams, collectedAt, note },
+      metadata: { processorId: processor._id, facilityType: processor.facilityType, declaredWeightGrams: batch.offeredWeightGrams, varianceGrams: result.varianceGrams, varianceRequiresReview, collectedAt, note },
     })
     return { declaredWeightGrams: batch.offeredWeightGrams, acceptedWeightGrams: args.acceptedWeightGrams, ...result }
   },
 })
 
 export const logOutcome = mutation({
-  args: { sessionToken: v.optional(v.string()), batchId: v.id('recoveryBatches'), outputType, outputWeightGrams: v.number(), residualWeightGrams: v.number(), completedAt: v.optional(v.number()), note: v.optional(v.string()) },
+  args: { sessionToken: v.optional(v.string()), batchId: v.id('recoveryBatches'), outputType, outputWeightGrams: v.number(), residualWeightGrams: v.number(), zeroResidualConfirmed: v.optional(v.boolean()), completedAt: v.optional(v.number()), note: v.optional(v.string()) },
   returns: v.object({ processLossGrams: v.number(), conversionRatePercent: v.number() }),
   handler: async (ctx, args) => {
     const { user, processor, batch } = await requireOwnedBatch(ctx, args.sessionToken, args.batchId)
     if (batch.status !== 'collected' || batch.acceptedWeightGrams === undefined) fail('INVALID_TRANSITION', 'Outcome hanya dapat dicatat setelah intake terukur.')
-    if (!(processor.outputTypes ?? []).includes(args.outputType)) fail('VALIDATION_FAILED', 'Jenis output tidak didukung fasilitas ini.')
+    if (!(batch.acceptedOutputTypes ?? processor.outputTypes ?? []).includes(args.outputType)) fail('VALIDATION_FAILED', 'Jenis output tidak didukung fasilitas ini.')
+    if (args.residualWeightGrams === 0 && !args.zeroResidualConfirmed) fail('VALIDATION_FAILED', 'Konfirmasi diperlukan untuk Residual 0 gram.')
     const result = outcomeResult({ acceptedWeightGrams: batch.acceptedWeightGrams, outputWeightGrams: args.outputWeightGrams, residualWeightGrams: args.residualWeightGrams })
     if (!result) fail('VALIDATION_FAILED', 'Berat outcome harus gram utuh, tidak negatif, dan tidak melebihi intake.')
     const completedAt = validatePastTime(args.completedAt, Date.now(), 'Waktu selesai')

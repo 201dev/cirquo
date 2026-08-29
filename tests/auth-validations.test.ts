@@ -185,5 +185,13 @@ describe("validasi profil bisnis", () => {
         operatingHoursEnd: timeToMinutes(processor.operatingHoursEnd),
       }),
     ).toMatchObject({ name: processor.name, city: processor.city });
+
+    expect(
+      processorOnboardingSchema.safeParse({
+        ...processor,
+        dailyCapacityGrams: 0,
+        maxPickupRadiusMeters: 1_000,
+      }).success,
+    ).toBe(true);
   });
 });
