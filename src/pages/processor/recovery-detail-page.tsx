@@ -147,7 +147,7 @@ function RecoveryDetailContent() {
     setErrors(nextErrors);
     if (!parsed.success || Object.keys(nextErrors).length || !sessionToken) return;
     await run(
-      () => logOutcome({ batchId: currentBatch._id, sessionToken, ...parsed.data, note: parsed.data.note || undefined }),
+      () => logOutcome({ batchId: currentBatch._id, sessionToken, ...parsed.data, zeroResidualConfirmed, note: parsed.data.note || undefined }),
       "Outcome tersimpan dan Material Flow Ledger diperbarui.",
     );
   }
