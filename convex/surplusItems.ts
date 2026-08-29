@@ -148,6 +148,9 @@ async function executePickupWindowExpiry(ctx: MutationCtx): Promise<PickupExpiry
       surplusItemId: item._id,
       offeredWeightGrams: unclaimedWeightGrams,
       status: 'pending',
+      routingAttempts: 0,
+      attemptedProcessorIds: [],
+      declinedByProcessorIds: [],
       createdAt: now,
     })
     await ctx.db.patch(item._id, { status: 'recovery_pending' })

@@ -9,5 +9,6 @@ crons.interval(
   internal.surplusItems.expirePickupWindows,
   {},
 )
+crons.interval('circular routing', { minutes: 10 }, internal.recoveryBatches.runRouting, {})
 
 export default crons
