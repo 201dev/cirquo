@@ -59,6 +59,32 @@ export const outputTypes = [
   "biogas",
 ] as const;
 
+export const recoveryNoteSchema = z
+  .string()
+  .trim()
+  .max(500, "Catatan maksimal 500 karakter");
+
+export const intakeSchema = z.object({
+  acceptedWeightGrams: z
+    .number({ error: "Berat harus berupa angka" })
+    .int("Berat harus berupa gram utuh")
+    .positive("Berat harus lebih dari 0 gram"),
+  note: recoveryNoteSchema,
+});
+
+export const outcomeSchema = z.object({
+  outputType: z.enum(outputTypes),
+  outputWeightGrams: z
+    .number({ error: "Berat output harus berupa angka" })
+    .int("Berat output harus berupa gram utuh")
+    .nonnegative("Berat output tidak boleh negatif"),
+  residualWeightGrams: z
+    .number({ error: "Berat residual harus berupa angka" })
+    .int("Berat residual harus berupa gram utuh")
+    .nonnegative("Berat residual tidak boleh negatif"),
+  note: recoveryNoteSchema,
+});
+
 export const loginSchema = z.object({
   email: z.string().trim().email({ message: "Format email tidak valid" }),
   password: z.string().min(1, { message: "Kata sandi harus diisi" }),

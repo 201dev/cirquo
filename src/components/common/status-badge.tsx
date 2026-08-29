@@ -7,6 +7,8 @@ const statusLabels: Record<string, string> = {
   sold_out: "Habis",
   expired: "Kedaluwarsa",
   recovery_pending: "Menunggu recovery",
+  recovered: "Recovered",
+  residual: "Residual",
   closed: "Ditutup",
   reserved: "Direservasi",
   paid: "Siap diambil",

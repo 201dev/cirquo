@@ -23,12 +23,20 @@ function RecoveryStatus({
   offerExpiresAt,
   processorName,
   offeredWeightGrams,
+  acceptedWeightGrams,
+  outputWeightGrams,
+  residualWeightGrams,
+  processLossGrams,
 }: {
   status: string;
   routingAttempts: number;
   offerExpiresAt?: number;
   processorName?: string;
   offeredWeightGrams: number;
+  acceptedWeightGrams?: number;
+  outputWeightGrams?: number;
+  residualWeightGrams?: number;
+  processLossGrams?: number;
 }) {
   if (status === "pending") {
     return (
@@ -67,6 +75,26 @@ function RecoveryStatus({
         <p className="mt-1 text-sm text-muted-foreground">
           Tidak ada Organic Processor yang dapat menerima {formatKg(offeredWeightGrams)} material ini{routingAttempts > 0 ? ` setelah ${routingAttempts} percobaan.` : "."}
         </p>
+      </section>
+    );
+  }
+
+  if (status === "accepted" || status === "collected" || status === "processed") {
+    return (
+      <section role="status" aria-live="polite" className="rounded-xl border border-primary/30 bg-primary/5 p-5">
+        <StatusBadge status={status} />
+        <h2 className="mt-3 font-semibold">
+          {status === "accepted" ? "Organic Processor menerima batch" : status === "collected" ? "Intake terukur telah dicatat" : "Material selesai diproses"}
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {processorName ? `${processorName}. ` : ""}
+          {acceptedWeightGrams !== undefined ? `Berat terukur ${formatKg(acceptedWeightGrams)} dari deklarasi ${formatKg(offeredWeightGrams)}.` : `Berat deklarasi ${formatKg(offeredWeightGrams)}.`}
+        </p>
+        {status === "processed" ? (
+          <p className="mt-2 text-sm">
+            Recovered {formatKg(outputWeightGrams ?? 0)} · Residual {formatKg(residualWeightGrams ?? 0)} · Process loss {formatKg(processLossGrams ?? 0)}
+          </p>
+        ) : null}
       </section>
     );
   }

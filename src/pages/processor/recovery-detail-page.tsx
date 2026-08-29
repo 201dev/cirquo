@@ -1,310 +1,256 @@
-import {
-  ArrowLeft,
-  CheckCircle2,
-  ClipboardCheck,
-  MapPin,
-  Scale,
-  XCircle,
-} from "lucide-react";
-import { type FormEvent, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { ArrowLeft, CheckCircle2, ClipboardCheck, MapPin, Scale, XCircle } from "lucide-react";
+import { type FormEvent, useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { api } from "../../../convex/_generated/api";
 import { PageHeader } from "@/components/common/page-header";
+import { QueryErrorBoundary } from "@/components/common/query-error-boundary";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatKg, recoveryBatches } from "@/constants/mock-data";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/auth-context";
+import { getErrorMessage } from "@/lib/errors";
+import { formatDistance, formatKg, formatPickupWindow, formatWibDate, formatWibTime } from "@/lib/format";
+import { intakeSchema, outcomeSchema, recoveryNoteSchema } from "@/lib/validations";
 
-type DemoStep = "review" | "intake" | "outcome" | "processed" | "declined";
-const outcomeLabels = {
-  compost: "Kompos",
-  bsf_larvae: "Larva BSF",
-  animal_feed: "Pakan ternak",
-  biogas: "Biogas",
-} as const;
-type Outcome = keyof typeof outcomeLabels;
+type DeclineReason = "capacity" | "material_mismatch" | "distance" | "schedule" | "other";
+type OutputType = "compost" | "bsf_larvae" | "animal_feed" | "biogas";
+const outputLabels: Record<OutputType, string> = {
+  compost: "Kompos", bsf_larvae: "Larva BSF", animal_feed: "Pakan ternak", biogas: "Biogas",
+};
 
-export default function RecoveryDetailPage() {
-  const { id } = useParams();
-  const batch = recoveryBatches.find((candidate) => candidate.id === id);
-  const [step, setStep] = useState<DemoStep>(
-    batch?.status === "processed" ? "processed" : "review",
+function FieldError({ message }: { message?: string }) {
+  return message ? <p className="text-xs text-destructive">{message}</p> : null;
+}
+
+function DetailSkeleton() {
+  return (
+    <div role="status" className="space-y-4">
+      <span className="sr-only">Memuat detail batch...</span>
+      <Skeleton className="h-20 w-full" />
+      <Skeleton className="h-80 w-full" />
+    </div>
   );
+}
+
+function RecoveryDetailContent() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { sessionToken } = useAuth();
+  const batch = useQuery(
+    api.recoveryBatches.get,
+    id && sessionToken ? { batchId: id as Id<"recoveryBatches">, sessionToken } : "skip",
+  );
+  const accept = useMutation(api.recoveryBatches.accept);
+  const decline = useMutation(api.recoveryBatches.decline);
+  const logIntake = useMutation(api.recoveryBatches.logIntake);
+  const logOutcome = useMutation(api.recoveryBatches.logOutcome);
+  const [submitting, setSubmitting] = useState(false);
+  const [mutationError, setMutationError] = useState("");
+  const [note, setNote] = useState("");
+  const [estimatedCollectionAt, setEstimatedCollectionAt] = useState("");
+  const [declineReason, setDeclineReason] = useState<DeclineReason>("capacity");
   const [measured, setMeasured] = useState("");
-  const [outcome, setOutcome] = useState<Outcome>("compost");
+  const [outputType, setOutputType] = useState<OutputType>("compost");
   const [outputWeight, setOutputWeight] = useState("");
   const [residualWeight, setResidualWeight] = useState("");
   const [zeroResidualConfirmed, setZeroResidualConfirmed] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  if (!batch) return <PageHeader title="Batch tidak ditemukan" />;
+  useEffect(() => {
+    const first = batch?.allowedOutputTypes[0];
+    if (first) setOutputType(first);
+  }, [batch?.allowedOutputTypes]);
 
-  function submitIntake(event: FormEvent) {
-    event.preventDefault();
-    if (!measured || Number(measured) <= 0)
-      return toast.error("Masukkan berat intake yang valid.");
-    setStep("outcome");
-    toast.success("Intake demo tervalidasi. Lanjutkan dengan outcome.");
+  if (batch === undefined) return <DetailSkeleton />;
+  const currentBatch = batch;
+
+  async function run(action: () => Promise<unknown>, success: string) {
+    setSubmitting(true);
+    setMutationError("");
+    try {
+      await action();
+      setNote("");
+      toast.success(success);
+      return true;
+    } catch (error) {
+      const message = getErrorMessage(error, "Tindakan gagal. Coba lagi.");
+      setMutationError(message);
+      toast.error(message);
+      return false;
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  function submitOutcome(event: FormEvent) {
+  function validateNote() {
+    const result = recoveryNoteSchema.safeParse(note);
+    if (!result.success) {
+      setErrors({ note: result.error.issues[0]?.message ?? "Catatan tidak valid" });
+      return false;
+    }
+    setErrors({});
+    return true;
+  }
+
+  async function submitAccept(event: FormEvent) {
     event.preventDefault();
-    const total = Number(outputWeight) + Number(residualWeight);
-    if (outputWeight === "" || residualWeight === "") {
-      return toast.error(
-        "Isi berat terolah dan Residu, termasuk bila nilainya 0.",
-      );
-    }
-    if (Number(outputWeight) < 0 || Number(residualWeight) < 0) {
-      return toast.error("Berat outcome tidak boleh negatif.");
-    }
-    if (total > Number(measured)) {
-      return toast.error("Total outcome tidak boleh melebihi berat intake.");
-    }
-    if (Number(residualWeight) === 0 && !zeroResidualConfirmed) {
-      return toast.error("Konfirmasi dahulu karena Residu 0 gram tidak umum.");
-    }
-    setStep("processed");
-    toast.success(
-      "Outcome demo lengkap. PROCESSED akan ditulis bersama metadata berat.",
+    if (!validateNote() || !sessionToken) return;
+    const estimated = estimatedCollectionAt ? new Date(estimatedCollectionAt).getTime() : undefined;
+    await run(
+      () => accept({ batchId: currentBatch._id, sessionToken, estimatedCollectionAt: estimated, note: note || undefined }),
+      "Offer diterima. Catat berat terukur saat batch tiba.",
     );
   }
 
-  const status =
-    step === "review"
-      ? "offered"
-      : step === "declined"
-        ? "pending"
-        : step === "processed"
-          ? "processed"
-          : step === "outcome"
-            ? "collected"
-            : "accepted";
+  async function submitDecline() {
+    if (!validateNote() || !sessionToken) return;
+    if (await run(
+      () => decline({ batchId: currentBatch._id, sessionToken, reason: declineReason, note: note || undefined }),
+      "Offer ditolak dan dikirim kembali ke Circular Routing.",
+    )) navigate("/processor/recovery");
+  }
+
+  async function submitIntake(event: FormEvent) {
+    event.preventDefault();
+    const parsed = intakeSchema.safeParse({ acceptedWeightGrams: Number(measured), note });
+    if (!parsed.success) {
+      setErrors(Object.fromEntries(parsed.error.issues.map((issue) => [String(issue.path[0]), issue.message])));
+      return;
+    }
+    setErrors({});
+    if (!sessionToken) return;
+    await run(
+      () => logIntake({ batchId: currentBatch._id, sessionToken, acceptedWeightGrams: parsed.data.acceptedWeightGrams, note: parsed.data.note || undefined }),
+      "Intake terukur berhasil dicatat.",
+    );
+  }
+
+  async function submitOutcome(event: FormEvent) {
+    event.preventDefault();
+    const parsed = outcomeSchema.safeParse({
+      outputType, outputWeightGrams: Number(outputWeight), residualWeightGrams: Number(residualWeight), note,
+    });
+    const nextErrors = parsed.success
+      ? {}
+      : Object.fromEntries(parsed.error.issues.map((issue) => [String(issue.path[0]), issue.message]));
+    if (outputWeight === "") nextErrors.outputWeightGrams = "Berat output harus diisi";
+    if (residualWeight === "") nextErrors.residualWeightGrams = "Berat residual harus diisi";
+    if (residualWeight === "0" && !zeroResidualConfirmed) nextErrors.residualWeightGrams = "Konfirmasi Residual 0 gram terlebih dahulu";
+    if (currentBatch.acceptedWeightGrams !== undefined && Number(outputWeight) + Number(residualWeight) > currentBatch.acceptedWeightGrams) nextErrors.outputWeightGrams = "Total output dan residual melebihi berat intake";
+    setErrors(nextErrors);
+    if (!parsed.success || Object.keys(nextErrors).length || !sessionToken) return;
+    await run(
+      () => logOutcome({ batchId: currentBatch._id, sessionToken, ...parsed.data, note: parsed.data.note || undefined }),
+      "Outcome tersimpan dan Material Flow Ledger diperbarui.",
+    );
+  }
+
+  const variance = batch.acceptedWeightGrams === undefined ? undefined : batch.acceptedWeightGrams - batch.offeredWeightGrams;
 
   return (
     <>
-      <Button asChild variant="ghost" className="mb-2 -ml-3">
-        <Link to="/processor/recovery">
-          <ArrowLeft />
-          Kembali
-        </Link>
-      </Button>
-      <PageHeader
-        title={batch.itemName}
-        description={`Permintaan dari ${batch.merchantName} · ${batch.requestedAt}`}
-        action={<StatusBadge status={status} />}
-      />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <Button asChild variant="ghost" className="mb-2 -ml-3"><Link to="/processor/recovery"><ArrowLeft />Kembali</Link></Button>
+      <PageHeader title={batch.itemName} description={`Dari ${batch.merchantName}`} action={<StatusBadge status={batch.status} />} />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem]">
         <section className="rounded-xl bg-card p-5 shadow-sm sm:p-6">
-          <h2 className="text-lg font-semibold">Rincian routing</h2>
-          <dl className="mt-5 grid gap-5 sm:grid-cols-3">
-            <div>
-              <dt className="text-xs text-muted-foreground">
-                Berat ditawarkan
-              </dt>
-              <dd className="mt-1 text-xl font-semibold">
-                {formatKg(batch.offeredWeightGrams)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Pickup</dt>
-              <dd className="mt-1 text-sm font-semibold">
-                {batch.pickupWindow}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Jarak</dt>
-              <dd className="mt-1 flex items-center gap-1.5 text-sm font-semibold">
-                <MapPin className="size-4 text-primary" />
-                {batch.distanceKm.toLocaleString("id-ID")} km
-              </dd>
-            </div>
+          <h2 className="text-lg font-semibold">Rincian batch</h2>
+          <dl className="mt-5 grid gap-5 sm:grid-cols-2">
+            <div><dt className="text-xs text-muted-foreground">Berat deklarasi Merchant</dt><dd className="mt-1 text-xl font-semibold">{formatKg(batch.offeredWeightGrams)}</dd></div>
+            <div><dt className="text-xs text-muted-foreground">Material</dt><dd className="mt-1 font-semibold">{batch.materialType.replaceAll("_", " ")}</dd></div>
+            <div><dt className="text-xs text-muted-foreground">Lokasi pickup</dt><dd className="mt-1 text-sm font-semibold"><MapPin className="mr-1 inline size-4" />{batch.pickupAddress}</dd></div>
+            <div><dt className="text-xs text-muted-foreground">Jadwal</dt><dd className="mt-1 text-sm font-semibold">{formatPickupWindow(batch.pickupStartAt, batch.pickupEndAt)}</dd></div>
+            <div><dt className="text-xs text-muted-foreground">Jarak</dt><dd className="mt-1 font-semibold">{batch.distanceMeters === null ? "Belum tersedia" : formatDistance(batch.distanceMeters)}</dd></div>
+            <div><dt className="text-xs text-muted-foreground">Circular Routing</dt><dd className="mt-1 font-semibold">Percobaan {batch.routingAttempts}</dd></div>
           </dl>
-          <div className="mt-6 rounded-xl bg-secondary p-4">
-            <p className="text-sm font-semibold">Urutan wajib</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Terima routing → timbang intake → catat outcome. Setiap langkah
-              tetap terpisah agar material dapat ditelusuri.
-            </p>
-          </div>
+
+          {batch.acceptedWeightGrams !== undefined ? (
+            <div className="mt-6 grid gap-3 rounded-xl bg-secondary p-4 sm:grid-cols-2">
+              <div><p className="text-xs text-muted-foreground">Dinyatakan Merchant</p><p className="font-semibold">{formatKg(batch.offeredWeightGrams)}</p></div>
+              <div><p className="text-xs text-muted-foreground">Terukur di timbangan</p><p className="font-semibold">{formatKg(batch.acceptedWeightGrams)}</p></div>
+              <p className="text-sm text-muted-foreground sm:col-span-2">
+                Variansi {variance! >= 0 ? "+" : ""}{formatKg(variance!)} ({((variance! / batch.offeredWeightGrams) * 100).toLocaleString("id-ID", { maximumFractionDigits: 1 })}%). Variansi material dicatat untuk rekonsiliasi, bukan dianggap kesalahan intake.
+              </p>
+            </div>
+          ) : null}
+
+          {batch.status === "processed" ? (
+            <div className="mt-6 rounded-xl border border-primary/30 bg-primary/5 p-5">
+              <CheckCircle2 className="size-7 text-primary" />
+              <h2 className="mt-3 font-semibold">Outcome final tercatat</h2>
+              <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                <div><dt className="text-muted-foreground">Output usable</dt><dd className="font-semibold">{formatKg(batch.outputWeightGrams ?? 0)}</dd></div>
+                <div><dt className="text-muted-foreground">Residual</dt><dd className="font-semibold">{formatKg(batch.residualWeightGrams ?? 0)}</dd></div>
+                <div><dt className="text-muted-foreground">Process loss</dt><dd className="font-semibold">{formatKg(batch.processLossGrams ?? 0)}</dd></div>
+                <div><dt className="text-muted-foreground">Konversi</dt><dd className="font-semibold">{batch.conversionRatePercent?.toLocaleString("id-ID")} %</dd></div>
+              </dl>
+            </div>
+          ) : null}
         </section>
 
         <aside className="rounded-xl bg-secondary p-5">
-          {step === "review" ? (
-            <div>
+          {mutationError ? <p role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-background p-3 text-sm text-destructive">{mutationError}</p> : null}
+
+          {batch.status === "offered" ? (
+            <form onSubmit={submitAccept}>
               <ClipboardCheck className="size-8 text-primary" />
-              <h2 className="mt-4 font-semibold">Tinjau permintaan</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Pastikan material, jarak, pickup window, dan kapasitas fasilitas
-                sesuai sebelum menerima.
+              <h2 className="mt-3 font-semibold">Respons offer</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Berlaku sampai {batch.offerExpiresAt ? `${formatWibDate(batch.offerExpiresAt)}, ${formatWibTime(batch.offerExpiresAt)} WIB` : "waktu tidak tersedia"}.
               </p>
-              <div className="mt-5 grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setStep("declined");
-                    toast.info("Permintaan ditolak dalam mode demo.");
-                  }}
-                >
-                  <XCircle /> Tolak
-                </Button>
-                <Button
-                  onClick={() => {
-                    setStep("intake");
-                    toast.success("Permintaan diterima dalam mode demo.");
-                  }}
-                >
-                  <CheckCircle2 /> Terima
-                </Button>
+              <div className="mt-4 space-y-2"><Label htmlFor="estimated">Estimasi pengambilan (opsional)</Label><Input id="estimated" type="datetime-local" value={estimatedCollectionAt} onChange={(event) => setEstimatedCollectionAt(event.target.value)} /></div>
+              <div className="mt-4 space-y-2"><Label htmlFor="note">Catatan (opsional)</Label><Textarea id="note" maxLength={500} value={note} onChange={(event) => setNote(event.target.value)} /><FieldError message={errors.note} /></div>
+              <Button type="submit" disabled={submitting} className="mt-4 min-h-11 w-full"><CheckCircle2 />{submitting ? "Menyimpan..." : "Terima offer"}</Button>
+              <div className="mt-5 border-t pt-5">
+                <Label htmlFor="decline-reason">Alasan penolakan</Label>
+                <Select value={declineReason} onValueChange={(value) => setDeclineReason(value as DeclineReason)}>
+                  <SelectTrigger id="decline-reason" className="mt-2"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="capacity">Kapasitas tidak cukup</SelectItem><SelectItem value="material_mismatch">Material tidak sesuai</SelectItem><SelectItem value="distance">Jarak terlalu jauh</SelectItem><SelectItem value="schedule">Jadwal tidak sesuai</SelectItem><SelectItem value="other">Alasan lain</SelectItem></SelectContent>
+                </Select>
+                <Button type="button" variant="outline" disabled={submitting} className="mt-3 min-h-11 w-full" onClick={submitDecline}><XCircle />Tolak dan routing ulang</Button>
               </div>
-            </div>
+            </form>
           ) : null}
 
-          {step === "intake" ? (
+          {batch.status === "accepted" ? (
             <form onSubmit={submitIntake}>
-              <Scale className="size-7 text-primary" />
-              <h2 className="mt-4 font-semibold">Catat intake</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Timbang ulang saat batch tiba di fasilitas.
-              </p>
-              <div className="mt-5 space-y-2">
-                <Label htmlFor="measured-weight">Berat terukur (gram)</Label>
-                <Input
-                  id="measured-weight"
-                  type="number"
-                  min="1"
-                  inputMode="numeric"
-                  value={measured}
-                  onChange={(event) => setMeasured(event.target.value)}
-                  placeholder="Contoh: 7900"
-                />
-              </div>
-              <Button type="submit" className="mt-5 w-full">
-                Validasi intake
-              </Button>
+              <Scale className="size-7 text-primary" /><h2 className="mt-3 font-semibold">Catat intake terukur</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Masukkan berat aktual dari timbangan fisik, bukan estimasi Merchant.</p>
+              <div className="mt-5 space-y-2"><Label htmlFor="measured">Berat dari timbangan (gram)</Label><Input id="measured" type="number" min="1" step="1" inputMode="numeric" value={measured} onChange={(event) => setMeasured(event.target.value)} /><FieldError message={errors.acceptedWeightGrams} /></div>
+              <div className="mt-4 space-y-2"><Label htmlFor="intake-note">Catatan (opsional)</Label><Textarea id="intake-note" maxLength={500} value={note} onChange={(event) => setNote(event.target.value)} /><FieldError message={errors.note} /></div>
+              <Button type="submit" disabled={submitting} className="mt-5 min-h-11 w-full">{submitting ? "Menyimpan..." : "Simpan intake"}</Button>
             </form>
           ) : null}
 
-          {step === "outcome" ? (
+          {batch.status === "collected" ? (
             <form onSubmit={submitOutcome}>
-              <ClipboardCheck className="size-8 text-primary" />
-              <h2 className="mt-4 font-semibold">Catat outcome</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Total outcome tidak boleh melebihi {formatKg(Number(measured))}.
-                Selisih akan dilaporkan sebagai moisture loss atau belum
-                teratribusi.
-              </p>
-              <div className="mt-5 space-y-2">
-                <Label htmlFor="outcome-type">Outcome utama</Label>
-                <select
-                  id="outcome-type"
-                  value={outcome}
-                  onChange={(event) =>
-                    setOutcome(event.target.value as Outcome)
-                  }
-                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="compost">Kompos</option>
-                  <option value="bsf_larvae">Larva BSF</option>
-                  <option value="animal_feed">Pakan ternak</option>
-                  <option value="biogas">Biogas</option>
-                </select>
+              <ClipboardCheck className="size-8 text-primary" /><h2 className="mt-3 font-semibold">Catat outcome</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Output usable, residual, dan process loss tetap dipisahkan.</p>
+              {batch.allowedOutputTypes.length ? <div className="mt-5 space-y-2"><Label>Jenis output</Label><Select value={outputType} onValueChange={(value) => setOutputType(value as OutputType)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{batch.allowedOutputTypes.map((type) => <SelectItem key={type} value={type}>{outputLabels[type]}</SelectItem>)}</SelectContent></Select></div> : <p role="alert" className="mt-5 text-sm text-destructive">Profil fasilitas belum memiliki jenis output yang didukung.</p>}
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                <div className="space-y-2"><Label htmlFor="output">Output usable (gram)</Label><Input id="output" type="number" min="0" step="1" inputMode="numeric" value={outputWeight} onChange={(event) => setOutputWeight(event.target.value)} /><FieldError message={errors.outputWeightGrams} /></div>
+                <div className="space-y-2"><Label htmlFor="residual">Residual (gram)</Label><Input id="residual" type="number" min="0" step="1" inputMode="numeric" value={residualWeight} onChange={(event) => setResidualWeight(event.target.value)} /><FieldError message={errors.residualWeightGrams} /></div>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="output-weight">Terolah (gram)</Label>
-                  <Input
-                    id="output-weight"
-                    type="number"
-                    min="0"
-                    inputMode="numeric"
-                    value={outputWeight}
-                    onChange={(event) => setOutputWeight(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="residual-weight">Residu (gram)</Label>
-                  <Input
-                    id="residual-weight"
-                    type="number"
-                    min="0"
-                    inputMode="numeric"
-                    value={residualWeight}
-                    onChange={(event) => setResidualWeight(event.target.value)}
-                  />
-                </div>
-              </div>
-              {outputWeight !== "" && residualWeight !== "" ? (
-                <p className="mt-3 rounded-lg bg-background/70 p-3 text-xs text-muted-foreground">
-                  Selisih proses:{" "}
-                  {formatKg(
-                    Math.max(
-                      0,
-                      Number(measured) -
-                        Number(outputWeight) -
-                        Number(residualWeight),
-                    ),
-                  )}
-                </p>
-              ) : null}
-              {Number(residualWeight) === 0 && residualWeight !== "" ? (
-                <label className="mt-3 flex min-h-11 items-center gap-3 rounded-lg border bg-background p-3 text-xs leading-relaxed">
-                  <input
-                    type="checkbox"
-                    checked={zeroResidualConfirmed}
-                    onChange={(event) =>
-                      setZeroResidualConfirmed(event.target.checked)
-                    }
-                    className="size-4 accent-primary"
-                  />
-                  Saya memastikan hasil penimbangan menunjukkan Residu 0 gram.
-                </label>
-              ) : null}
-              <Button type="submit" className="mt-5 w-full">
-                Simpan outcome demo
-              </Button>
+              {outputWeight !== "" && residualWeight !== "" && batch.acceptedWeightGrams !== undefined ? <p className="mt-3 rounded-lg bg-background p-3 text-xs text-muted-foreground">Process loss: {formatKg(Math.max(0, batch.acceptedWeightGrams - Number(outputWeight) - Number(residualWeight)))}</p> : null}
+              {residualWeight === "0" ? <label className="mt-3 flex min-h-11 items-center gap-3 rounded-lg border bg-background p-3 text-xs"><input type="checkbox" checked={zeroResidualConfirmed} onChange={(event) => setZeroResidualConfirmed(event.target.checked)} className="size-4 accent-primary" />Saya memastikan timbangan menunjukkan Residual 0 gram.</label> : null}
+              <div className="mt-4 space-y-2"><Label htmlFor="outcome-note">Catatan (opsional)</Label><Textarea id="outcome-note" maxLength={500} value={note} onChange={(event) => setNote(event.target.value)} /><FieldError message={errors.note} /></div>
+              <Button type="submit" disabled={submitting || !batch.allowedOutputTypes.length} className="mt-5 min-h-11 w-full">{submitting ? "Menyimpan..." : "Simpan outcome final"}</Button>
             </form>
           ) : null}
 
-          {step === "processed" ? (
-            <div>
-              <CheckCircle2 className="size-8 text-primary" />
-              <h2 className="mt-4 font-semibold">Batch sudah terolah</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Outcome demo: {outcomeLabels[outcome]}. Event PROCESSED membawa
-                berat terolah dan Residu di metadata.
-              </p>
-              <Button
-                variant="outline"
-                className="mt-5 w-full"
-                onClick={() =>
-                  toast.info("Detail ledger akan aktif setelah M1 dan M5.")
-                }
-              >
-                Lihat jejak material
-              </Button>
-            </div>
-          ) : null}
-
-          {step === "declined" ? (
-            <div>
-              <XCircle className="size-8 text-destructive" />
-              <h2 className="mt-4 font-semibold">Penawaran dikembalikan</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Batch kembali ke status menunggu agar Circular Routing dapat
-                menawarkan ke processor berikutnya.
-              </p>
-              <Button
-                variant="outline"
-                className="mt-5 w-full"
-                onClick={() => setStep("review")}
-              >
-                Ulangi demo
-              </Button>
-            </div>
-          ) : null}
+          {batch.status === "processed" ? <div><CheckCircle2 className="size-8 text-primary" /><h2 className="mt-3 font-semibold">Batch selesai diproses</h2><p className="mt-1 text-sm text-muted-foreground">Catatan terminal bersifat immutable. Koreksi memerlukan event kompensasi.</p></div> : null}
         </aside>
       </div>
     </>
   );
+}
+
+export default function RecoveryDetailPage() {
+  return <QueryErrorBoundary title="Detail batch tidak dapat dimuat"><RecoveryDetailContent /></QueryErrorBoundary>;
 }
