@@ -210,13 +210,17 @@ export default defineSchema({
     .index('by_occurred_at', ['occurredAt'])
     .index('by_actor', ['actorId', 'occurredAt'])
     .index('by_event_type', ['eventType', 'occurredAt'])
-    .index('by_order', ['orderId']),
+    .index('by_order', ['orderId'])
+    .index('by_recovery_batch', ['recoveryBatchId']),
 
   orders: defineTable({
     userId: v.id('users'),
     surplusItemId: v.id('surplusItems'),
     quantity: v.number(),
     totalPrice: v.number(),
+    // ponytail: optional so pre-M6 orders remain readable; new reservations set it.
+    // Backfill legacy paid orders before making Consumer savings universally available.
+    originalPriceSnapshot: v.optional(v.number()),
     rescuedWeightGrams: v.number(),
     pickupCode: v.string(),
     status: orderStatus,
