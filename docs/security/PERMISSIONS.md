@@ -59,7 +59,7 @@ apply its server-side guard before accessing data.
 | `merchants.getByOwner` | Returns any merchant profile by owner id | 🟠 Moderate |
 | `recoveryBatches.listByStatus` | Returns operational batch data to anyone | 🟠 Moderate |
 | `surplusItems.listByStatus` | Public browse | 🟢 Acceptable for `active` only |
-| `impact.getPlaceholderSummary` | Aggregate, non-identifying | 🟢 Acceptable |
+| `impact.getPlatformSummary` | Requires the Admin role; returns platform aggregate only | 🟢 Acceptable |
 
 The detailed matrix below is the target capability model. Current functions use
 the implemented guard helpers, but every new function must be checked against

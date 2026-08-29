@@ -137,7 +137,7 @@ The complete current/future boundary is in
 | ID | Feature | PRD refs | Priority | Status |
 |---|---|---|---|---|
 | F-80 | Material Flow Ledger write path | IMP-01 | M | 📋 |
-| F-81 | Impact aggregation engine | IMP-02 | M | 📋 |
+| F-81 | Impact aggregation engine | IMP-02 | M | ✅ |
 | F-82 | Versioned CO2e methodology | IMP-04 | S | 📋 |
 | F-83 | Weight conservation integrity check | IMP-01 | S | 📋 |
 
@@ -1345,9 +1345,9 @@ The processor logs output type (`compost`, `bsf_larvae`, `biogas`, `animal_feed`
 - [x] GIVEN a `collected` batch WHEN outcome is logged THEN status becomes `processed` and both output and residual weights are stored
 - [x] GIVEN outcome WHEN it commits THEN a terminal `PROCESSED` event is written with `outputWeightGrams` and `residualWeightGrams` in metadata
 - [x] GIVEN `output + residual > acceptedWeight` WHEN submitted THEN validation rejects — matter is not created
-- [x] GIVEN `output + residual < acceptedWeight` WHEN submitted THEN it is accepted with a moisture-loss note and the gap is reported as unattributed
+- [x] GIVEN `output + residual < acceptedWeight` WHEN submitted THEN it is accepted and the gap is returned as explicit `processLossGrams`
 - [x] GIVEN `residualWeightGrams = 0` WHEN submitted THEN it is allowed but requires explicit confirmation, since zero residual is unusual
-- [x] GIVEN outcome WHEN it commits THEN merchant and platform dashboards update live
+- [ ] GIVEN outcome WHEN it commits THEN Merchant and Admin impact dashboards update live (M6-02/M6-03)
 - [x] GIVEN a `processed` batch WHEN outcome logging is attempted again THEN it is rejected — terminal states are final
 
 **Ledger events emitted** — `PROCESSED` (terminal; metadata splits recovered vs residual)

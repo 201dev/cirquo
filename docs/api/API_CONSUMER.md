@@ -9,7 +9,7 @@
 | **Payments** | Midtrans Snap — Sandbox |
 | **Maps** | Mapbox GL JS (client rendering; distance computed server-side by Haversine) |
 | **Status legend** | ✅ implemented · 📋 planned |
-| **Implemented today** | Discovery, reservation, order detail/list queries, and the Midtrans transaction action are implemented. The remaining lifecycle, impact, notification, and dispute functions are planned. |
+| **Implemented today** | Discovery, reservation, pickup/order queries, Midtrans transaction action, and the M6-01 Consumer impact query are implemented. Notifications and disputes remain planned. |
 | **Conventions** | [`API.md`](./API.md) §7 units · §9 errors · §10 reactivity |
 
 ---
@@ -28,6 +28,7 @@
 | `orders.listMine` | query | Consumer | `{ sessionToken? }`; returns the authenticated Consumer's orders. |
 | `orders.get` | query | Consumer | `{ orderId, sessionToken? }`; returns only the owner's order and reveals the pickup code only after payment. |
 | `payments.createTransaction` | action | Consumer | `{ orderId, sessionToken? }`; checks ownership/reserved status, calls Midtrans Sandbox, and stores pending payment context. |
+| `impact.getConsumerSummary` | query | Consumer | `{ sessionToken? }`; resolves owned orders then reduces only their `RESCUED` events. See [API_IMPACT.md](API_IMPACT.md). |
 
 ---
 

@@ -65,6 +65,7 @@ Backend function contracts per role.
 - [API_MERCHANT.md](api/API_MERCHANT.md) — Merchant-facing queries/mutations
 - [API_PROCESSOR.md](api/API_PROCESSOR.md) — Processor-facing queries/mutations
 - [API_ADMIN.md](api/API_ADMIN.md) — Admin-facing queries/mutations
+- [API_IMPACT.md](api/API_IMPACT.md) — M6-01 impact query and reconciliation contract
 
 ### 🏗️ Architecture
 
@@ -136,7 +137,13 @@ Version history, contribution workflow.
 
 ## For Developers
 
-**Current implementation status (2026-08-29):** source includes M1–M5: authentication, Rescue Item lifecycle, discovery/reservation/payment holds, pickup/recovery/routing, dan alur Processor sampai outcome beserta dashboard operasional dan profil kapasitas. Midtrans, browser, dan mobile end-to-end UAT tetap diperlukan; M6 ledger-derived dashboards lintas peran serta M7 Admin operations masih target work. See [IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md) before representing a feature as complete.
+**Current implementation status (2026-08-29):** source includes M1–M5 and
+M6-01: authentication, Rescue Item lifecycle, discovery/reservation/payment
+holds, pickup/recovery/routing, Processor outcome, serta agregasi impact murni
+dan scoped. Midtrans, browser, dan mobile end-to-end UAT tetap diperlukan;
+rendering dashboard M6-02/M6-03 serta M7 Admin operations masih target work.
+See [IMPLEMENTATION_STATUS.md](project/IMPLEMENTATION_STATUS.md) before
+representing a feature as complete.
 
 **Next priorities:**
 1. Jalankan UAT deployment untuk M3–M5

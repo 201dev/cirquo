@@ -18,6 +18,7 @@ dalam gram utuh; semua waktu adalah epoch-ms UTC.
 | `recoveryBatches.decline` | mutation | Processor terverifikasi yang ditugaskan | PRC-02 | ✅ |
 | `recoveryBatches.logIntake` | mutation | Processor terverifikasi yang ditugaskan | PRC-03 | ✅ |
 | `recoveryBatches.logOutcome` | mutation | Processor terverifikasi yang ditugaskan | PRC-04 | ✅ |
+| `impact.getProcessorSummary` | query | Processor dengan profil | PRC-05 | ✅ |
 | `processors.getMine` | query | Processor pemilik | PRC-06 | ✅ |
 | `processors.updateProfile` | mutation | Processor pemilik | PRC-06 | ✅ |
 
@@ -50,6 +51,10 @@ Metrik output, residual, intake, dan recovery rate diturunkan dari Material
 Flow Ledger milik Processor. Status antrean dan komitmen kapasitas berasal dari
 batch yang ditugaskan kepadanya. Offer yang belum diterima tidak mengunci
 kapasitas.
+
+`impact.getProcessorSummary()` adalah ringkasan impact M6-01 untuk recovery
+batch yang ditugaskan ke Processor. Lihat [API_IMPACT.md](API_IMPACT.md) untuk
+kontrak ringkasan bersama dan penanganan integritas metadata.
 
 ## Mutasi recovery
 

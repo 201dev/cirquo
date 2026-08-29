@@ -18,10 +18,10 @@ The Cirquo backend has exactly one non-negotiable responsibility: **every kilogr
 This document specifies how Convex functions are organised, when to use each function type, how transactions guarantee that a quantity decrement and a **Material Flow Ledger** write can never diverge, how authorisation is enforced, how pure logic is kept out of the database layer, and how external systems (Midtrans, Mapbox) are integrated safely.
 
 **Current state — 2026-08-29.** The backend now has a 10-table schema, session
-authentication and guards, Material Flow Ledger writes, Merchant Rescue Item
-lifecycle mutations, Consumer discovery/reservation, and a Midtrans Sandbox
-`httpAction`. Sections marked 📋 in this document remain target architecture;
-verify `convex/` before treating them as implemented.
+authentication and guards, Material Flow Ledger writes, Merchant and Consumer
+flows, M4 pickup/recovery/routing, M5 Processor intake/outcome, and M6-01
+role-scoped aggregation. Sections marked 📋 in this document remain target
+architecture; verify `convex/` before treating them as implemented.
 
 ---
 
@@ -33,17 +33,17 @@ convex/
 ├── auth.ts               ✅ register, login, logout, currentUser
 ├── users.ts              ✅ internal email lookup
 ├── merchants.ts          ✅ profile create + owner lookup
-├── processors.ts         ✅ profile create; 📋 recovery operations
+├── processors.ts         ✅ Processor profile create/read/update
 ├── surplusItems.ts       ✅ create, publish, update, cancel, listMine
-├── orders.ts             ✅ reserve, expireHold, listMine, get; 📋 pickup/cancel
+├── orders.ts             ✅ reserve, payment hold, pickup, listMine, get
 ├── payments.ts           🧪 Snap transaction + pending payment context
-├── recoveryBatches.ts    ✅ internal status lookup; 📋 route, accept, decline, intake, outcome
+├── recoveryBatches.ts    ✅ route, accept/decline, measured intake, outcome
 ├── ledger.ts             📋 read-only ledger queries (append-only; no public writes)
-├── impact.ts             ✅ getPlaceholderSummary  |  📋 real ledger-derived summaries
+├── impact.ts             ✅ role-scoped ledger-derived summaries
 ├── notifications.ts      📋 listMine, markRead, internal create/fanOut
 ├── disputes.ts           📋 open, resolve
 ├── admin.ts              📋 verification queue, moderation, overrides, integrity report
-├── crons.ts              📋 all scheduled job registrations
+├── crons.ts              ✅ M4 payment-hold, expiry, and routing registrations
 ├── http.ts               🧪 Midtrans webhook httpAction only
 └── lib/
     ├── guards.ts         ✅ requireAuth, requireRole, requireOwnership
@@ -65,7 +65,7 @@ convex/
 | `payments.ts` | Midtrans Snap token creation (action) and pending payment context. | Direct DB writes from the action | 🧪 M3 UAT |
 | `recoveryBatches.ts` | Circular Routing lifecycle: create, offer, accept, decline, intake, outcome. | Ranking algorithm (lives in `src/lib/routing.ts`) | ✅ partial |
 | `ledger.ts` | Read-only ledger queries: per item, per order, per actor, per event type. | Any public write function | 📋 |
-| `impact.ts` | Aggregation queries built on `summariseLedger` and `estimateCo2e`. | Its own arithmetic (delegates to `src/lib/impact.ts`) | ✅ placeholder |
+| `impact.ts` | Role-scoped aggregation queries built on `summariseLedger` and `estimateCo2e`. | Its own arithmetic (delegates to `src/lib/impact.ts`) | ✅ M6-01 source |
 | `notifications.ts` | User notification reads and internal creation/fan-out. | Business state transitions | 📋 |
 | `disputes.ts` | Dispute opening and resolution. | Refund execution (delegates to payments) | 📋 |
 | `admin.ts` | Verification queue, moderation, admin overrides, integrity reports. | Anything callable without `requireRole(ctx, "admin")` | 📋 |
@@ -556,7 +556,7 @@ const weight = order.rescuedWeightGrams;  // frozen at reservation
 | `ROUTING_FAILED` | `recoveryBatches.sweepOfferTtl` | `0` | **Yes** |
 | `INTAKE_ACCEPTED` | `recoveryBatches.logIntake` | `+ acceptedWeightGrams` | No |
 | `INTAKE_DECLINED` | `recoveryBatches.decline`, TTL sweep | `0` | No |
-| `PROCESSED` | `recoveryBatches.logOutcome` | `+ outputWeightGrams` | **Yes** |
+| `PROCESSED` | `recoveryBatches.logOutcome` | `- acceptedWeightGrams` | **Yes** |
 | `MODERATED` | `admin.moderateItem` | `0` | **Yes** |
 
 Full semantics: [`../impact/MATERIAL_LEDGER.md`](../impact/MATERIAL_LEDGER.md).
@@ -856,7 +856,7 @@ The mutation is now orchestration around one function call: load, compute, persi
 | `src/lib/pricing.ts` | `suggestRescuePrice` | price-tick cron, merchant preview UI | 📋 |
 | `src/lib/routing.ts` | `rankEligibleProcessors` | routing engine cron, admin explainer | 📋 |
 | `src/lib/ranking.ts` | `rankListings` | `surplusItems.listNearby`, Explore sort | 📋 |
-| `src/lib/impact.ts` | `summariseLedger`, `estimateCo2e` | impact queries, impact UI | 📋 |
+| `src/lib/impact.ts` | `summariseLedger`, `estimateCo2e` | impact queries, impact UI | ✅ M6-01 source |
 | `src/lib/geo.ts` | `haversineMeters` | nearby filtering, routing eligibility, distance display | 📋 |
 
 **Justification, restated for judges.** Unit-testable without a Convex runtime. Portable if the backend migrates. Explainable in isolation — a reader can understand Dynamic Rescue Pricing from `suggestRescuePrice` without knowing what Convex is. And critically, **the server and the client compute identical numbers**, so a merchant's price preview can never disagree with the price the cron actually sets.

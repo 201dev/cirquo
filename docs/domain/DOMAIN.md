@@ -261,6 +261,7 @@ Business rules that hold regardless of implementation. These are the assertions 
 | OR-2 | Reservation decrements `remainingQuantity` immediately, before payment — this prevents overselling during checkout |
 | OR-3 | An unpaid reservation expires after a fixed hold period and returns quantity to stock |
 | OR-4 | `rescuedWeightGrams` is snapshotted at reservation and never recalculated |
+| OR-4a | `originalPriceSnapshot` is captured at reservation; Consumer savings never reads a mutable Rescue Item price |
 | OR-5 | Pickup requires code verification by the Merchant |
 | OR-6 | Pickup cannot be confirmed outside the pickup window without an Admin override |
 | OR-7 | Cancellation is permitted only within the grace period and only before pickup |
