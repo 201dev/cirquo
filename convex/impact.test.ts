@@ -32,7 +32,7 @@ test('ringkasan impact membatasi bukti ledger ke pemilik peran yang benar', asyn
     const [merchantId, otherMerchantId, processorId] = await Promise.all([
       ctx.db.insert('merchants', { ownerId: users[1]!, name: 'Merchant', address: 'Semarang', verificationStatus: 'verified', createdAt: now }),
       ctx.db.insert('merchants', { ownerId: users[4]!, name: 'Merchant Lain', address: 'Semarang', verificationStatus: 'verified', createdAt: now }),
-      ctx.db.insert('processors', { ownerId: users[2]!, name: 'Processor', verificationStatus: 'verified', createdAt: now }),
+      ctx.db.insert('processors', { ownerId: users[2]!, name: 'Processor', dailyCapacityGrams: 1_000, verificationStatus: 'verified', createdAt: now }),
     ])
     const item = {
       name: 'Roti impact', originalPrice: 12_000, floorPrice: 8_000, currentPrice: 8_000,
@@ -70,7 +70,7 @@ test('ringkasan impact membatasi bukti ledger ke pemilik peran yang benar', asyn
       event({ surplusItemId: itemId, orderId, eventType: 'RESCUED', weightDeltaGrams: -200, actorId: users[1], actorRole: 'merchant', metadata: { quantity: 1, totalPrice: 8_000, originalPriceSnapshot: 12_000 } }),
       event({ surplusItemId: itemId, recoveryBatchId: batchId, eventType: 'EXPIRED', weightDeltaGrams: -800 }),
       event({ surplusItemId: itemId, recoveryBatchId: batchId, eventType: 'INTAKE_ACCEPTED', weightDeltaGrams: 800, actorId: users[2], actorRole: 'processor', metadata: { declaredWeightGrams: 800 } }),
-      event({ surplusItemId: itemId, recoveryBatchId: batchId, eventType: 'PROCESSED', weightDeltaGrams: -800, actorId: users[2], actorRole: 'processor', metadata: { outputWeightGrams: 600, residualWeightGrams: 100 } }),
+      event({ surplusItemId: itemId, recoveryBatchId: batchId, eventType: 'PROCESSED', weightDeltaGrams: -800, actorId: users[2], actorRole: 'processor', metadata: { outputType: 'compost', outputWeightGrams: 600, residualWeightGrams: 100 } }),
       event({ surplusItemId: otherItemId, eventType: 'LISTED', weightDeltaGrams: 500, actorId: users[4], actorRole: 'merchant' }),
     ])
     return { itemId, otherItemId }
@@ -89,9 +89,17 @@ test('ringkasan impact membatasi bukti ledger ke pemilik peran yang benar', asyn
   })
   expect(await t.query(api.impact.getProcessorSummary, { sessionToken: tokens.processor })).toMatchObject({
     listedGrams: 0, recoveredGrams: 600, residualGrams: 100, processLossGrams: 100,
+    recoveredByOutputType: { compost: 600, bsf_larvae: 0, animal_feed: 0, biogas: 0 },
+    processor: {
+      hasBatches: true, offeredBatchCount: 0, acceptedBatchCount: 0, collectedBatchCount: 0, processedBatchCount: 1,
+      dailyCapacityGrams: 1_000, todayIntakeGrams: 800, capacityUtilizationPercent: 80,
+      totalMeasuredIntakeGrams: 800, residualRatePercent: 12.5, recoveryEfficiencyPercent: 75,
+    },
   })
   expect(await t.query(api.impact.getPlatformSummary, { sessionToken: tokens.admin })).toMatchObject({
     listedGrams: 1_500, rescuedGrams: 200, recoveredGrams: 600, residualGrams: 100,
+    platform: { activeMerchantCount: 2, activeConsumerCount: 1, activeProcessorCount: 1, unroutableBatchCount: 0, circularityRequiresReview: false },
   })
   await expect(t.query(api.impact.getConsumerSummary, { sessionToken: tokens.merchant })).rejects.toThrow('FORBIDDEN')
+  await expect(t.query(api.impact.getPlatformSummary, { sessionToken: tokens.consumer })).rejects.toThrow('FORBIDDEN')
 })
