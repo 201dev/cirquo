@@ -17,11 +17,12 @@ const statusLabels: Record<string, string> = {
   accepted: "Diterima",
   collected: "Sudah diambil",
   processed: "Terolah",
-  unroutable: "Tidak ter-rute",
+  unroutable: "Routing gagal",
   LISTED: "Tercatat",
   RESERVED: "Direservasi",
   RESCUED: "Terselamatkan",
   ROUTED: "Circular Routing",
+  ROUTING_FAILED: "Routing gagal",
   PROCESSED: "Terolah",
 };
 

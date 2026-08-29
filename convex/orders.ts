@@ -211,6 +211,9 @@ export const expireHold = internalMutation({
 
     const item = await ctx.db.get(order.surplusItemId)
     if (!item) return
+    // M4 only moves items to recovery after all reserved holds were released.
+    // Keep a stale M3 timer from reviving an already-recovered item.
+    if (item.status === 'recovery_pending') return
 
     await ctx.db.patch(order._id, {
       status: 'expired'
@@ -248,6 +251,12 @@ export const listMine = query({
 
         const merchant = await ctx.db.get(item.merchantId)
         if (!merchant) return null
+        const payment = order.status === 'expired'
+          ? await ctx.db
+            .query('payments')
+            .withIndex('by_order', (q) => q.eq('orderId', order._id))
+            .first()
+          : null
 
         // Timestamps stay raw epoch ms UTC; WIB is applied by the client at
         // render time. Formatting here would use the UTC server clock.
@@ -266,6 +275,7 @@ export const listMine = query({
           paymentHoldExpiresAt: order.paymentHoldExpiresAt,
           createdAt: order.createdAt,
           pickedUpAt: order.pickedUpAt,
+          refundStatus: payment?.refundStatus,
           // Explicitly NOT returning pickupCode here
         }
       })
@@ -379,6 +389,12 @@ export const get = query({
 
     const merchant = await ctx.db.get(item.merchantId)
     if (!merchant) return null
+    const payment = order.status === 'expired'
+      ? await ctx.db
+        .query('payments')
+        .withIndex('by_order', (q) => q.eq('orderId', order._id))
+        .first()
+      : null
 
     return {
       _id: order._id,
@@ -396,6 +412,7 @@ export const get = query({
       paymentHoldExpiresAt: order.paymentHoldExpiresAt,
       createdAt: order.createdAt,
       pickedUpAt: order.pickedUpAt,
+      refundStatus: payment?.refundStatus,
       // Only reveal pickupCode if paid
       pickupCode: order.status === 'paid' ? order.pickupCode : undefined,
     }

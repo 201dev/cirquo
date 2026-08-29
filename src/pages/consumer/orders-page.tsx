@@ -103,6 +103,16 @@ function OrderCard({ order }: { order: ConsumerOrderSummary }) {
         </p>
       )}
 
+      {order.status === "expired" && order.refundStatus && (
+        <p role="status" className="mt-3 rounded-lg bg-in-progress/10 px-3 py-2 text-xs">
+          Pickup tidak dilakukan · {order.refundStatus === "succeeded"
+            ? "refund Sandbox telah diproses."
+            : order.refundStatus === "failed"
+              ? "refund Sandbox perlu ditindaklanjuti."
+              : "refund Sandbox sedang diproses."}
+        </p>
+      )}
+
       <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
         <p className="font-semibold tabular-nums">
           {formatIdr(order.totalPrice)}

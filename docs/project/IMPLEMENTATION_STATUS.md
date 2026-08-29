@@ -58,7 +58,7 @@ Semua status di bawah adalah **source-level** kecuali dinyatakan lain.
 
 | Milestone | Status | Yang masih harus dibangun |
 |---|---|---|
-| M4 | 📋 Target | Konfirmasi pickup Merchant, `RESCUED` di transaksi yang sama, expiry Rescue Item berulang, Circular Routing, recovery batch creation, dan refund paid no-show. |
+| M4 | 🧪 UAT deployment diperlukan | Konfirmasi pickup, expiry/recovery batch, refund Sandbox no-show, Circular Routing, dan UI status reaktif Merchant/Consumer tersedia di source. Kontrak M5 ada di `M5_HANDOFF.md`; UAT browser/Midtrans masih diperlukan. |
 | M5 | 📋 Target | Queue Processor, accept/decline, intake terukur, dan outcome logging. Profil Processor sudah ada, tetapi alur pemulihan belum ada. |
 | M6 | 📋 Target | Agregasi impact dari ledger dan semua dashboard tanpa angka mock. `impact.getPlaceholderSummary` bukan kontrak dashboard produksi. |
 | M7 | 📋 Target | Operasi Admin, ledger inspector, moderasi, dan notifikasi. Route halaman bukan bukti mutasi/query Admin telah tersedia. |
@@ -66,7 +66,7 @@ Semua status di bawah adalah **source-level** kecuali dinyatakan lain.
 
 ---
 
-## Kontrak yang diteruskan ke M4
+## Kontrak source M4
 
 1. Order `paid` menyimpan snapshot `totalPrice`, `quantity`, dan
    `rescuedWeightGrams`; M4 wajib memakai `-order.rescuedWeightGrams`, bukan
@@ -76,15 +76,18 @@ Semua status di bawah adalah **source-level** kecuali dinyatakan lain.
    pemilik ketika `status === 'paid'`.
 3. Merchant harus memverifikasi code yang diberikan Consumer. Jangan membuat
    query Merchant yang mengirimkan expected pickup code sebelum verifikasi.
-4. `orders.confirmPickup` harus menjadi mutasi terjaga yang mengubah order ke
+4. `orders.confirmPickup` adalah mutasi terjaga yang mengubah order ke
    `picked_up` dan menulis `RESCUED` dengan delta gram negatif dalam transaksi
    Convex yang sama.
-5. Expiry payment hold sudah dimiliki M3: order menjadi `expired`, stok kembali,
-   dan eventnya `CANCELLED` dengan `weightDeltaGrams: 0`. M4 tidak boleh
-   menduplikasi scheduler atau event ini.
-6. Pickup code saat ini berupa enam digit acak. Sebelum M4 memakai index
-   `by_pickup_code` untuk verifikasi, generator harus menjamin tidak ada duplikasi
-   untuk order aktif dan konfirmasi harus membatasi percobaan gagal.
+5. Expiry payment hold tetap dimiliki M3: order menjadi `expired`, stok kembali,
+   dan eventnya `CANCELLED` dengan `weightDeltaGrams: 0`. M4 tidak menduplikasi
+   scheduler atau event ini.
+6. Expiry pickup M4 membuat satu recovery batch dan satu `EXPIRED` dengan delta
+   negatif; `ROUTED` dan `ROUTING_FAILED` berikutnya adalah audit state batch
+   bernilai 0 g agar berat immutable tidak terdebit dua kali.
+7. Circular Routing hanya menawarkan satu Processor terverifikasi pada satu waktu.
+   Kandidat diurutkan secara deterministik: jarak, kapasitas tersisa, lalu ID.
+   Tiga offer yang kedaluwarsa menjadikan batch `unroutable`.
 
 ---
 

@@ -543,3 +543,225 @@ test("merchant mengonfirmasi pickup sekali tanpa menerima kode dari antrean", as
     overrideReason: "Konfirmasi serah terima terlambat tercatat.",
   });
 });
+
+test("expiry pickup membuat satu batch, menjaga hold M3, dan aman saat refund gagal", async () => {
+  const t = convexTest(schema, modules);
+  const now = Date.now();
+  const adminToken = "x".repeat(43);
+  const consumerToken = "y".repeat(43);
+
+  const ids = await t.run(async (ctx) => {
+    const adminId = await ctx.db.insert("users", {
+      name: "Admin Expiry",
+      email: "admin.expiry.m402@example.com",
+      passwordHash: "test-password-hash",
+      role: "admin",
+      status: "active",
+      createdAt: now,
+    });
+    const consumerId = await ctx.db.insert("users", {
+      name: "Consumer No Show",
+      email: "consumer.expiry.m402@example.com",
+      passwordHash: "test-password-hash",
+      role: "consumer",
+      status: "active",
+      createdAt: now,
+    });
+    const merchantOwnerId = await ctx.db.insert("users", {
+      name: "Merchant Expiry",
+      email: "merchant.expiry.m402@example.com",
+      passwordHash: "test-password-hash",
+      role: "merchant",
+      status: "active",
+      createdAt: now,
+    });
+    const merchantId = await ctx.db.insert("merchants", {
+      ownerId: merchantOwnerId,
+      name: "Dapur Expiry",
+      address: "Jl. Expiry, Semarang",
+      verificationStatus: "verified",
+      createdAt: now,
+    });
+    await Promise.all([
+      ctx.db.insert("sessions", {
+        userId: adminId,
+        tokenHash: await hashSessionToken(adminToken),
+        expiresAt: now + HOUR_MS,
+        createdAt: now,
+      }),
+      ctx.db.insert("sessions", {
+        userId: consumerId,
+        tokenHash: await hashSessionToken(consumerToken),
+        expiresAt: now + HOUR_MS,
+        createdAt: now,
+      }),
+    ]);
+
+    const item = {
+      merchantId,
+      name: "Rescue Item Expired",
+      originalPrice: 20_000,
+      floorPrice: 8_000,
+      currentPrice: 12_000,
+      pickupStartAt: now - 2 * HOUR_MS,
+      pickupEndAt: now - HOUR_MS,
+      materialType: "bakery" as const,
+      dietaryTags: [],
+      processingOnly: false,
+      publishedAt: now - 3 * HOUR_MS,
+      createdAt: now,
+    };
+    const expiredItemId = await ctx.db.insert("surplusItems", {
+      ...item,
+      initialQuantity: 3,
+      remainingQuantity: 2,
+      weightPerItemGrams: 500,
+      status: "active",
+    });
+    const heldItemId = await ctx.db.insert("surplusItems", {
+      ...item,
+      name: "Rescue Item Hold",
+      initialQuantity: 1,
+      remainingQuantity: 0,
+      weightPerItemGrams: 300,
+      status: "sold_out",
+    });
+    const paidOrderId = await ctx.db.insert("orders", {
+      userId: consumerId,
+      surplusItemId: expiredItemId,
+      quantity: 1,
+      totalPrice: 12_000,
+      // Deliberately differs from the live item weight: expiry must use this snapshot.
+      rescuedWeightGrams: 450,
+      pickupCode: "111111",
+      status: "paid",
+      createdAt: now - 2 * HOUR_MS,
+    });
+    const heldOrderId = await ctx.db.insert("orders", {
+      userId: consumerId,
+      surplusItemId: heldItemId,
+      quantity: 1,
+      totalPrice: 12_000,
+      rescuedWeightGrams: 300,
+      pickupCode: "222222",
+      status: "reserved",
+      paymentHoldExpiresAt: now - 1,
+      createdAt: now - HOUR_MS,
+    });
+    await ctx.db.insert("payments", {
+      orderId: paidOrderId,
+      provider: "midtrans",
+      amount: 12_000,
+      providerStatus: "settlement",
+      createdAt: now - 2 * HOUR_MS,
+      updatedAt: now - 2 * HOUR_MS,
+    });
+    return { consumerId, expiredItemId, heldItemId, paidOrderId, heldOrderId };
+  });
+
+  await expect(
+    t.mutation(api.surplusItems.triggerPickupWindowExpiry, { sessionToken: consumerToken }),
+  ).rejects.toThrow("FORBIDDEN");
+  expect(
+    await t.mutation(api.surplusItems.triggerPickupWindowExpiry, { sessionToken: adminToken }),
+  ).toMatchObject({ batchesCreated: 1, deferredHolds: 1, noShowsExpired: 1 });
+  await t.mutation(internal.surplusItems.expirePickupWindows, {});
+
+  expect(await t.run((ctx) => ctx.db.get(ids.expiredItemId))).toMatchObject({
+    status: "recovery_pending",
+    remainingQuantity: 2,
+  });
+  expect(await t.run((ctx) => ctx.db.get(ids.paidOrderId))).toMatchObject({ status: "expired" });
+  const batch = await t.run((ctx) =>
+    ctx.db.query("recoveryBatches").withIndex("by_item", (q) =>
+      q.eq("surplusItemId", ids.expiredItemId),
+    ).unique(),
+  );
+  expect(batch).toMatchObject({ offeredWeightGrams: 1_450, status: "pending" });
+  const expiryEvents = await t.run((ctx) =>
+    ctx.db.query("materialFlowLedger").withIndex("by_rescue_item", (q) =>
+      q.eq("surplusItemId", ids.expiredItemId),
+    ).collect(),
+  );
+  expect(expiryEvents.filter((event) => event.eventType === "EXPIRED")).toMatchObject([
+    { recoveryBatchId: batch!._id, weightDeltaGrams: -1_450 },
+  ]);
+  expect(expiryEvents.filter((event) => event.orderId === ids.paidOrderId)).toMatchObject([
+    { eventType: "CANCELLED", weightDeltaGrams: 0 },
+  ]);
+
+  const paymentBeforeFailure = await t.run((ctx) =>
+    ctx.db.query("payments").withIndex("by_order", (q) => q.eq("orderId", ids.paidOrderId)).unique(),
+  );
+  expect(paymentBeforeFailure).toMatchObject({ refundStatus: "pending" });
+  // This is the mutation called by the action when Midtrans rejects the refund.
+  await t.mutation(internal.payments.completeSandboxRefund, {
+    orderId: ids.paidOrderId,
+    status: "failed",
+    error: "Sandbox unavailable",
+  });
+  expect(await t.run((ctx) => ctx.db.get(ids.paidOrderId))).toMatchObject({ status: "expired" });
+  expect(
+    await t.run((ctx) =>
+      ctx.db.query("materialFlowLedger").withIndex("by_rescue_item", (q) =>
+        q.eq("surplusItemId", ids.expiredItemId),
+      ).collect(),
+    ),
+  ).toHaveLength(expiryEvents.length);
+  expect(
+    await t.run((ctx) =>
+      ctx.db.query("payments").withIndex("by_order", (q) => q.eq("orderId", ids.paidOrderId)).unique(),
+    ),
+  ).toMatchObject({ refundStatus: "failed", refundError: "Sandbox unavailable" });
+  const noShowDetail = await t.query(api.orders.get, {
+    orderId: ids.paidOrderId,
+    sessionToken: consumerToken,
+  });
+  expect(noShowDetail).toMatchObject({ status: "expired", refundStatus: "failed" });
+  expect(noShowDetail?.pickupCode).toBeUndefined();
+  const noShowSummary = (await t.query(api.orders.listMine, { sessionToken: consumerToken }))
+    .find((order) => order._id === ids.paidOrderId);
+  expect(noShowSummary).toMatchObject({ refundStatus: "failed" });
+  expect(Object.keys(noShowSummary ?? {})).not.toContain("pickupCode");
+
+  await t.mutation(internal.orders.expireHold, { orderId: ids.heldOrderId });
+  await t.mutation(internal.orders.expireHold, { orderId: ids.heldOrderId });
+  expect(await t.run((ctx) => ctx.db.get(ids.heldItemId))).toMatchObject({
+    remainingQuantity: 1,
+    status: "active",
+  });
+  const holdEvents = await t.run((ctx) =>
+    ctx.db.query("materialFlowLedger").withIndex("by_order", (q) => q.eq("orderId", ids.heldOrderId)).collect(),
+  );
+  expect(holdEvents).toMatchObject([{ eventType: "CANCELLED", weightDeltaGrams: 0 }]);
+
+  await t.mutation(internal.surplusItems.expirePickupWindows, {});
+  await t.mutation(internal.surplusItems.expirePickupWindows, {});
+  expect(
+    await t.run((ctx) =>
+      ctx.db.query("recoveryBatches").withIndex("by_item", (q) =>
+        q.eq("surplusItemId", ids.heldItemId),
+      ).collect(),
+    ),
+  ).toMatchObject([{ offeredWeightGrams: 300 }]);
+
+  const lateHoldOrderId = await t.run((ctx) =>
+    ctx.db.insert("orders", {
+      userId: ids.consumerId,
+      surplusItemId: ids.expiredItemId,
+      quantity: 1,
+      totalPrice: 12_000,
+      rescuedWeightGrams: 500,
+      pickupCode: "333333",
+      status: "reserved",
+      paymentHoldExpiresAt: now - 1,
+      createdAt: now - HOUR_MS,
+    }),
+  );
+  await t.mutation(internal.orders.expireHold, { orderId: lateHoldOrderId });
+  expect(await t.run((ctx) => ctx.db.get(ids.expiredItemId))).toMatchObject({
+    status: "recovery_pending",
+    remainingQuantity: 2,
+  });
+  expect(await t.run((ctx) => ctx.db.get(lateHoldOrderId))).toMatchObject({ status: "reserved" });
+});

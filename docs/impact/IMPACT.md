@@ -102,7 +102,7 @@ This is the metric most competitors cannot produce, because their systems end at
 ```
 residualGrams =
     Σ metadata.residualWeightGrams (PROCESSED)
-  + Σ |weightDeltaGrams| (ROUTING_FAILED)
+  + Σ metadata.residualWeightGrams (ROUTING_FAILED)
   + Σ |weightDeltaGrams| (MODERATED)
 ```
 

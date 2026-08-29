@@ -1,6 +1,8 @@
-import { internalQuery, mutation, query } from './_generated/server'
+import { internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { v, ConvexError } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
+import type { MutationCtx } from './_generated/server'
+import { internal } from './_generated/api'
 import { rescueItemStatus, materialType } from './schema'
 import { requireVerifiedMerchant, requireOwnership, requireRole } from './lib/guards'
 import { recordLedgerEvent } from './lib/ledger'
@@ -46,6 +48,155 @@ type SurplusItemFields = Pick<
 >
 
 type SurplusItemField = keyof SurplusItemFields
+
+type PickupExpiryResult = {
+  batchesCreated: number
+  deferredHolds: number
+  noShowsExpired: number
+}
+
+async function queueSandboxRefund(
+  ctx: MutationCtx,
+  order: Doc<'orders'>,
+  now: number,
+) {
+  const payment = await ctx.db
+    .query('payments')
+    .withIndex('by_order', (q) => q.eq('orderId', order._id))
+    .first()
+  if (payment?.refundStatus) return
+
+  const refundKey = `pickup-expiry-${order._id}`
+  if (payment) {
+    await ctx.db.patch(payment._id, {
+      refundStatus: 'pending',
+      refundKey,
+      refundRequestedAt: now,
+      updatedAt: now,
+    })
+  } else {
+    await ctx.db.insert('payments', {
+      orderId: order._id,
+      provider: 'midtrans',
+      amount: order.totalPrice,
+      providerStatus: 'settlement',
+      refundStatus: 'pending',
+      refundKey,
+      refundRequestedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    })
+  }
+  await ctx.scheduler.runAfter(0, internal.payments.requestSandboxRefund, {
+    orderId: order._id,
+  })
+}
+
+async function executePickupWindowExpiry(ctx: MutationCtx): Promise<PickupExpiryResult> {
+  const now = Date.now()
+  const items = (
+    await Promise.all(
+      (['active', 'sold_out'] as const).map((status) =>
+        ctx.db
+          .query('surplusItems')
+          .withIndex('by_status_pickup_end', (q) =>
+            q.eq('status', status).lt('pickupEndAt', now),
+          )
+          .take(100),
+      ),
+    )
+  ).flat()
+  let batchesCreated = 0
+  let deferredHolds = 0
+  let noShowsExpired = 0
+
+  for (const item of items) {
+    const existingBatch = await ctx.db
+      .query('recoveryBatches')
+      .withIndex('by_item', (q) => q.eq('surplusItemId', item._id))
+      .first()
+    if (existingBatch) continue
+
+    const reservedOrder = await ctx.db
+      .query('orders')
+      .withIndex('by_item_status', (q) =>
+        q.eq('surplusItemId', item._id).eq('status', 'reserved'),
+      )
+      .first()
+    // M3 owns reserved -> expired and the matching stock release.
+    if (reservedOrder) {
+      deferredHolds += 1
+      continue
+    }
+
+    const paidOrders = await ctx.db
+      .query('orders')
+      .withIndex('by_item_status', (q) =>
+        q.eq('surplusItemId', item._id).eq('status', 'paid'),
+      )
+      .collect()
+    const noShowWeightGrams = paidOrders.reduce(
+      (total, order) => total + order.rescuedWeightGrams,
+      0,
+    )
+    const unclaimedWeightGrams =
+      item.remainingQuantity * item.weightPerItemGrams + noShowWeightGrams
+    if (unclaimedWeightGrams <= 0) continue
+
+    const recoveryBatchId = await ctx.db.insert('recoveryBatches', {
+      merchantId: item.merchantId,
+      surplusItemId: item._id,
+      offeredWeightGrams: unclaimedWeightGrams,
+      status: 'pending',
+      routingAttempts: 0,
+      attemptedProcessorIds: [],
+      declinedByProcessorIds: [],
+      createdAt: now,
+    })
+    await ctx.db.patch(item._id, { status: 'recovery_pending' })
+
+    for (const order of paidOrders) {
+      await ctx.db.patch(order._id, { status: 'expired' })
+      await recordLedgerEvent(ctx, {
+        surplusItemId: item._id,
+        orderId: order._id,
+        eventType: 'CANCELLED',
+        weightDeltaGrams: 0,
+        metadata: { reason: 'PICKUP_WINDOW_EXPIRED', refundRequired: true },
+      })
+      await queueSandboxRefund(ctx, order, now)
+      noShowsExpired += 1
+    }
+
+    await recordLedgerEvent(ctx, {
+      surplusItemId: item._id,
+      recoveryBatchId,
+      eventType: 'EXPIRED',
+      weightDeltaGrams: -unclaimedWeightGrams,
+      metadata: {
+        remainingQuantity: item.remainingQuantity,
+        noShowWeightGrams,
+        reason: 'PICKUP_WINDOW_EXPIRED',
+      },
+    })
+    batchesCreated += 1
+  }
+
+  return { batchesCreated, deferredHolds, noShowsExpired }
+}
+
+export const expirePickupWindows = internalMutation({
+  args: {},
+  handler: (ctx) => executePickupWindowExpiry(ctx),
+})
+
+export const triggerPickupWindowExpiry = mutation({
+  args: { sessionToken: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await requireRole(ctx, args.sessionToken, ['admin'])
+    return executePickupWindowExpiry(ctx)
+  },
+})
 
 function failValidation(field: SurplusItemField, message: string): never {
   throw new ConvexError({ code: 'VALIDATION_FAILED', field, message })
@@ -306,4 +457,42 @@ export const listMine = query({
       createdAt: item.createdAt,
     }))
   }
+})
+
+/** Merchant-only detail with the immutable pickup total needed by the M4 status view. */
+export const getMine = query({
+  args: { id: v.id('surplusItems'), sessionToken: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await requireRole(ctx, args.sessionToken, ['merchant'])
+    const merchant = await requireVerifiedMerchant(ctx, user)
+    const item = await ctx.db.get(args.id)
+    if (!item || item.merchantId !== merchant._id) return null
+
+    const pickedUpOrders = await ctx.db
+      .query('orders')
+      .withIndex('by_item_status', (q) =>
+        q.eq('surplusItemId', item._id).eq('status', 'picked_up'),
+      )
+      .collect()
+
+    return {
+      _id: item._id,
+      name: item.name,
+      currentPrice: item.currentPrice,
+      originalPrice: item.originalPrice,
+      remainingQuantity: item.remainingQuantity,
+      initialQuantity: item.initialQuantity,
+      pickupStartAt: item.pickupStartAt,
+      pickupEndAt: item.pickupEndAt,
+      status: item.status,
+      processingOnly: item.processingOnly,
+      publishedAt: item.publishedAt,
+      createdAt: item.createdAt,
+      pickedUpOrderCount: pickedUpOrders.length,
+      rescuedWeightGrams: pickedUpOrders.reduce(
+        (total, order) => total + order.rescuedWeightGrams,
+        0,
+      ),
+    }
+  },
 })

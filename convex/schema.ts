@@ -68,9 +68,11 @@ export const orderStatus = v.union(
 
 export const recoveryBatchStatus = v.union(
   v.literal('pending'),
+  v.literal('offered'),
   v.literal('accepted'),
   v.literal('rejected'),
   v.literal('processed'),
+  v.literal('unroutable'),
 )
 
 export const ledgerEventType = v.union(
@@ -137,7 +139,8 @@ export default defineSchema({
     registrationNumber: v.optional(v.string()),
     verificationStatus: verificationStatus,
     createdAt: v.number(),
-  }).index('by_owner', ['ownerId']),
+  })
+    .index('by_owner', ['ownerId']),
 
   processors: defineTable({
     ownerId: v.id('users'),
@@ -159,7 +162,9 @@ export default defineSchema({
     capacityGrams: v.optional(v.number()),
     verificationStatus: verificationStatus,
     createdAt: v.number(),
-  }).index('by_owner', ['ownerId']),
+  })
+    .index('by_owner', ['ownerId'])
+    .index('by_verification', ['verificationStatus']),
 
   surplusItems: defineTable({
     merchantId: v.id('merchants'),
@@ -182,7 +187,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index('by_merchant', ['merchantId'])
-    .index('by_status', ['status']),
+    .index('by_status', ['status'])
+    .index('by_status_pickup_end', ['status', 'pickupEndAt']),
 
   materialFlowLedger: defineTable({
     surplusItemId: v.id('surplusItems'),
@@ -227,23 +233,40 @@ export default defineSchema({
   recoveryBatches: defineTable({
     merchantId: v.id('merchants'),
     surplusItemId: v.id('surplusItems'),
-    processorId: v.optional(v.id('users')),
+    processorId: v.optional(v.id('processors')),
     offeredWeightGrams: v.number(),
     acceptedWeightGrams: v.optional(v.number()),
     residualWeightGrams: v.optional(v.number()),
     status: recoveryBatchStatus,
+    // ponytail: fields are optional so existing M4-02 batches deploy safely.
+    // The routing mutations initialise them before their first transition.
+    routingAttempts: v.optional(v.number()),
+    attemptedProcessorIds: v.optional(v.array(v.id('processors'))),
+    declinedByProcessorIds: v.optional(v.array(v.id('processors'))),
+    offerExpiresAt: v.optional(v.number()),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
   })
     .index('by_merchant', ['merchantId'])
     .index('by_processor', ['processorId'])
-    .index('by_status', ['status']),
+    .index('by_processor_status', ['processorId', 'status'])
+    .index('by_status', ['status'])
+    .index('by_item', ['surplusItemId']),
 
   payments: defineTable({
     orderId: v.id('orders'),
     provider: v.literal('midtrans'),
     amount: v.number(),
     providerStatus: v.string(),
+    refundStatus: v.optional(v.union(
+      v.literal('pending'),
+      v.literal('succeeded'),
+      v.literal('failed'),
+    )),
+    refundKey: v.optional(v.string()),
+    refundRequestedAt: v.optional(v.number()),
+    refundCompletedAt: v.optional(v.number()),
+    refundError: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
     providerTxnId: v.optional(v.string()),
     rawPayload: v.optional(v.string()),
