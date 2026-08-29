@@ -9,6 +9,7 @@ export type ImpactLedgerEntry = {
   eventType: string
   weightDeltaGrams: number
   metadata?: string
+  occurredAt?: number
 }
 
 export type ImpactIntegrityIssue = {
@@ -28,7 +29,15 @@ export type ImpactSummary = {
   listedGrams: number
   rescuedQuantity: number | null
   rescuedGrams: number
+  measuredIntakeGrams: number | null
+  processedIntakeGrams: number | null
   recoveredGrams: number | null
+  recoveredByOutputType: {
+    compost: number
+    bsf_larvae: number
+    animal_feed: number
+    biogas: number
+  } | null
   residualGrams: number | null
   processLossGrams: number | null
   measurementAdjustmentGrams: number | null
@@ -53,7 +62,10 @@ type ItemTotals = {
   listedGrams: number
   expiredGrams: number
   rescuedGrams: number
+  measuredIntakeGrams: number
+  processedIntakeGrams: number
   recoveredGrams: number
+  recoveredByOutputType: OutputByType
   residualGrams: number
   processLossGrams: number
   measurementAdjustmentGrams: number
@@ -62,6 +74,11 @@ type ItemTotals = {
   hasExpired: boolean
 }
 
+type OutputType = 'compost' | 'bsf_larvae' | 'animal_feed' | 'biogas'
+type OutputByType = Record<OutputType, number>
+
+const outputTypes: readonly OutputType[] = ['compost', 'bsf_larvae', 'animal_feed', 'biogas']
+
 function roundedPercent(numerator: number, denominator: number): number | null {
   if (denominator <= 0) return null
   return Math.round((numerator / denominator) * 1_000) / 10
@@ -69,6 +86,10 @@ function roundedPercent(numerator: number, denominator: number): number | null {
 
 function integer(value: unknown, minimum = 0): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= minimum
+}
+
+function outputType(value: unknown): value is OutputType {
+  return typeof value === 'string' && outputTypes.includes(value as OutputType)
 }
 
 function metadata(value: string | undefined): Record<string, unknown> | null {
@@ -87,7 +108,10 @@ function itemTotals(): ItemTotals {
     listedGrams: 0,
     expiredGrams: 0,
     rescuedGrams: 0,
+    measuredIntakeGrams: 0,
+    processedIntakeGrams: 0,
     recoveredGrams: 0,
+    recoveredByOutputType: { compost: 0, bsf_larvae: 0, animal_feed: 0, biogas: 0 },
     residualGrams: 0,
     processLossGrams: 0,
     measurementAdjustmentGrams: 0,
@@ -107,6 +131,8 @@ export function summariseLedger(entries: readonly ImpactLedgerEntry[]): ImpactSu
   let recoveredComplete = true
   let residualComplete = true
   let processLossComplete = true
+  let intakeComplete = true
+  let processedIntakeComplete = true
   let measurementComplete = true
   let revenueComplete = true
   let savingsComplete = true
@@ -162,9 +188,11 @@ export function summariseLedger(entries: readonly ImpactLedgerEntry[]): ImpactSu
     if (entry.eventType === 'INTAKE_ACCEPTED') {
       const data = metadata(entry.metadata)
       if (!data || !integer(data.declaredWeightGrams, 1) || !integer(entry.weightDeltaGrams, 1)) {
+        intakeComplete = false
         measurementComplete = false
         addIssue(entry, 'MALFORMED_INTAKE_METADATA', 'INTAKE_ACCEPTED memerlukan declaredWeightGrams dan delta gram terukur yang positif.')
       } else {
+        totals.measuredIntakeGrams += entry.weightDeltaGrams
         totals.measurementAdjustmentGrams += entry.weightDeltaGrams - data.declaredWeightGrams
       }
       continue
@@ -176,16 +204,20 @@ export function summariseLedger(entries: readonly ImpactLedgerEntry[]): ImpactSu
         !data ||
         !integer(data.outputWeightGrams) ||
         !integer(data.residualWeightGrams) ||
+        !outputType(data.outputType) ||
         !integer(processedGrams, 1) ||
         data.outputWeightGrams + data.residualWeightGrams > processedGrams
       ) {
         recoveredComplete = false
         residualComplete = false
         processLossComplete = false
+        processedIntakeComplete = false
         measurementComplete = false
-        addIssue(entry, 'MALFORMED_PROCESSED_METADATA', 'PROCESSED memerlukan output dan residual gram utuh yang tidak melebihi berat terukur.')
+        addIssue(entry, 'MALFORMED_PROCESSED_METADATA', 'PROCESSED memerlukan jenis output serta gram output dan residual utuh yang tidak melebihi berat terukur.')
       } else {
+        totals.processedIntakeGrams += processedGrams
         totals.recoveredGrams += data.outputWeightGrams
+        totals.recoveredByOutputType[data.outputType] += data.outputWeightGrams
         totals.residualGrams += data.residualWeightGrams
         totals.processLossGrams += processedGrams - data.outputWeightGrams - data.residualWeightGrams
       }
@@ -209,14 +241,25 @@ export function summariseLedger(entries: readonly ImpactLedgerEntry[]): ImpactSu
   const totals = [...items.values()].reduce((summary, item) => ({
     listedGrams: summary.listedGrams + item.listedGrams,
     rescuedGrams: summary.rescuedGrams + item.rescuedGrams,
+    measuredIntakeGrams: summary.measuredIntakeGrams + item.measuredIntakeGrams,
+    processedIntakeGrams: summary.processedIntakeGrams + item.processedIntakeGrams,
     recoveredGrams: summary.recoveredGrams + item.recoveredGrams,
+    recoveredByOutputType: {
+      compost: summary.recoveredByOutputType.compost + item.recoveredByOutputType.compost,
+      bsf_larvae: summary.recoveredByOutputType.bsf_larvae + item.recoveredByOutputType.bsf_larvae,
+      animal_feed: summary.recoveredByOutputType.animal_feed + item.recoveredByOutputType.animal_feed,
+      biogas: summary.recoveredByOutputType.biogas + item.recoveredByOutputType.biogas,
+    },
     residualGrams: summary.residualGrams + item.residualGrams,
     processLossGrams: summary.processLossGrams + item.processLossGrams,
     measurementAdjustmentGrams: summary.measurementAdjustmentGrams + item.measurementAdjustmentGrams,
   }), {
     listedGrams: 0,
     rescuedGrams: 0,
+    measuredIntakeGrams: 0,
+    processedIntakeGrams: 0,
     recoveredGrams: 0,
+    recoveredByOutputType: { compost: 0, bsf_larvae: 0, animal_feed: 0, biogas: 0 },
     residualGrams: 0,
     processLossGrams: 0,
     measurementAdjustmentGrams: 0,
@@ -266,7 +309,10 @@ export function summariseLedger(entries: readonly ImpactLedgerEntry[]): ImpactSu
     listedGrams: totals.listedGrams,
     rescuedQuantity: rescuedQuantityComplete ? rescuedQuantity : null,
     rescuedGrams: totals.rescuedGrams,
+    measuredIntakeGrams: intakeComplete ? totals.measuredIntakeGrams : null,
+    processedIntakeGrams: processedIntakeComplete ? totals.processedIntakeGrams : null,
     recoveredGrams,
+    recoveredByOutputType: recoveredComplete ? totals.recoveredByOutputType : null,
     residualGrams,
     processLossGrams,
     measurementAdjustmentGrams,
@@ -286,6 +332,63 @@ export function summariseLedger(entries: readonly ImpactLedgerEntry[]): ImpactSu
         .sort((a, b) => a.surplusItemId.localeCompare(b.surplusItemId)),
       identityDeltaGrams: completeProgress && hasCompleteItemScope ? identityDeltaGrams : null,
     },
+  }
+}
+
+export function summariseProcessorOperations(input: {
+  summary: ImpactSummary
+  batches: readonly { status: string }[]
+  entries: readonly ImpactLedgerEntry[]
+  dailyCapacityGrams: number
+  dayStartAt: number
+  now: number
+}) {
+  const timedIntake = input.entries.filter((entry) => entry.eventType === 'INTAKE_ACCEPTED')
+  const todayIntakeGrams = input.summary.measuredIntakeGrams === null || timedIntake.some((entry) => !integer(entry.occurredAt))
+    ? null
+    : timedIntake.reduce((total, entry) => entry.occurredAt! >= input.dayStartAt && entry.occurredAt! <= input.now
+      ? total + entry.weightDeltaGrams
+      : total, 0)
+  const capacityUtilizationPercent = todayIntakeGrams === null || !integer(input.dailyCapacityGrams, 1)
+    ? null
+    : roundedPercent(todayIntakeGrams, input.dailyCapacityGrams)
+  const processedIntakeGrams = input.summary.processedIntakeGrams
+
+  return {
+    hasBatches: input.batches.length > 0,
+    offeredBatchCount: input.batches.filter((batch) => batch.status === 'offered').length,
+    acceptedBatchCount: input.batches.filter((batch) => batch.status === 'accepted').length,
+    collectedBatchCount: input.batches.filter((batch) => batch.status === 'collected').length,
+    processedBatchCount: input.batches.filter((batch) => batch.status === 'processed').length,
+    dailyCapacityGrams: integer(input.dailyCapacityGrams) ? input.dailyCapacityGrams : null,
+    todayIntakeGrams,
+    capacityUtilizationPercent,
+    totalMeasuredIntakeGrams: input.summary.measuredIntakeGrams,
+    recoveredByOutputType: input.summary.recoveredByOutputType,
+    residualRatePercent: input.summary.residualGrams === null || processedIntakeGrams === null
+      ? null
+      : roundedPercent(input.summary.residualGrams, processedIntakeGrams),
+    recoveryEfficiencyPercent: input.summary.recoveredGrams === null || processedIntakeGrams === null
+      ? null
+      : roundedPercent(input.summary.recoveredGrams, processedIntakeGrams),
+  }
+}
+
+export function summarisePlatformOperations(input: {
+  summary: ImpactSummary
+  accounts: readonly { role: string; status: string }[]
+  batches: readonly { status: string }[]
+}) {
+  const activeCount = (role: string) => input.accounts.filter((account) =>
+    account.role === role && account.status === 'active').length
+
+  return {
+    activeMerchantCount: activeCount('merchant'),
+    activeConsumerCount: activeCount('consumer'),
+    activeProcessorCount: activeCount('processor'),
+    unroutableBatchCount: input.batches.filter((batch) => batch.status === 'unroutable').length,
+    circularityRequiresReview: input.summary.circularityRatePercent !== null
+      && input.summary.circularityRatePercent > 99,
   }
 }
 
