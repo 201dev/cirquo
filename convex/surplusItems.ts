@@ -458,3 +458,41 @@ export const listMine = query({
     }))
   }
 })
+
+/** Merchant-only detail with the immutable pickup total needed by the M4 status view. */
+export const getMine = query({
+  args: { id: v.id('surplusItems'), sessionToken: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await requireRole(ctx, args.sessionToken, ['merchant'])
+    const merchant = await requireVerifiedMerchant(ctx, user)
+    const item = await ctx.db.get(args.id)
+    if (!item || item.merchantId !== merchant._id) return null
+
+    const pickedUpOrders = await ctx.db
+      .query('orders')
+      .withIndex('by_item_status', (q) =>
+        q.eq('surplusItemId', item._id).eq('status', 'picked_up'),
+      )
+      .collect()
+
+    return {
+      _id: item._id,
+      name: item.name,
+      currentPrice: item.currentPrice,
+      originalPrice: item.originalPrice,
+      remainingQuantity: item.remainingQuantity,
+      initialQuantity: item.initialQuantity,
+      pickupStartAt: item.pickupStartAt,
+      pickupEndAt: item.pickupEndAt,
+      status: item.status,
+      processingOnly: item.processingOnly,
+      publishedAt: item.publishedAt,
+      createdAt: item.createdAt,
+      pickedUpOrderCount: pickedUpOrders.length,
+      rescuedWeightGrams: pickedUpOrders.reduce(
+        (total, order) => total + order.rescuedWeightGrams,
+        0,
+      ),
+    }
+  },
+})

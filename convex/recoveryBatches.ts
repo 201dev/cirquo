@@ -1,11 +1,12 @@
 import { v } from 'convex/values'
-import { internalMutation, internalQuery } from './_generated/server'
+import { internalMutation, internalQuery, query } from './_generated/server'
 import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx } from './_generated/server'
 import { OFFER_TTL_MS, MAX_ROUTING_ATTEMPTS, rankEligibleProcessors } from '../src/lib/routing'
 import type { RoutingProcessor } from '../src/lib/routing'
 import { recoveryBatchStatus } from './schema'
+import { requireRole, requireVerifiedMerchant } from './lib/guards'
 import { recordLedgerEvent } from './lib/ledger'
 
 const ROUTING_BATCH_SIZE = 50
@@ -181,6 +182,40 @@ export const listByStatus = internalQuery({
     .query('recoveryBatches')
     .withIndex('by_status', (q) => q.eq('status', status))
     .collect(),
+})
+
+/** Merchant-only read model for the recovery status shown beside its Rescue Item. */
+export const listForMerchant = query({
+  args: { sessionToken: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await requireRole(ctx, args.sessionToken, ['merchant'])
+    const merchant = await requireVerifiedMerchant(ctx, user)
+    const batches = await ctx.db
+      .query('recoveryBatches')
+      .withIndex('by_merchant', (q) => q.eq('merchantId', merchant._id))
+      .order('desc')
+      .collect()
+
+    return (await Promise.all(batches.map(async (batch) => {
+      const [item, processor] = await Promise.all([
+        ctx.db.get(batch.surplusItemId),
+        batch.processorId ? ctx.db.get(batch.processorId) : null,
+      ])
+      // A malformed legacy row must not reveal another Merchant's item.
+      if (!item || item.merchantId !== merchant._id) return null
+
+      return {
+        _id: batch._id,
+        surplusItemId: batch.surplusItemId,
+        offeredWeightGrams: batch.offeredWeightGrams,
+        status: batch.status,
+        routingAttempts: batch.routingAttempts ?? 0,
+        offerExpiresAt: batch.offerExpiresAt,
+        processorName: processor?.name,
+        // Intentionally no order, Consumer, payment, or pickup-code fields.
+      }
+    }))).filter((batch): batch is NonNullable<typeof batch> => batch !== null)
+  },
 })
 
 export const runRouting = internalMutation({

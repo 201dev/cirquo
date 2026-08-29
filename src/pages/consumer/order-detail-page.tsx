@@ -127,6 +127,27 @@ function CompletedPanel({ order }: { order: ConsumerOrderDetail }) {
   );
 }
 
+function NoShowRefundPanel({ order }: { order: ConsumerOrderDetail }) {
+  const message = {
+    pending: "Refund Sandbox sedang diproses. Status ini akan diperbarui otomatis.",
+    succeeded: "Refund Sandbox telah berhasil diproses.",
+    failed: "Refund Sandbox belum berhasil diproses. Tim Cirquo akan menindaklanjuti.",
+  }[order.refundStatus ?? "pending"];
+
+  return (
+    <section
+      role="status"
+      aria-live="polite"
+      className="mb-6 rounded-xl border border-in-progress/30 bg-in-progress/10 p-5"
+    >
+      <h2 className="font-semibold">Pickup tidak dilakukan</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Window pickup telah berakhir sehingga pesanan tidak dapat diambil. {message}
+      </p>
+    </section>
+  );
+}
+
 function OrderTimeline({ order }: { order: ConsumerOrderDetail }) {
   const steps = [
     { label: "Reservasi diterima", done: true, note: formatWibDate(order.createdAt) },
@@ -217,7 +238,10 @@ function OrderDetailContent() {
         <PickupCodePanel code={order.pickupCode} />
       )}
       {order.status === "picked_up" && <CompletedPanel order={order} />}
-      {(order.status === "cancelled" || order.status === "expired") && (
+      {order.status === "expired" && order.refundStatus && (
+        <NoShowRefundPanel order={order} />
+      )}
+      {(order.status === "cancelled" || (order.status === "expired" && !order.refundStatus)) && (
         <section className="mb-6 rounded-xl border bg-card p-5">
           <StatusBadge status={order.status} />
           <p className="mt-3 text-sm text-muted-foreground">
