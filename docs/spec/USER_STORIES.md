@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Document type** | Specification — Agile User Stories |
-| **Status** | Target stories with implemented M1–M3 subset |
+| **Status** | Target stories with implemented M1–M5 subset |
 | **Last updated** | 2026-08-29 |
 | **Owner** | Product & Engineering |
 | **Audience** | Developers, judges, stakeholders |
@@ -684,7 +684,7 @@ Shares the `notifications` table and centre with US-C-14.
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Identity | M | 3 | AUTH-01, PRC-05 | 📋 |
+| Identity | M | 3 | AUTH-01, PRC-05 | ✅ Source available; deployment UAT pending |
 
 **Acceptance criteria**
 - **Given** I select the Processor role, **when** I complete the facility form with name, facility type, city, coordinates, and operating hours, **then** a `processors` record is created with `verificationStatus = "pending"`.
@@ -703,7 +703,7 @@ Facility types cover BSF larvae cultivation, composting, biogas digestion, and a
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Recovery | M | 3 | PRC-05 | 📋 |
+| Recovery | M | 3 | PRC-05 | ✅ Source available; deployment UAT pending |
 
 **Acceptance criteria**
 - **Given** my profile, **when** I set `acceptedMaterialTypes`, `dailyCapacityGrams`, `maxPickupRadiusMeters`, and `outputTypes`, **then** the values persist and immediately affect routing eligibility.
@@ -742,7 +742,7 @@ An unverified processor is invisible to the routing engine, not merely blocked i
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Recovery | M | 3 | PRC-06 | 📋 |
+| Recovery | M | 3 | PRC-06 | ✅ Source available; deployment UAT pending |
 
 **Acceptance criteria**
 - **Given** offers exist for me, **when** I open `/processor/recovery`, **then** each shows merchant name, distance, material type, offered weight, and a countdown to `offerExpiresAt`.
@@ -752,7 +752,7 @@ An unverified processor is invisible to the routing engine, not merely blocked i
 **INVEST check** — **I:** read-only over batches. **N:** free. **V:** the processor's daily working screen. **E:** one scoped query. **S:** one route. **T:** scoping and TTL are assertable.
 
 **Notes**
-Route exists with mock data today. Scoping filters on `processorId` and excludes any batch listing me in `declinedByProcessorIds`.
+Route memakai query Convex reaktif. Scoping filters on `processorId` dan retry mengecualikan batch yang sudah ditolak oleh Processor.
 
 ---
 
@@ -761,13 +761,13 @@ Route exists with mock data today. Scoping filters on `processorId` and excludes
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Recovery | M | 3 | PRC-06 | 📋 |
+| Recovery | M | 3 | PRC-06 | ✅ Source available; deployment UAT pending |
 
 **Acceptance criteria**
-- **Given** an `offered` batch assigned to me within TTL, **when** I accept, **then** the batch becomes `accepted` and an `INTAKE_ACCEPTED` ledger event is recorded.
+- **Given** an `offered` batch assigned to me within TTL, **when** I accept, **then** the batch becomes `accepted`; `INTAKE_ACCEPTED` is only recorded at physical intake.
 - **Given** the TTL has already expired, **when** I accept, **then** the server rejects the mutation.
 - **Given** the batch is offered to a different processor, **when** I attempt to accept, **then** the server rejects on ownership.
-- **Given** I accept, **when** it commits, **then** the Merchant is notified with my facility details.
+- **Given** I accept, **when** it commits, **then** the Merchant recovery view updates reactively. Notification remains M7 scope.
 
 **INVEST check** — **I:** one mutation. **N:** free. **V:** the moment the loop closes. **E:** mechanical. **S:** small. **T:** every guard is testable.
 
@@ -781,12 +781,12 @@ Acceptance does not yet write a weight. Offered weight is an estimate; only meas
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Recovery | M | 3 | PRC-06 | 📋 |
+| Recovery | M | 3 | PRC-06 | ✅ Source available; deployment UAT pending |
 
 **Acceptance criteria**
 - **Given** an `offered` batch, **when** I decline with a reason, **then** my id is appended to `declinedByProcessorIds` and an `INTAKE_DECLINED` ledger event is recorded.
 - **Given** I have declined, **when** routing retries, **then** I am permanently excluded from that batch.
-- **Given** `routingAttempts` has reached 3, **when** I decline, **then** the batch becomes `unroutable` and an Admin is notified.
+- **Given** `routingAttempts` has reached 3, **when** I decline, **then** the batch becomes `unroutable`; Admin notification remains M7 scope.
 
 **INVEST check** — **I:** counterpart to accept. **N:** free. **V:** speed matters more than politeness for perishable material. **E:** mechanical. **S:** small. **T:** exclusion and attempt counting are assertable.
 
@@ -800,7 +800,7 @@ Declining is a first-class, blameless action. It is what makes the retry logic c
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Recovery | M | 5 | PRC-06 | 📋 |
+| Recovery | M | 5 | PRC-06 | ✅ Source available; deployment UAT pending |
 
 **Acceptance criteria**
 - **Given** an `accepted` batch, **when** I enter `acceptedWeightGrams` from my scale, **then** the batch becomes `collected` and the measured weight is stored as authoritative.
@@ -820,7 +820,7 @@ Only the Processor writes `acceptedWeightGrams`. Not the Merchant, not the Admin
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Recovery | M | 5 | PRC-06 | 📋 |
+| Recovery | M | 5 | PRC-06 | ✅ Source available; deployment UAT pending |
 
 **Acceptance criteria**
 - **Given** a `collected` batch, **when** I submit `outputType`, `outputWeightGrams`, and `residualWeightGrams`, **then** the batch becomes `processed` and a `PROCESSED` ledger event is recorded.
@@ -840,17 +840,17 @@ Residual is honest. A processor that reports zero residual on every batch is a d
 
 | Epic | Priority | Points | PRD ref | Status |
 |---|---|---|---|---|
-| Impact | M | 3 | IMP-03 | 📋 |
+| Impact | S | 3 | PRC-05 | ✅ Source available; deployment UAT pending |
 
 **Acceptance criteria**
-- **Given** I open `/processor`, **when** it renders, **then** cards show pending offers, weight collected this week, weight processed, output by type, and capacity utilisation against `dailyCapacityGrams`.
+- **Given** I open `/processor`, **when** it renders, **then** cards show pending offers, intake hari ini, batch processed, output by type, dan kapasitas against `dailyCapacityGrams`.
 - **Given** every figure, **when** computed, **then** it derives from ledger events scoped to my processor id.
 - **Given** I log an outcome, **when** it commits, **then** the dashboard updates reactively.
 
 **INVEST check** — **I:** read-only. **N:** card set negotiable. **V:** justifies participation. **E:** aggregation. **S:** one route. **T:** recomputable by hand.
 
 **Notes**
-Route exists with mock data; this story supplies live aggregates.
+Route memakai dashboard reaktif dengan data batch dan Material Flow Ledger Processor sendiri.
 
 ---
 

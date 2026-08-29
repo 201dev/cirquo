@@ -66,6 +66,34 @@ export function validateMerchantProfile(input: {
   }
 }
 
+export function validateProcessorRoutingProfile(input: {
+  acceptedMaterialTypes: readonly string[]
+  dailyCapacityGrams: number
+  maxPickupRadiusMeters: number
+  outputTypes: readonly string[]
+  operatingHoursStart: number
+  operatingHoursEnd: number
+}): void {
+  if (input.acceptedMaterialTypes.length === 0) {
+    fail('acceptedMaterialTypes', 'Pilih minimal satu jenis material.')
+  }
+  if (!Number.isInteger(input.dailyCapacityGrams) || input.dailyCapacityGrams < 0 || input.dailyCapacityGrams > 100_000_000) {
+    fail('dailyCapacityGrams', 'Kapasitas harian harus berupa gram utuh antara 0 dan 100.000.000.')
+  }
+  if (!Number.isInteger(input.maxPickupRadiusMeters) || input.maxPickupRadiusMeters < 1_000 || input.maxPickupRadiusMeters > 50_000) {
+    fail('maxPickupRadiusMeters', 'Radius pickup harus antara 1.000 dan 50.000 meter.')
+  }
+  if (input.outputTypes.length === 0) {
+    fail('outputTypes', 'Pilih minimal satu hasil pengolahan.')
+  }
+  if (!Number.isInteger(input.operatingHoursStart) || input.operatingHoursStart < 0 || input.operatingHoursStart > 1_439) {
+    fail('operatingHoursStart', 'Jam mulai operasional tidak valid.')
+  }
+  if (!Number.isInteger(input.operatingHoursEnd) || input.operatingHoursEnd <= input.operatingHoursStart || input.operatingHoursEnd > 1_439) {
+    fail('operatingHoursEnd', 'Jam selesai harus setelah jam mulai pada hari yang sama.')
+  }
+}
+
 export function validateProcessorProfile(input: {
   name: string
   city: string
@@ -79,25 +107,7 @@ export function validateProcessorProfile(input: {
   operatingHoursEnd: number
 }) {
   validateCoordinates(input.latitude, input.longitude)
-
-  if (input.acceptedMaterialTypes.length === 0) {
-    fail('acceptedMaterialTypes', 'Pilih minimal satu jenis material.')
-  }
-  if (!Number.isInteger(input.dailyCapacityGrams) || input.dailyCapacityGrams <= 0 || input.dailyCapacityGrams > 100_000_000) {
-    fail('dailyCapacityGrams', 'Kapasitas harian harus berupa gram utuh antara 1 dan 100.000.000.')
-  }
-  if (!Number.isInteger(input.maxPickupRadiusMeters) || input.maxPickupRadiusMeters < 500 || input.maxPickupRadiusMeters > 100_000) {
-    fail('maxPickupRadiusMeters', 'Radius pickup harus antara 500 dan 100.000 meter.')
-  }
-  if (input.outputTypes.length === 0) {
-    fail('outputTypes', 'Pilih minimal satu hasil pengolahan.')
-  }
-  if (!Number.isInteger(input.operatingHoursStart) || input.operatingHoursStart < 0 || input.operatingHoursStart > 1_439) {
-    fail('operatingHoursStart', 'Jam mulai operasional tidak valid.')
-  }
-  if (!Number.isInteger(input.operatingHoursEnd) || input.operatingHoursEnd <= input.operatingHoursStart || input.operatingHoursEnd > 1_439) {
-    fail('operatingHoursEnd', 'Jam selesai harus setelah jam mulai pada hari yang sama.')
-  }
+  validateProcessorRoutingProfile(input)
 
   return {
     name: requiredText('name', input.name, 2, 120),

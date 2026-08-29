@@ -541,7 +541,7 @@ function ProcessorForm() {
               id="processor-capacity"
               type="number"
               inputMode="numeric"
-              min="1"
+              min="0"
               max="100000000"
               step="1"
               aria-invalid={Boolean(errors.dailyCapacityGrams)}
@@ -561,8 +561,8 @@ function ProcessorForm() {
               id="processor-radius"
               type="number"
               inputMode="numeric"
-              min="500"
-              max="100000"
+              min="1000"
+              max="50000"
               step="1"
               aria-invalid={Boolean(errors.maxPickupRadiusMeters)}
               aria-describedby={

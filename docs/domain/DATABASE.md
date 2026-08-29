@@ -53,10 +53,10 @@
 
 | Gap | Blocks |
 |---|---|
-| Partial Rescue Item status model | Current source uses `draft`, `active`, `sold_out`, `expired`, `recovery_pending`, and `closed`; M4–M6 decide whether the target `recovered`, `residual`, and `moderated` states are required. |
+| Partial Rescue Item status model | Current source juga memakai `recovered` dan `residual` dari outcome M5; `moderated` masih target M7. |
 | Partial order state model | `disputed` and `refunded` are absent; they are needed only with dispute/refund work. |
-| Recovery workflow fields | Offer/retry/TTL and measured-output fields are not present; M4–M5 own them. |
-| `notifications`, `disputes`, `impactSnapshots` | Not present. They remain M6–M7 work, not evidence of a missing M1–M3 foundation. |
+| Recovery workflow fields | Offer/retry/TTL, intake terukur, outcome, dan profil kapasitas tersedia dari M4–M5; agregasi impact lintas peran tetap M6. |
+| `notifications`, `disputes`, `impactSnapshots` | Not present. They remain M6–M7 work, not evidence of a missing M1–M5 foundation. |
 
 ---
 

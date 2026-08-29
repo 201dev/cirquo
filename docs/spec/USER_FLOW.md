@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Document type** | Specification — User Journeys & Flows |
-| **Status** | Target user journeys with implemented M1–M3 subset |
+| **Status** | Target user journeys with implemented M1–M5 subset |
 | **Last updated** | 2026-08-29 |
 | **Owner** | Product & Design |
 | **Audience** | Developers, designers, judges |

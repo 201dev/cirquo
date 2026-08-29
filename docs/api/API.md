@@ -43,9 +43,10 @@ Per-role function documentation lives in five sibling files:
 | [`API_PROCESSOR.md`](./API_PROCESSOR.md) | Circular Routing queue, accept/decline, measured intake, processed outcome |
 | [`API_ADMIN.md`](./API_ADMIN.md) | Verification, moderation, ledger audit, disputes, integrity checks, system health |
 
-> **Source boundary — 2026-08-29.** M1–M3 exports are implemented in source;
-> Midtrans requires Sandbox UAT. Sections labelled 📋 are target contracts for
-> later milestones. See [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
+> **Source boundary — 2026-08-29.** M1–M5 exports are implemented in source.
+> M3–M5 still require deployment/Sandbox UAT; sections labelled 📋 are target
+> contracts for later milestones. See
+> [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 ---
 

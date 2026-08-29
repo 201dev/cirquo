@@ -163,6 +163,7 @@ export default defineSchema({
     registrationNumber: v.optional(v.string()),
     address: v.optional(v.string()),
     capacityGrams: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
     verificationStatus: verificationStatus,
     createdAt: v.number(),
   })
@@ -242,8 +243,10 @@ export default defineSchema({
     acceptedAt: v.optional(v.number()),
     estimatedCollectionAt: v.optional(v.number()),
     acceptanceNote: v.optional(v.string()),
+    acceptedOutputTypes: v.optional(v.array(outputType)),
     collectedAt: v.optional(v.number()),
     intakeNote: v.optional(v.string()),
+    varianceRequiresReview: v.optional(v.boolean()),
     outputType: v.optional(outputType),
     outputWeightGrams: v.optional(v.number()),
     residualWeightGrams: v.optional(v.number()),

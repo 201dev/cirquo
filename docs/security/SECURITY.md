@@ -16,9 +16,10 @@ status. The implementation snapshot is maintained in §21 and source remains
 authoritative.
 
 > **Current posture — 2026-08-29:** session authentication, server-side role
-> guards, Merchant verification checks, Material Flow Ledger writes, and
-> Midtrans Sandbox code exist. Sections marked as future hardening remain design
-> work; see [Section 21](#21-current-security-posture-honest),
+> guards, Merchant verification checks, Material Flow Ledger writes, Midtrans
+> Sandbox code, pickup/recovery/routing guards, and Processor intake/outcome
+> guards exist. Sections marked as future hardening remain design work; see
+> [Section 21](#21-current-security-posture-honest),
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md), and `convex/`
 > for the current scope.
 
@@ -214,8 +215,8 @@ These are the attacks that actually threaten *this* product. A generic checklist
 
 ## 8. Ledger integrity threats
 
-> Rows below preserve the target threat model. The M1–M3 source already has the
-> append-only helper and domain write paths; M4–M7 controls remain planned. See
+> Rows below preserve the target threat model. The M1–M5 source already has the
+> append-only helper and its domain write paths; M6–M7 controls remain planned. See
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).
 
 The ledger is append-only and immutable in practice. Threats target the *paths into and out of it*.

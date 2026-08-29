@@ -1055,7 +1055,7 @@ git push -u origin feat/<scope>
 
 Without `VITE_CONVEX_URL`, the app runs in placeholder mode against
 `mock-data.ts`. That is useful for UI-only work but must never be presented as a
-working backend. M1–M3 source requires a configured Convex deployment for real
+working backend. M1–M5 source requires a configured Convex deployment for real
 data.
 
 ---

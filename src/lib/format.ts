@@ -19,6 +19,10 @@ const kgFormatter = new Intl.NumberFormat(LOCALE, {
   maximumFractionDigits: 1,
 });
 
+const percentFormatter = new Intl.NumberFormat(LOCALE, {
+  maximumFractionDigits: 1,
+});
+
 const timeFormatter = new Intl.DateTimeFormat(LOCALE, {
   hour: "2-digit",
   minute: "2-digit",
@@ -46,6 +50,10 @@ export function formatIdr(amountIdr: number) {
 
 export function formatKg(grams: number) {
   return `${kgFormatter.format(grams / 1_000)} kg`;
+}
+
+export function formatPercent(value: number) {
+  return `${percentFormatter.format(value)}%`;
 }
 
 /**
