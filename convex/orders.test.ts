@@ -314,3 +314,232 @@ test("kode pickup tidak pernah ada di daftar pesanan dan hanya terbuka setelah p
     await t.query(api.orders.listMine, { sessionToken: strangerToken }),
   ).toHaveLength(0);
 });
+
+test("merchant mengonfirmasi pickup sekali tanpa menerima kode dari antrean", async () => {
+  const t = convexTest(schema, modules);
+  const now = Date.now();
+  const merchantToken = "m".repeat(43);
+  const adminToken = "a".repeat(43);
+  const consumerToken = "c".repeat(43);
+
+  const ids = await t.run(async (ctx) => {
+    const merchantUserId = await ctx.db.insert("users", {
+      name: "Merchant Pickup",
+      email: "merchant.pickup.m401@example.com",
+      passwordHash: "test-password-hash",
+      role: "merchant",
+      status: "active",
+      createdAt: now,
+    });
+    const otherMerchantUserId = await ctx.db.insert("users", {
+      name: "Merchant Lain",
+      email: "merchant.other.m401@example.com",
+      passwordHash: "test-password-hash",
+      role: "merchant",
+      status: "active",
+      createdAt: now,
+    });
+    const adminUserId = await ctx.db.insert("users", {
+      name: "Admin Pickup",
+      email: "admin.pickup.m401@example.com",
+      passwordHash: "test-password-hash",
+      role: "admin",
+      status: "active",
+      createdAt: now,
+    });
+    const consumerId = await ctx.db.insert("users", {
+      name: "Consumer Pickup",
+      email: "consumer.pickup.m401@example.com",
+      passwordHash: "test-password-hash",
+      role: "consumer",
+      status: "active",
+      createdAt: now,
+    });
+    const [merchantId, otherMerchantId] = await Promise.all([
+      ctx.db.insert("merchants", {
+        ownerId: merchantUserId,
+        name: "Dapur M4",
+        address: "Jl. M4, Semarang",
+        verificationStatus: "verified",
+        createdAt: now,
+      }),
+      ctx.db.insert("merchants", {
+        ownerId: otherMerchantUserId,
+        name: "Dapur Lain",
+        address: "Jl. Lain, Semarang",
+        verificationStatus: "verified",
+        createdAt: now,
+      }),
+    ]);
+    await Promise.all([
+      ctx.db.insert("sessions", {
+        userId: merchantUserId,
+        tokenHash: await hashSessionToken(merchantToken),
+        expiresAt: now + HOUR_MS,
+        createdAt: now,
+      }),
+      ctx.db.insert("sessions", {
+        userId: adminUserId,
+        tokenHash: await hashSessionToken(adminToken),
+        expiresAt: now + HOUR_MS,
+        createdAt: now,
+      }),
+      ctx.db.insert("sessions", {
+        userId: consumerId,
+        tokenHash: await hashSessionToken(consumerToken),
+        expiresAt: now + HOUR_MS,
+        createdAt: now,
+      }),
+    ]);
+
+    const addItem = (ownerId: typeof merchantId, pickupStartAt: number, pickupEndAt: number) =>
+      ctx.db.insert("surplusItems", {
+        merchantId: ownerId,
+        name: "Rescue Item M4",
+        originalPrice: 20_000,
+        floorPrice: 8_000,
+        currentPrice: 12_000,
+        initialQuantity: 1,
+        remainingQuantity: 0,
+        weightPerItemGrams: 500,
+        pickupStartAt,
+        pickupEndAt,
+        materialType: "bakery" as const,
+        dietaryTags: [],
+        processingOnly: false,
+        status: "sold_out" as const,
+        publishedAt: now,
+        createdAt: now,
+      });
+    const inWindowItemId = await addItem(merchantId, now - HOUR_MS, now + HOUR_MS);
+    const unpaidItemId = await addItem(merchantId, now - HOUR_MS, now + HOUR_MS);
+    const outsideWindowItemId = await addItem(merchantId, now - 3 * HOUR_MS, now - HOUR_MS);
+    const otherItemId = await addItem(otherMerchantId, now - HOUR_MS, now + HOUR_MS);
+
+    const addOrder = (surplusItemId: typeof inWindowItemId, status: "reserved" | "paid", pickupCode: string) =>
+      ctx.db.insert("orders", {
+        userId: consumerId,
+        surplusItemId,
+        quantity: 1,
+        totalPrice: 12_000,
+        rescuedWeightGrams: 500,
+        pickupCode,
+        status,
+        createdAt: now,
+      });
+
+    return {
+      inWindowOrderId: await addOrder(inWindowItemId, "paid", "123456"),
+      unpaidOrderId: await addOrder(unpaidItemId, "reserved", "234567"),
+      outsideWindowOrderId: await addOrder(outsideWindowItemId, "paid", "345678"),
+      otherOrderId: await addOrder(otherItemId, "paid", "456789"),
+      inWindowItemId,
+    };
+  });
+
+  const queue = await t.query(api.orders.listForMerchant, { sessionToken: merchantToken });
+  expect(queue.map((order) => order._id)).toEqual(
+    expect.arrayContaining([ids.inWindowOrderId, ids.outsideWindowOrderId]),
+  );
+  expect(queue.map((order) => order._id)).not.toContain(ids.unpaidOrderId);
+  expect(queue.map((order) => order._id)).not.toContain(ids.otherOrderId);
+  expect(queue.every((order) => !("pickupCode" in order))).toBe(true);
+
+  await expect(
+    t.mutation(api.orders.confirmPickup, {
+      orderId: ids.inWindowOrderId,
+      pickupCode: "000000",
+      sessionToken: merchantToken,
+    }),
+  ).rejects.toThrow("INVALID_PICKUP_CODE");
+  await expect(
+    t.mutation(api.orders.confirmPickup, {
+      orderId: ids.otherOrderId,
+      pickupCode: "456789",
+      sessionToken: merchantToken,
+    }),
+  ).rejects.toThrow("FORBIDDEN");
+  await expect(
+    t.mutation(api.orders.confirmPickup, {
+      orderId: ids.unpaidOrderId,
+      pickupCode: "234567",
+      sessionToken: merchantToken,
+    }),
+  ).rejects.toThrow("INVALID_TRANSITION");
+  await expect(
+    t.mutation(api.orders.confirmPickup, {
+      orderId: ids.outsideWindowOrderId,
+      pickupCode: "345678",
+      sessionToken: merchantToken,
+    }),
+  ).rejects.toThrow("PICKUP_WINDOW_CLOSED");
+
+  await t.mutation(api.orders.confirmPickup, {
+    orderId: ids.inWindowOrderId,
+    pickupCode: "123456",
+    sessionToken: merchantToken,
+  });
+  expect(await t.run((ctx) => ctx.db.get(ids.inWindowOrderId))).toMatchObject({
+    status: "picked_up",
+  });
+  expect(await t.run((ctx) => ctx.db.get(ids.inWindowItemId))).toMatchObject({
+    status: "closed",
+    remainingQuantity: 0,
+  });
+  const pickedUpDetail = await t.query(api.orders.get, {
+    orderId: ids.inWindowOrderId,
+    sessionToken: consumerToken,
+  });
+  expect(pickedUpDetail).toMatchObject({ status: "picked_up" });
+  expect(pickedUpDetail?.pickupCode).toBeUndefined();
+  let rescuedEvents = await t.run((ctx) =>
+    ctx.db
+      .query("materialFlowLedger")
+      .withIndex("by_order", (q) => q.eq("orderId", ids.inWindowOrderId))
+      .collect(),
+  );
+  expect(rescuedEvents).toMatchObject([
+    { eventType: "RESCUED", weightDeltaGrams: -500, actorRole: "merchant" },
+  ]);
+
+  await expect(
+    t.mutation(api.orders.confirmPickup, {
+      orderId: ids.inWindowOrderId,
+      pickupCode: "123456",
+      sessionToken: merchantToken,
+    }),
+  ).rejects.toThrow("INVALID_TRANSITION");
+  rescuedEvents = await t.run((ctx) =>
+    ctx.db
+      .query("materialFlowLedger")
+      .withIndex("by_order", (q) => q.eq("orderId", ids.inWindowOrderId))
+      .collect(),
+  );
+  expect(rescuedEvents).toHaveLength(1);
+
+  await expect(
+    t.mutation(api.orders.adminOverridePickup, {
+      orderId: ids.outsideWindowOrderId,
+      pickupCode: "345678",
+      reason: " ",
+      sessionToken: adminToken,
+    }),
+  ).rejects.toThrow("VALIDATION_FAILED");
+  await t.mutation(api.orders.adminOverridePickup, {
+    orderId: ids.outsideWindowOrderId,
+    pickupCode: "345678",
+    reason: "Konfirmasi serah terima terlambat tercatat.",
+    sessionToken: adminToken,
+  });
+  const overrideEvent = (await t.run((ctx) =>
+    ctx.db
+      .query("materialFlowLedger")
+      .withIndex("by_order", (q) => q.eq("orderId", ids.outsideWindowOrderId))
+      .unique(),
+  ));
+  expect(overrideEvent).toMatchObject({ eventType: "RESCUED", actorRole: "admin" });
+  expect(JSON.parse(overrideEvent!.metadata!)).toMatchObject({
+    adminOverride: true,
+    overrideReason: "Konfirmasi serah terima terlambat tercatat.",
+  });
+});

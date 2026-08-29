@@ -1,15 +1,95 @@
 import { v, ConvexError } from 'convex/values'
 import { internalQuery, internalMutation, mutation, query } from './_generated/server'
-import { requireRole } from './lib/guards'
+import type { Id } from './_generated/dataModel'
+import type { MutationCtx } from './_generated/server'
+import { requireRole, requireVerifiedMerchant } from './lib/guards'
 import { recordLedgerEvent } from './lib/ledger'
 import { internal } from './_generated/api'
 
 const PAYMENT_HOLD_MS = 15 * 60 * 1000
+const PICKUP_CODE_PATTERN = /^\d{6}$/
 
 function generatePickupCode() {
   const value = new Uint32Array(1)
   crypto.getRandomValues(value)
   return (value[0] % 1_000_000).toString().padStart(6, '0')
+}
+
+function failPickup(code: string, message: string): never {
+  throw new ConvexError({ code, message })
+}
+
+async function getPickupContext(ctx: MutationCtx, orderId: Id<'orders'>) {
+  const order = await ctx.db.get(orderId)
+  if (!order) failPickup('NOT_FOUND', 'Pesanan tidak ditemukan.')
+
+  const item = await ctx.db.get(order.surplusItemId)
+  if (!item) failPickup('NOT_FOUND', 'Rescue Item tidak ditemukan.')
+
+  return { order, item }
+}
+
+async function completePickup(
+  ctx: MutationCtx,
+  args: {
+    orderId: Id<'orders'>
+    pickupCode: string
+    actorId: Id<'users'>
+    actorRole: 'merchant' | 'admin'
+    bypassPickupWindow?: boolean
+    overrideReason?: string
+  },
+) {
+  const { order, item } = await getPickupContext(ctx, args.orderId)
+  if (order.status !== 'paid') {
+    failPickup('INVALID_TRANSITION', 'Hanya pesanan yang sudah dibayar dapat dikonfirmasi.')
+  }
+  if (!PICKUP_CODE_PATTERN.test(args.pickupCode) || args.pickupCode !== order.pickupCode) {
+    failPickup('INVALID_PICKUP_CODE', 'Kode pickup tidak cocok.')
+  }
+
+  const now = Date.now()
+  if (!args.bypassPickupWindow && (now < item.pickupStartAt || now > item.pickupEndAt)) {
+    failPickup('PICKUP_WINDOW_CLOSED', 'Pickup harus dikonfirmasi di dalam waktu pickup.')
+  }
+
+  const hasOpenSibling = item.remainingQuantity === 0 && (
+    await ctx.db
+      .query('orders')
+      .withIndex('by_item', (q) => q.eq('surplusItemId', item._id))
+      .collect()
+  ).some(
+    (sibling) =>
+      sibling._id !== order._id &&
+      (sibling.status === 'reserved' || sibling.status === 'paid'),
+  )
+
+  await ctx.db.patch(order._id, { status: 'picked_up', pickedUpAt: now })
+  const ledgerEventId = await recordLedgerEvent(ctx, {
+    surplusItemId: item._id,
+    orderId: order._id,
+    eventType: 'RESCUED',
+    weightDeltaGrams: -order.rescuedWeightGrams,
+    actorId: args.actorId,
+    actorRole: args.actorRole,
+    metadata: {
+      quantity: order.quantity,
+      totalPrice: order.totalPrice,
+      adminOverride: Boolean(args.overrideReason),
+      ...(args.overrideReason ? { overrideReason: args.overrideReason } : {}),
+    },
+  })
+
+  if (item.remainingQuantity === 0 && !hasOpenSibling && item.status !== 'closed') {
+    await ctx.db.patch(item._id, { status: 'closed' })
+  }
+
+  return {
+    orderId: order._id,
+    pickedUpAt: now,
+    rescuedWeightGrams: order.rescuedWeightGrams,
+    ledgerEventId,
+  }
 }
 
 export const listByUser = internalQuery({
@@ -193,6 +273,93 @@ export const listMine = query({
 
     return enriched.filter((o): o is NonNullable<typeof o> => o !== null)
   }
+})
+
+export const listForMerchant = query({
+  args: { sessionToken: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await requireRole(ctx, args.sessionToken, ['merchant'])
+    const merchant = await requireVerifiedMerchant(ctx, user)
+    const items = await ctx.db
+      .query('surplusItems')
+      .withIndex('by_merchant', (q) => q.eq('merchantId', merchant._id))
+      .collect()
+
+    // ponytail: one indexed lookup per Rescue Item keeps the M4 counter queue simple.
+    // Add an order.merchantId snapshot plus by_merchant_status before pagination is needed.
+    return (await Promise.all(items.map(async (item) => {
+      const paidOrders = await ctx.db
+        .query('orders')
+        .withIndex('by_item_status', (q) =>
+          q.eq('surplusItemId', item._id).eq('status', 'paid'),
+        )
+        .collect()
+
+      return Promise.all(paidOrders.map(async (order) => {
+        const consumer = await ctx.db.get(order.userId)
+        return {
+          _id: order._id,
+          consumerName: consumer?.name ?? 'Konsumen',
+          itemName: item.name,
+          quantity: order.quantity,
+          totalPrice: order.totalPrice,
+          rescuedWeightGrams: order.rescuedWeightGrams,
+          pickupStartAt: item.pickupStartAt,
+          pickupEndAt: item.pickupEndAt,
+          createdAt: order.createdAt,
+          // pickupCode is intentionally never projected to Merchant clients.
+        }
+      }))
+    }))).flat()
+  },
+})
+
+export const confirmPickup = mutation({
+  args: {
+    orderId: v.id('orders'),
+    pickupCode: v.string(),
+    sessionToken: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireRole(ctx, args.sessionToken, ['merchant'])
+    const merchant = await requireVerifiedMerchant(ctx, user)
+    const { item } = await getPickupContext(ctx, args.orderId)
+    if (item.merchantId !== merchant._id) {
+      failPickup('FORBIDDEN', 'Pesanan ini bukan milik Merchant Anda.')
+    }
+
+    return completePickup(ctx, {
+      orderId: args.orderId,
+      pickupCode: args.pickupCode,
+      actorId: user._id,
+      actorRole: 'merchant',
+    })
+  },
+})
+
+export const adminOverridePickup = mutation({
+  args: {
+    orderId: v.id('orders'),
+    pickupCode: v.string(),
+    reason: v.string(),
+    sessionToken: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireRole(ctx, args.sessionToken, ['admin'])
+    const reason = args.reason.trim()
+    if (reason.length < 2 || reason.length > 500) {
+      failPickup('VALIDATION_FAILED', 'Alasan override harus 2-500 karakter.')
+    }
+
+    return completePickup(ctx, {
+      orderId: args.orderId,
+      pickupCode: args.pickupCode,
+      actorId: user._id,
+      actorRole: 'admin',
+      bypassPickupWindow: true,
+      overrideReason: reason,
+    })
+  },
 })
 
 export const get = query({

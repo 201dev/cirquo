@@ -64,6 +64,10 @@ export const loginSchema = z.object({
   password: z.string().min(1, { message: "Kata sandi harus diisi" }),
 });
 
+export const pickupCodeSchema = z
+  .string()
+  .regex(/^\d{6}$/, "Kode pickup harus terdiri dari 6 digit");
+
 export const registerSchema = z.object({
   name: z
     .string()

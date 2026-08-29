@@ -219,6 +219,7 @@ export default defineSchema({
   })
     .index('by_user', ['userId'])
     .index('by_item', ['surplusItemId'])
+    .index('by_item_status', ['surplusItemId', 'status'])
     .index('by_user_item_status', ['userId', 'surplusItemId', 'status'])
     .index('by_user_idempotency_key', ['userId', 'idempotencyKey'])
     .index('by_pickup_code', ['pickupCode']),
