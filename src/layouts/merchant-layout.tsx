@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Bell,
   LayoutDashboard,
   PackageCheck,
   PackagePlus,
@@ -18,6 +19,7 @@ const navigation = [
   },
   { href: "/merchant/pickup", label: "Konfirmasi Pickup", icon: PackageCheck },
   { href: "/merchant/impact", label: "Dampak Merchant", icon: BarChart3 },
+  { href: "/merchant/notifications", label: "Notifikasi", icon: Bell },
 ];
 
 export function MerchantLayout() {

@@ -72,7 +72,9 @@ export default function PendingVerificationPage() {
         {config.title}
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-        {config.description}
+        {verificationStatus === "rejected" && profile?.rejectionReason
+          ? profile.rejectionReason
+          : config.description}
       </p>
 
       {user && (

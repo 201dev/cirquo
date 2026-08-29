@@ -15,17 +15,28 @@ const statusLabels: Record<string, string> = {
   picked_up: "Terselamatkan",
   cancelled: "Dibatalkan",
   pending: "Menunggu",
+  verified: "Terverifikasi",
+  rejected: "Ditolak",
+  suspended: "Ditangguhkan",
   offered: "Ditawarkan",
   accepted: "Diterima",
   collected: "Sudah diambil",
   processed: "Terolah",
   unroutable: "Routing gagal",
+  moderated: "Dimoderasi",
   LISTED: "Tercatat",
+  PRICE_ADJUSTED: "Harga disesuaikan",
   RESERVED: "Direservasi",
+  PAID: "Dibayar",
   RESCUED: "Terselamatkan",
+  CANCELLED: "Dibatalkan",
+  EXPIRED: "Kedaluwarsa",
   ROUTED: "Circular Routing",
   ROUTING_FAILED: "Routing gagal",
+  INTAKE_ACCEPTED: "Intake diterima",
+  INTAKE_DECLINED: "Intake ditolak",
   PROCESSED: "Terolah",
+  MODERATED: "Dimoderasi",
 };
 
 const statusStyles: Record<string, string> = {
@@ -36,6 +47,8 @@ const statusStyles: Record<string, string> = {
   PROCESSED: "bg-recovered/20 text-foreground border-recovered/35",
   RESCUED: "bg-rescued/15 text-foreground border-rescued/30",
   ROUTED: "bg-in-progress/15 text-foreground border-in-progress/30",
+  ROUTING_FAILED: "bg-destructive/10 text-destructive border-destructive/30",
+  MODERATED: "bg-destructive/10 text-destructive border-destructive/30",
 };
 
 export function StatusBadge({

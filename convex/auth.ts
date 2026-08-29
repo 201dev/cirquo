@@ -44,6 +44,7 @@ const profileSummaryValidator = v.union(
       v.literal('rejected'),
       v.literal('suspended'),
     ),
+    rejectionReason: v.optional(v.string()),
   }),
   v.object({
     id: v.id('processors'),
@@ -55,6 +56,7 @@ const profileSummaryValidator = v.union(
       v.literal('rejected'),
       v.literal('suspended'),
     ),
+    rejectionReason: v.optional(v.string()),
   }),
   v.null(),
 )
@@ -65,12 +67,14 @@ type ProfileSummary =
       type: 'merchant'
       name: string
       verificationStatus: Doc<'merchants'>['verificationStatus']
+      rejectionReason?: string
     }
   | {
       id: Id<'processors'>
       type: 'processor'
       name: string
       verificationStatus: Doc<'processors'>['verificationStatus']
+      rejectionReason?: string
     }
 
 export const register = action({
@@ -235,6 +239,7 @@ export const getCurrentUser = query({
           type: 'merchant',
           name: merchant.name,
           verificationStatus: merchant.verificationStatus,
+          rejectionReason: merchant.rejectionReason,
         }
       }
     } else if (user.role === 'processor') {
@@ -249,6 +254,7 @@ export const getCurrentUser = query({
           type: 'processor',
           name: processor.name,
           verificationStatus: processor.verificationStatus,
+          rejectionReason: processor.rejectionReason,
         }
       }
     }

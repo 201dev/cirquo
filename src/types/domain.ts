@@ -1,11 +1,11 @@
 export type UserRole = "consumer" | "merchant" | "processor" | "admin";
 
 export type RescueItemStatus =
-  "draft" | "active" | "sold_out" | "expired" | "recovery_pending" | "closed";
+  "draft" | "active" | "sold_out" | "expired" | "recovery_pending" | "recovered" | "residual" | "closed" | "moderated";
 export type OrderStatus =
   "reserved" | "paid" | "picked_up" | "cancelled" | "expired";
 export type RecoveryBatchStatus =
-  "pending" | "offered" | "accepted" | "collected" | "processed" | "unroutable";
+  "pending" | "offered" | "accepted" | "collected" | "processed" | "unroutable" | "cancelled";
 
 export interface RescueItemPreview {
   id: string;

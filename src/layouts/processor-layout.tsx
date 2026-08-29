@@ -1,4 +1,4 @@
-import { History, LayoutDashboard, Recycle, Settings2 } from "lucide-react";
+import { Bell, History, LayoutDashboard, Recycle, Settings2 } from "lucide-react";
 import { RoleShell } from "@/components/common/role-shell";
 
 const navigation = [
@@ -6,6 +6,7 @@ const navigation = [
   { href: "/processor/recovery", label: "Antrean Recovery", icon: Recycle },
   { href: "/processor/history", label: "Riwayat Outcome", icon: History },
   { href: "/processor/profile", label: "Profil kapasitas", icon: Settings2 },
+  { href: "/processor/notifications", label: "Notifikasi", icon: Bell },
 ];
 
 export function ProcessorLayout() {

@@ -163,6 +163,12 @@ function SurplusDetailContent() {
         title={item.name}
         description={item.processingOnly ? "Rescue Item khusus Organic Processor." : "Rescue Item yang dikelola Merchant."}
       />
+      {item.status === "moderated" && item.moderationReason ? (
+        <section role="alert" className="mb-6 rounded-xl border border-destructive/30 bg-destructive/5 p-5">
+          <h2 className="font-semibold">Rescue Item dimoderasi</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{item.moderationReason}</p>
+        </section>
+      ) : null}
       <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
         <section className="rounded-xl bg-card p-5 shadow-sm sm:p-6">
           <StatusBadge status={item.status} />
