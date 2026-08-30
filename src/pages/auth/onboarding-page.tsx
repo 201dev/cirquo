@@ -83,14 +83,34 @@ function OnboardingHeader({ role }: { role: "merchant" | "processor" }) {
 }
 
 function LocationHint({
-  onUseCurrentLocation,
-  isLocating = false,
-  error,
+  onPosition,
 }: {
-  onUseCurrentLocation?: () => void;
-  isLocating?: boolean;
-  error?: string;
+  onPosition: (latitude: number, longitude: number) => void;
 }) {
+  const [isLocating, setIsLocating] = useState(false);
+  const [error, setError] = useState<string>();
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Perangkat ini tidak mendukung lokasi.");
+      return;
+    }
+
+    setIsLocating(true);
+    setError(undefined);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        onPosition(coords.latitude, coords.longitude);
+        setIsLocating(false);
+      },
+      () => {
+        setError("Lokasi tidak dapat diakses. Izinkan permission lokasi lalu coba lagi.");
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+    );
+  };
+
   return (
     <div className="rounded-xl bg-secondary p-4">
       <p className="flex gap-3 text-sm">
@@ -103,24 +123,21 @@ function LocationHint({
             milestone — a roadmap label means nothing to the merchant reading it.
           */}
           <span className="text-muted-foreground">
-            {onUseCurrentLocation
-              ? "Gunakan posisi perangkat untuk mengisi koordinat secara otomatis. Koordinat ini dipakai untuk menghitung jarak pickup dan Circular Routing."
-              : "Salin latitude dan longitude dari aplikasi peta, lalu tempel di kolom di bawah."}
+            Gunakan posisi perangkat untuk mengisi koordinat secara otomatis.
+            Koordinat ini dipakai untuk menghitung jarak pickup dan Circular Routing.
           </span>
         </span>
       </p>
-      {onUseCurrentLocation ? (
-        <Button
-          type="button"
-          variant="outline"
-          className="mt-4 w-full"
-          disabled={isLocating}
-          onClick={onUseCurrentLocation}
-        >
-          <MapPin aria-hidden="true" />
-          {isLocating ? "Mengambil posisi..." : "Gunakan posisi sekarang"}
-        </Button>
-      ) : null}
+      <Button
+        type="button"
+        variant="outline"
+        className="mt-4 w-full"
+        disabled={isLocating}
+        onClick={useCurrentLocation}
+      >
+        <MapPin aria-hidden="true" />
+        {isLocating ? "Mengambil posisi..." : "Gunakan posisi sekarang"}
+      </Button>
       {error ? <p className="mt-2 text-sm text-destructive" role="alert">{error}</p> : null}
     </div>
   );
@@ -130,8 +147,6 @@ function MerchantForm() {
   const navigate = useNavigate();
   const { sessionToken } = useAuth();
   const createProfile = useMutation(api.merchants.createProfile);
-  const [isLocating, setIsLocating] = useState(false);
-  const [locationError, setLocationError] = useState<string>();
   const {
     register,
     control,
@@ -148,28 +163,6 @@ function MerchantForm() {
       phone: "",
     },
   });
-
-  const useCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setLocationError("Perangkat ini tidak mendukung lokasi.");
-      return;
-    }
-
-    setIsLocating(true);
-    setLocationError(undefined);
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        setValue("latitude", coords.latitude, { shouldDirty: true, shouldValidate: true });
-        setValue("longitude", coords.longitude, { shouldDirty: true, shouldValidate: true });
-        setIsLocating(false);
-      },
-      () => {
-        setLocationError("Lokasi tidak dapat diakses. Izinkan permission lokasi lalu coba lagi.");
-        setIsLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
-    );
-  };
 
   const onSubmit = async (data: MerchantOnboardingValues) => {
     if (!sessionToken) {
@@ -316,9 +309,10 @@ function MerchantForm() {
         </div>
 
         <LocationHint
-          onUseCurrentLocation={useCurrentLocation}
-          isLocating={isLocating}
-          error={locationError}
+          onPosition={(latitude, longitude) => {
+            setValue("latitude", latitude, { shouldDirty: true, shouldValidate: true });
+            setValue("longitude", longitude, { shouldDirty: true, shouldValidate: true });
+          }}
         />
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="space-y-2">
@@ -382,6 +376,7 @@ function ProcessorForm() {
     control,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<ProcessorOnboardingValues>({
     resolver: zodResolver(processorOnboardingSchema),
@@ -520,7 +515,12 @@ function ProcessorForm() {
           <FieldError id="processor-city-error" message={errors.city?.message} />
         </div>
 
-        <LocationHint />
+        <LocationHint
+          onPosition={(latitude, longitude) => {
+            setValue("latitude", latitude, { shouldDirty: true, shouldValidate: true });
+            setValue("longitude", longitude, { shouldDirty: true, shouldValidate: true });
+          }}
+        />
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="processor-latitude">Latitude</Label>

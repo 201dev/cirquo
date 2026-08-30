@@ -69,7 +69,8 @@ export function ConsumerLayout() {
   const [query, setQuery] = useState("");
   const unreadCount = useUnreadNotificationCount();
   const isCheckout = pathname.startsWith("/checkout/");
-  const showFooter = !isCheckout && Capacitor.getPlatform() !== "android";
+  const isAndroid = Capacitor.getPlatform() === "android";
+  const showFooter = !isCheckout && !isAndroid;
   const bottomNavigation = isAuthenticated
     ? mobileNavigation
     : guestMobileNavigation;
@@ -225,6 +226,11 @@ export function ConsumerLayout() {
         id="main-content"
         tabIndex={-1}
         className="mx-auto max-w-7xl px-4 py-6 focus:outline-none sm:px-6 sm:py-8"
+        style={
+          isAndroid
+            ? { paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }
+            : undefined
+        }
       >
         <Suspense fallback={<PageLoader />}>
           <Outlet />
