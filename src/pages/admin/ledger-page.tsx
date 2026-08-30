@@ -19,10 +19,10 @@ const VIOLATION_PREVIEW = 5;
 
 /**
  * The event types an Admin audits by name. The server already searches the
- * event types of each item, so these are shortcuts into the existing text
- * search rather than a second filter path that could disagree with it.
+ * event types of each item. The selected value reaches the indexed event
+ * query directly instead of being post-filtered as text.
  */
-const EVENT_FILTERS = ["RESCUED", "PROCESSED", "ROUTING_FAILED", "MODERATED", "EXPIRED"];
+const EVENT_FILTERS = ["RESCUED", "PROCESSED", "ROUTING_FAILED", "MODERATED", "EXPIRED"] as const;
 
 /** A yyyy-mm-dd input turned into an epoch ms boundary at WIB midnight. */
 function wibBoundary(value: string, nextDay = false) {
@@ -89,7 +89,8 @@ function IntegrityOverview({
         {violations.length === 0 ? (
           <p role="status" className="text-sm text-muted-foreground">
             Tidak ada pelanggaran konservasi atau kelengkapan pada{" "}
-            {conservation.checkedItems.toLocaleString("id-ID")} Rescue Item terminal.
+            {conservation.checkedItems.toLocaleString("id-ID")} Rescue Item terminal dan{" "}
+            {completeness.checkedItems.toLocaleString("id-ID")} Rescue Item bermaterial.
           </p>
         ) : (
           <div
@@ -277,6 +278,7 @@ function ItemInspector({
 
 function LedgerSearch({ sessionToken }: { sessionToken: string }) {
   const [search, setSearch] = useState("");
+  const [selectedEventType, setSelectedEventType] = useState<(typeof EVENT_FILTERS)[number]>();
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [selectedId, setSelectedId] = useState<Id<"surplusItems"> | null>(null);
@@ -285,6 +287,7 @@ function LedgerSearch({ sessionToken }: { sessionToken: string }) {
     {
       sessionToken,
       query: search || undefined,
+      eventType: selectedEventType,
       fromAt: wibBoundary(fromDate),
       toAt: wibBoundary(toDate, true),
     },
@@ -297,6 +300,11 @@ function LedgerSearch({ sessionToken }: { sessionToken: string }) {
    */
   const changeSearch = (value: string) => {
     setSearch(value);
+    setSelectedId(null);
+  };
+
+  const changeEventType = (value: (typeof EVENT_FILTERS)[number]) => {
+    setSelectedEventType(selectedEventType === value ? undefined : value);
     setSelectedId(null);
   };
 
@@ -342,9 +350,9 @@ function LedgerSearch({ sessionToken }: { sessionToken: string }) {
               key={eventType}
               type="button"
               size="sm"
-              variant={search === eventType ? "default" : "outline"}
-              aria-pressed={search === eventType}
-              onClick={() => changeSearch(search === eventType ? "" : eventType)}
+              variant={selectedEventType === eventType ? "default" : "outline"}
+              aria-pressed={selectedEventType === eventType}
+              onClick={() => changeEventType(eventType)}
             >
               {statusLabel(eventType)}
             </Button>

@@ -8,12 +8,13 @@ const notificationView = v.object({
 })
 
 export const listMine = query({
-  args: { sessionToken: v.optional(v.string()) },
+  args: { sessionToken: v.optional(v.string()), now: v.number() },
   returns: v.array(notificationView),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx, args.sessionToken)
+    if (!Number.isInteger(args.now) || args.now < 0) throw new ConvexError({ code: 'VALIDATION_FAILED', message: 'Waktu notifikasi tidak valid.' })
     const rows = await ctx.db.query('notifications')
-      .withIndex('by_user_and_visible_at', (index) => index.eq('userId', user._id).lte('visibleAt', Date.now()))
+      .withIndex('by_user_and_visible_at', (index) => index.eq('userId', user._id).lte('visibleAt', args.now))
       .order('desc').take(100)
     return rows.map((row) => ({ _id: row._id, type: row.type, title: row.title, body: row.body, href: row.href ?? null, visibleAt: row.visibleAt, readAt: row.readAt ?? null, createdAt: row.createdAt }))
   },

@@ -155,7 +155,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index('by_owner', ['ownerId'])
-    .index('by_verification', ['verificationStatus']),
+    .index('by_verification', ['verificationStatus'])
+    .index('by_verification_and_city', ['verificationStatus', 'city']),
 
   processors: defineTable({
     ownerId: v.id('users'),
@@ -183,7 +184,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index('by_owner', ['ownerId'])
-    .index('by_verification', ['verificationStatus']),
+    .index('by_verification', ['verificationStatus'])
+    .index('by_verification_and_city', ['verificationStatus', 'city']),
 
   surplusItems: defineTable({
     merchantId: v.id('merchants'),
@@ -227,6 +229,8 @@ export default defineSchema({
     occurredAt: v.number(),
   })
     .index('by_rescue_item', ['surplusItemId'])
+    .index('by_rescue_item_and_occurred_at', ['surplusItemId', 'occurredAt'])
+    .index('by_rescue_item_and_event_type_and_occurred_at', ['surplusItemId', 'eventType', 'occurredAt'])
     .index('by_occurred_at', ['occurredAt'])
     .index('by_actor', ['actorId', 'occurredAt'])
     .index('by_event_type', ['eventType', 'occurredAt'])
@@ -331,8 +335,14 @@ export default defineSchema({
   adminActions: defineTable({
     adminId: v.id('users'),
     action: v.string(),
-    targetTable: v.string(),
-    targetId: v.string(),
+    // ponytail: optional only for pre-M7 rows; recordAdminAction requires it for new writes.
+    targetUserId: v.optional(v.id('users')),
+    targetEntityId: v.optional(v.string()),
+    previousStatus: v.optional(v.string()),
+    reasonOrNote: v.optional(v.string()),
+    // ponytail: retain pre-M7 audit fields until deployed data is backfilled.
+    targetTable: v.optional(v.string()),
+    targetId: v.optional(v.string()),
     reason: v.optional(v.string()),
     note: v.optional(v.string()),
     occurredAt: v.number(),
