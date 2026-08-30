@@ -229,6 +229,8 @@ export default defineSchema({
     occurredAt: v.number(),
   })
     .index('by_rescue_item', ['surplusItemId'])
+    .index('by_rescue_item_and_occurred_at', ['surplusItemId', 'occurredAt'])
+    .index('by_rescue_item_and_event_type_and_occurred_at', ['surplusItemId', 'eventType', 'occurredAt'])
     .index('by_occurred_at', ['occurredAt'])
     .index('by_actor', ['actorId', 'occurredAt'])
     .index('by_event_type', ['eventType', 'occurredAt'])

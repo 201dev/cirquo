@@ -38,7 +38,16 @@ test('Admin ledger is guarded, reconciled, paginated, and redacted', async () =>
     await event('LISTED', 500, now)
     await event('PAID', 0, now + 1)
     await event('RESCUED', -500, now + 2, { quantity: 1, totalPrice: 8_000, originalPriceSnapshot: 10_000, pickupCode: '123456', nested: { sessionToken: 'secret' } })
-    return { itemId }
+    const incompleteItemId = await ctx.db.insert('surplusItems', {
+      merchantId, name: 'Roti Tidak Lengkap', originalPrice: 10_000, floorPrice: 5_000, currentPrice: 8_000,
+      initialQuantity: 1, remainingQuantity: 1, weightPerItemGrams: 500, pickupStartAt: now - 1_000,
+      pickupEndAt: now + 1_000, materialType: 'bakery', dietaryTags: [], processingOnly: false, status: 'active', createdAt: now,
+    })
+    await ctx.db.insert('materialFlowLedger', {
+      surplusItemId: incompleteItemId, eventType: 'RESCUED', weightDeltaGrams: -500,
+      methodologyVersion: 'impact-v1', occurredAt: now + 3,
+    })
+    return { itemId, incompleteItemId }
   })
 
   const detail = await t.query(api.admin.getItemLedger, { sessionToken: adminToken, surplusItemId: ids.itemId })
@@ -47,9 +56,18 @@ test('Admin ledger is guarded, reconciled, paginated, and redacted', async () =>
   expect(JSON.stringify(detail?.events)).not.toContain('secret')
   expect(JSON.stringify(detail?.events)).toContain('[DIHAPUS]')
   expect(await t.query(api.admin.checkWeightConservation, { sessionToken: adminToken })).toMatchObject({ checkedItems: 1, violations: [] })
-  expect(await t.query(api.admin.checkLedgerCompleteness, { sessionToken: adminToken })).toMatchObject({ checkedItems: 1, violations: [] })
+  const completeness = await t.query(api.admin.checkLedgerCompleteness, { sessionToken: adminToken })
+  expect(completeness.checkedItems).toBe(2)
+  expect(completeness.violations.find((item) => item.surplusItemId === ids.incompleteItemId)?.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining([
+    'LISTED_COUNT', 'RESCUED_BEFORE_PAID', 'MALFORMED_RESCUED_METADATA',
+  ]))
   const search = await t.query(api.admin.searchLedger, { sessionToken: adminToken, query: 'Toko Audit', paginationOpts: { numItems: 10, cursor: null } })
-  expect(search.page).toHaveLength(1)
+  expect(search.page.map((item) => item.surplusItemId)).toEqual(expect.arrayContaining([ids.itemId, ids.incompleteItemId]))
+  const filteredSearch = await t.query(api.admin.searchLedger, {
+    sessionToken: adminToken, eventType: 'RESCUED', fromAt: now + 2, toAt: now + 3,
+    paginationOpts: { numItems: 10, cursor: null },
+  })
+  expect(filteredSearch.page.map((item) => item.surplusItemId)).toEqual([ids.itemId])
 
   await expect(t.query(api.admin.getItemLedger, { sessionToken: consumerToken, surplusItemId: ids.itemId })).rejects.toThrow('FORBIDDEN')
   await expect(t.query(api.admin.checkWeightConservation, { sessionToken: consumerToken })).rejects.toThrow('FORBIDDEN')

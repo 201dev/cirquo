@@ -8,13 +8,18 @@ import { recordLedgerEvent } from './lib/ledger'
 import { createNotification } from './lib/notifications'
 import { queueSandboxRefund } from './lib/refunds'
 import { validateProcessorProfile } from './lib/profiles'
-import { materialType, outputType } from './schema'
+import { ledgerEventType, materialType, outputType } from './schema'
 import { checkItemLedgerIntegrity } from '../src/lib/ledger-integrity'
 import { summariseLedger } from '../src/lib/impact'
 
 const terminalEventTypes = new Set(['RESCUED', 'PROCESSED', 'ROUTING_FAILED', 'MODERATED'])
 const sensitiveMetadataKey = /pickup.?code|password|token|raw.?payload|authorization|cookie|secret|credential|hash/i
 const PARTNER_LIMIT = 100
+type LedgerEventType = Doc<'materialFlowLedger'>['eventType']
+type RescueItemStatus = Doc<'surplusItems'>['status']
+const ledgerEventTypes = ['LISTED', 'PRICE_ADJUSTED', 'RESERVED', 'PAID', 'RESCUED', 'CANCELLED', 'EXPIRED', 'ROUTED', 'ROUTING_FAILED', 'INTAKE_ACCEPTED', 'INTAKE_DECLINED', 'PROCESSED', 'MODERATED'] as const satisfies readonly LedgerEventType[]
+const terminalItemStatuses = ['closed', 'recovered', 'residual', 'moderated'] as const satisfies readonly RescueItemStatus[]
+const materialItemStatuses = ['active', 'sold_out', 'expired', 'recovery_pending', 'recovered', 'residual', 'closed', 'moderated'] as const satisfies readonly RescueItemStatus[]
 
 const integrityIssue = v.object({ code: v.string(), message: v.string(), entryId: v.optional(v.string()) })
 const impactIssue = v.object({ code: v.string(), message: v.string(), surplusItemId: v.string(), entryId: v.optional(v.string()) })
@@ -61,10 +66,27 @@ function safeMetadata(raw: string | undefined): { value: Record<string, unknown>
   }
 }
 
+async function itemsWithStatuses(ctx: Parameters<typeof requireRole>[0], statuses: readonly RescueItemStatus[]) {
+  // ponytail: indexed full scans are sufficient for the demo's material volume.
+  // Add paginated audit snapshots before this approaches Convex query limits.
+  return (await Promise.all(statuses.map((status) => ctx.db.query('surplusItems')
+    .withIndex('by_status', (index) => index.eq('status', status)).collect()))).flat()
+}
+
 async function terminalItems(ctx: Parameters<typeof requireRole>[0]) {
-  return (await Promise.all(['closed', 'recovered', 'residual', 'moderated'].map((status) => ctx.db.query('surplusItems')
-    .withIndex('by_status', (index) => index.eq('status', status as 'closed' | 'recovered' | 'residual' | 'moderated'))
-    .take(1_000)))).flat()
+  return itemsWithStatuses(ctx, terminalItemStatuses)
+}
+
+function eventTypeFromQuery(value: string | undefined): LedgerEventType | undefined {
+  const eventType = value?.trim().toUpperCase()
+  return ledgerEventTypes.find((candidate) => candidate === eventType)
+}
+
+function validateLedgerRange(fromAt: number | undefined, toAt: number | undefined) {
+  if ((fromAt !== undefined && (!Number.isInteger(fromAt) || fromAt < 0)) || (toAt !== undefined && (!Number.isInteger(toAt) || toAt < 0))) {
+    fail('VALIDATION_FAILED', 'Rentang tanggal ledger harus berupa epoch milidetik positif.')
+  }
+  if (fromAt !== undefined && toAt !== undefined && fromAt >= toAt) fail('VALIDATION_FAILED', 'Tanggal awal harus sebelum tanggal akhir.')
 }
 
 function fail(code: string, message: string): never {
@@ -376,32 +398,43 @@ export const listDisputes = query({
 export const searchLedger = query({
   args: {
     sessionToken: v.optional(v.string()), query: v.optional(v.string()), merchantId: v.optional(v.id('merchants')),
-    fromAt: v.optional(v.number()), toAt: v.optional(v.number()), paginationOpts: paginationOptsValidator,
+    eventType: v.optional(ledgerEventType), fromAt: v.optional(v.number()), toAt: v.optional(v.number()), paginationOpts: paginationOptsValidator,
   },
   returns: paginationResultValidator(searchRow),
   handler: async (ctx, args) => {
     await requireRole(ctx, args.sessionToken, ['admin'])
+    validateLedgerRange(args.fromAt, args.toAt)
+    const eventType = args.eventType ?? eventTypeFromQuery(args.query)
+    const needle = eventType ? '' : args.query?.trim().toLocaleLowerCase('id-ID') ?? ''
     const page = args.merchantId
       ? await ctx.db.query('surplusItems').withIndex('by_merchant', (index) => index.eq('merchantId', args.merchantId!)).order('desc').paginate(args.paginationOpts)
       : await ctx.db.query('surplusItems').withIndex('by_created_at').order('desc').paginate(args.paginationOpts)
-    const needle = args.query?.trim().toLocaleLowerCase('id-ID') ?? ''
     const rows = await Promise.all(page.page.map(async (item) => {
       const [merchant, allEvents] = await Promise.all([
         ctx.db.get(item.merchantId),
         ctx.db.query('materialFlowLedger').withIndex('by_rescue_item', (index) => index.eq('surplusItemId', item._id)).collect(),
       ])
-      const events = allEvents.filter((event) => (args.fromAt === undefined || event.occurredAt >= args.fromAt)
-        && (args.toAt === undefined || event.occurredAt < args.toAt))
-      const haystack = `${item._id} ${item.name} ${merchant?.name ?? ''} ${events.map((event) => event.eventType).join(' ')}`.toLocaleLowerCase('id-ID')
-      if ((needle && !haystack.includes(needle)) || ((args.fromAt !== undefined || args.toAt !== undefined) && events.length === 0)) return null
+      const events = eventType
+        ? await ctx.db.query('materialFlowLedger').withIndex('by_rescue_item_and_event_type_and_occurred_at', (index) => {
+          const eventRange = index.eq('surplusItemId', item._id).eq('eventType', eventType)
+          return args.fromAt === undefined
+            ? args.toAt === undefined ? eventRange : eventRange.lt('occurredAt', args.toAt)
+            : args.toAt === undefined ? eventRange.gte('occurredAt', args.fromAt) : eventRange.gte('occurredAt', args.fromAt).lt('occurredAt', args.toAt)
+        }).collect()
+        : args.fromAt !== undefined || args.toAt !== undefined
+          ? await ctx.db.query('materialFlowLedger').withIndex('by_rescue_item_and_occurred_at', (index) => {
+            return args.fromAt === undefined ? index.eq('surplusItemId', item._id).lt('occurredAt', args.toAt!) : args.toAt === undefined ? index.eq('surplusItemId', item._id).gte('occurredAt', args.fromAt) : index.eq('surplusItemId', item._id).gte('occurredAt', args.fromAt).lt('occurredAt', args.toAt)
+          }).collect()
+          : allEvents
+      const haystack = `${item._id} ${item.name} ${merchant?.name ?? ''} ${allEvents.map((event) => event.eventType).join(' ')}`.toLocaleLowerCase('id-ID')
+      if ((needle && !haystack.includes(needle)) || (events.length === 0 && (eventType || args.fromAt !== undefined || args.toAt !== undefined))) return null
       return {
         surplusItemId: item._id, itemName: item.name, merchantId: item.merchantId, merchantName: merchant?.name ?? 'Merchant tidak ditemukan',
         status: item.status, eventCount: events.length, eventTypes: [...new Set(events.map((event) => event.eventType))],
         lastEventAt: events.length ? Math.max(...events.map((event) => event.occurredAt)) : null,
-        balanceGrams: events.reduce((sum, event) => sum + event.weightDeltaGrams, 0),
+        balanceGrams: allEvents.reduce((sum, event) => sum + event.weightDeltaGrams, 0),
       }
     }))
-    // ponytail: bounded post-filtering keeps one native cursor and avoids denormalising merchant data into the append-only ledger.
     return { ...page, page: rows.filter((row): row is NonNullable<typeof row> => row !== null) }
   },
 })
@@ -472,12 +505,15 @@ export const checkLedgerCompleteness = query({
   returns: v.object({ checkedItems: v.number(), violations: v.array(violation) }),
   handler: async (ctx, args) => {
     await requireRole(ctx, args.sessionToken, ['admin'])
-    const items = await terminalItems(ctx)
+    const items = await itemsWithStatuses(ctx, materialItemStatuses)
     const results = await Promise.all(items.map(async (item) => {
       const [merchant, entries] = await Promise.all([ctx.db.get(item.merchantId), ctx.db.query('materialFlowLedger').withIndex('by_rescue_item', (index) => index.eq('surplusItemId', item._id)).collect()])
       const summary = summariseLedger(toImpactEntries(entries))
       const integrityEntries = entries.map((entry) => ({ ...toImpactEntries([entry])[0]!, orderId: entry.orderId ? String(entry.orderId) : undefined, recoveryBatchId: entry.recoveryBatchId ? String(entry.recoveryBatchId) : undefined }))
-      const issues = checkItemLedgerIntegrity(item.status, integrityEntries, summary).filter((issue) => issue.code !== 'WEIGHT_NOT_CONSERVED')
+      const issues = [
+        ...checkItemLedgerIntegrity(item.status, integrityEntries, summary).filter((issue) => issue.code !== 'WEIGHT_NOT_CONSERVED'),
+        ...summary.integrity.issues.map(({ code, message, entryId }) => ({ code, message, entryId })),
+      ]
       return issues.length === 0 ? null : { surplusItemId: item._id, itemName: item.name, status: item.status, merchantName: merchant?.name ?? 'Merchant tidak ditemukan', expectedGrams: 0, observedGrams: summary.conservation.itemBalances[0]?.balanceGrams ?? 0, issues }
     }))
     return { checkedItems: items.length, violations: results.filter((result): result is NonNullable<typeof result> => result !== null) }
