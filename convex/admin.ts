@@ -7,11 +7,19 @@ import { recordAdminAction } from './lib/adminAudit'
 import { recordLedgerEvent } from './lib/ledger'
 import { createNotification } from './lib/notifications'
 import { queueSandboxRefund } from './lib/refunds'
+import { validateProcessorProfile } from './lib/profiles'
+import { ledgerEventType, materialType, outputType } from './schema'
 import { checkItemLedgerIntegrity } from '../src/lib/ledger-integrity'
 import { summariseLedger } from '../src/lib/impact'
 
 const terminalEventTypes = new Set(['RESCUED', 'PROCESSED', 'ROUTING_FAILED', 'MODERATED'])
 const sensitiveMetadataKey = /pickup.?code|password|token|raw.?payload|authorization|cookie|secret|credential|hash/i
+const PARTNER_LIMIT = 100
+type LedgerEventType = Doc<'materialFlowLedger'>['eventType']
+type RescueItemStatus = Doc<'surplusItems'>['status']
+const ledgerEventTypes = ['LISTED', 'PRICE_ADJUSTED', 'RESERVED', 'PAID', 'RESCUED', 'CANCELLED', 'EXPIRED', 'ROUTED', 'ROUTING_FAILED', 'INTAKE_ACCEPTED', 'INTAKE_DECLINED', 'PROCESSED', 'MODERATED'] as const satisfies readonly LedgerEventType[]
+const terminalItemStatuses = ['closed', 'recovered', 'residual', 'moderated'] as const satisfies readonly RescueItemStatus[]
+const materialItemStatuses = ['active', 'sold_out', 'expired', 'recovery_pending', 'recovered', 'residual', 'closed', 'moderated'] as const satisfies readonly RescueItemStatus[]
 
 const integrityIssue = v.object({ code: v.string(), message: v.string(), entryId: v.optional(v.string()) })
 const impactIssue = v.object({ code: v.string(), message: v.string(), surplusItemId: v.string(), entryId: v.optional(v.string()) })
@@ -58,10 +66,27 @@ function safeMetadata(raw: string | undefined): { value: Record<string, unknown>
   }
 }
 
+async function itemsWithStatuses(ctx: Parameters<typeof requireRole>[0], statuses: readonly RescueItemStatus[]) {
+  // ponytail: indexed full scans are sufficient for the demo's material volume.
+  // Add paginated audit snapshots before this approaches Convex query limits.
+  return (await Promise.all(statuses.map((status) => ctx.db.query('surplusItems')
+    .withIndex('by_status', (index) => index.eq('status', status)).collect()))).flat()
+}
+
 async function terminalItems(ctx: Parameters<typeof requireRole>[0]) {
-  return (await Promise.all(['closed', 'recovered', 'residual', 'moderated'].map((status) => ctx.db.query('surplusItems')
-    .withIndex('by_status', (index) => index.eq('status', status as 'closed' | 'recovered' | 'residual' | 'moderated'))
-    .take(1_000)))).flat()
+  return itemsWithStatuses(ctx, terminalItemStatuses)
+}
+
+function eventTypeFromQuery(value: string | undefined): LedgerEventType | undefined {
+  const eventType = value?.trim().toUpperCase()
+  return ledgerEventTypes.find((candidate) => candidate === eventType)
+}
+
+function validateLedgerRange(fromAt: number | undefined, toAt: number | undefined) {
+  if ((fromAt !== undefined && (!Number.isInteger(fromAt) || fromAt < 0)) || (toAt !== undefined && (!Number.isInteger(toAt) || toAt < 0))) {
+    fail('VALIDATION_FAILED', 'Rentang tanggal ledger harus berupa epoch milidetik positif.')
+  }
+  if (fromAt !== undefined && toAt !== undefined && fromAt >= toAt) fail('VALIDATION_FAILED', 'Tanggal awal harus sebelum tanggal akhir.')
 }
 
 function fail(code: string, message: string): never {
@@ -112,35 +137,76 @@ async function moderateItem(ctx: MutationCtx, input: {
   return { moderatedWeightGrams: physicalUnresolvedGrams, ordersRefunded, batchesCancelled: cancellable.length }
 }
 
+const partnerKind = v.union(v.literal('merchant'), v.literal('processor'))
+
 const partnerRow = v.object({
   kind: v.union(v.literal('merchant'), v.literal('processor')),
   entityId: v.union(v.id('merchants'), v.id('processors')), ownerId: v.id('users'), ownerName: v.string(), ownerEmail: v.string(),
-  name: v.string(), city: v.union(v.string(), v.null()), address: v.union(v.string(), v.null()), verificationStatus: v.string(),
-  businessType: v.union(v.string(), v.null()), facilityType: v.union(v.string(), v.null()), dailyCapacityGrams: v.union(v.number(), v.null()), createdAt: v.number(),
+  name: v.string(), city: v.union(v.string(), v.null()), address: v.union(v.string(), v.null()), latitude: v.union(v.number(), v.null()), longitude: v.union(v.number(), v.null()), verificationStatus: v.string(),
+  businessType: v.union(v.string(), v.null()), facilityType: v.union(v.string(), v.null()), acceptedMaterialTypes: v.array(materialType), dailyCapacityGrams: v.union(v.number(), v.null()), maxPickupRadiusMeters: v.union(v.number(), v.null()), outputTypes: v.array(outputType), operatingHoursStart: v.union(v.number(), v.null()), operatingHoursEnd: v.union(v.number(), v.null()), profileComplete: v.boolean(), rejectionReason: v.union(v.string(), v.null()), verificationNote: v.union(v.string(), v.null()), createdAt: v.number(),
 })
 
-async function partnerRows(ctx: Parameters<typeof requireRole>[0], statuses: readonly Doc<'merchants'>['verificationStatus'][]): Promise<Array<{
+type PartnerKind = 'merchant' | 'processor'
+type PartnerStatus = Doc<'merchants'>['verificationStatus']
+
+function queryLimit(value: number | undefined): number {
+  const limit = value ?? PARTNER_LIMIT
+  if (!Number.isInteger(limit) || limit < 1 || limit > PARTNER_LIMIT) fail('VALIDATION_FAILED', `Limit harus bilangan bulat antara 1–${PARTNER_LIMIT}.`)
+  return limit
+}
+
+function queryCity(value: string | undefined): string | undefined {
+  const city = value?.trim()
+  if (city && city.length > 100) fail('VALIDATION_FAILED', 'Kota maksimal 100 karakter.')
+  return city || undefined
+}
+
+function processorProfileComplete(processor: Doc<'processors'>): boolean {
+  if (!processor.dailyCapacityGrams || processor.dailyCapacityGrams <= 0) return false
+  try {
+    validateProcessorProfile({
+      name: processor.name, city: processor.city ?? '', latitude: processor.latitude ?? Number.NaN, longitude: processor.longitude ?? Number.NaN,
+      acceptedMaterialTypes: processor.acceptedMaterialTypes ?? [], dailyCapacityGrams: processor.dailyCapacityGrams,
+      maxPickupRadiusMeters: processor.maxPickupRadiusMeters ?? 0, outputTypes: processor.outputTypes ?? [],
+      operatingHoursStart: processor.operatingHoursStart ?? -1, operatingHoursEnd: processor.operatingHoursEnd ?? -1,
+    })
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function partnerRows(ctx: Parameters<typeof requireRole>[0], input: { statuses: readonly PartnerStatus[]; kind?: PartnerKind; city?: string; limit?: number }): Promise<Array<{
   kind: 'merchant' | 'processor'; entityId: Id<'merchants'> | Id<'processors'>; ownerId: Id<'users'>; ownerName: string; ownerEmail: string;
-  name: string; city: string | null; address: string | null; verificationStatus: string; businessType: string | null; facilityType: string | null; dailyCapacityGrams: number | null; createdAt: number;
+  name: string; city: string | null; address: string | null; latitude: number | null; longitude: number | null; verificationStatus: string;
+  businessType: string | null; facilityType: string | null; acceptedMaterialTypes: NonNullable<Doc<'processors'>['acceptedMaterialTypes']>; dailyCapacityGrams: number | null; maxPickupRadiusMeters: number | null; outputTypes: NonNullable<Doc<'processors'>['outputTypes']>; operatingHoursStart: number | null; operatingHoursEnd: number | null; profileComplete: boolean; rejectionReason: string | null; verificationNote: string | null; createdAt: number;
 }>> {
-  const [merchants, processors] = await Promise.all([
-    Promise.all(statuses.map((status) => ctx.db.query('merchants').withIndex('by_verification', (index) => index.eq('verificationStatus', status)).take(100))),
-    Promise.all(statuses.map((status) => ctx.db.query('processors').withIndex('by_verification', (index) => index.eq('verificationStatus', status)).take(100))),
+  const city = queryCity(input.city)
+  const limit = queryLimit(input.limit)
+  const [merchantGroups, processorGroups] = await Promise.all([
+    input.kind === 'processor' ? Promise.resolve([]) : Promise.all(input.statuses.map((status) => city
+      ? ctx.db.query('merchants').withIndex('by_verification_and_city', (index) => index.eq('verificationStatus', status).eq('city', city)).take(limit)
+      : ctx.db.query('merchants').withIndex('by_verification', (index) => index.eq('verificationStatus', status)).take(limit))),
+    input.kind === 'merchant' ? Promise.resolve([]) : Promise.all(input.statuses.map((status) => city
+      ? ctx.db.query('processors').withIndex('by_verification_and_city', (index) => index.eq('verificationStatus', status).eq('city', city)).take(limit)
+      : ctx.db.query('processors').withIndex('by_verification', (index) => index.eq('verificationStatus', status)).take(limit))),
   ])
+  const merchants = merchantGroups.flat()
+  const processors = processorGroups.flat()
   return (await Promise.all([
-    ...merchants.flat().map(async (profile) => { const owner = await ctx.db.get(profile.ownerId); return { kind: 'merchant' as const, entityId: profile._id, ownerId: profile.ownerId, ownerName: owner?.name ?? 'Akun tidak ditemukan', ownerEmail: owner?.email ?? '', name: profile.name, city: profile.city ?? null, address: profile.address, verificationStatus: profile.verificationStatus, businessType: profile.businessType ?? null, facilityType: null, dailyCapacityGrams: null, createdAt: profile.createdAt } }),
-    ...processors.flat().map(async (profile) => { const owner = await ctx.db.get(profile.ownerId); return { kind: 'processor' as const, entityId: profile._id, ownerId: profile.ownerId, ownerName: owner?.name ?? 'Akun tidak ditemukan', ownerEmail: owner?.email ?? '', name: profile.name, city: profile.city ?? null, address: profile.address ?? null, verificationStatus: profile.verificationStatus, businessType: null, facilityType: profile.facilityType ?? null, dailyCapacityGrams: profile.dailyCapacityGrams ?? null, createdAt: profile.createdAt } }),
-  ])).sort((left, right) => left.createdAt - right.createdAt)
+    ...merchants.map(async (profile) => { const owner = await ctx.db.get(profile.ownerId); return { kind: 'merchant' as const, entityId: profile._id, ownerId: profile.ownerId, ownerName: owner?.name ?? 'Akun tidak ditemukan', ownerEmail: owner?.email ?? '', name: profile.name, city: profile.city ?? null, address: profile.address, latitude: profile.latitude ?? null, longitude: profile.longitude ?? null, verificationStatus: profile.verificationStatus, businessType: profile.businessType ?? null, facilityType: null, acceptedMaterialTypes: [], dailyCapacityGrams: null, maxPickupRadiusMeters: null, outputTypes: [], operatingHoursStart: null, operatingHoursEnd: null, profileComplete: Boolean(profile.businessType && profile.city && profile.latitude !== undefined && profile.longitude !== undefined), rejectionReason: profile.rejectionReason ?? null, verificationNote: profile.verificationNote ?? null, createdAt: profile.createdAt } }),
+    ...processors.map(async (profile) => { const owner = await ctx.db.get(profile.ownerId); return { kind: 'processor' as const, entityId: profile._id, ownerId: profile.ownerId, ownerName: owner?.name ?? 'Akun tidak ditemukan', ownerEmail: owner?.email ?? '', name: profile.name, city: profile.city ?? null, address: profile.address ?? null, latitude: profile.latitude ?? null, longitude: profile.longitude ?? null, verificationStatus: profile.verificationStatus, businessType: null, facilityType: profile.facilityType ?? null, acceptedMaterialTypes: profile.acceptedMaterialTypes ?? [], dailyCapacityGrams: profile.dailyCapacityGrams ?? null, maxPickupRadiusMeters: profile.maxPickupRadiusMeters ?? null, outputTypes: profile.outputTypes ?? [], operatingHoursStart: profile.operatingHoursStart ?? null, operatingHoursEnd: profile.operatingHoursEnd ?? null, profileComplete: processorProfileComplete(profile), rejectionReason: profile.rejectionReason ?? null, verificationNote: profile.verificationNote ?? null, createdAt: profile.createdAt } }),
+  ])).sort((left, right) => left.createdAt - right.createdAt).slice(0, limit)
 }
 
 export const listPendingVerifications = query({
-  args: { sessionToken: v.optional(v.string()) }, returns: v.array(partnerRow),
-  handler: async (ctx, args) => { await requireRole(ctx, args.sessionToken, ['admin']); return partnerRows(ctx, ['pending']) },
+  args: { sessionToken: v.optional(v.string()), kind: v.optional(partnerKind), city: v.optional(v.string()), limit: v.optional(v.number()) }, returns: v.array(partnerRow),
+  handler: async (ctx, args) => { await requireRole(ctx, args.sessionToken, ['admin']); return partnerRows(ctx, { statuses: ['pending'], ...args }) },
 })
 
-export const listPartnerAccounts = query({
-  args: { sessionToken: v.optional(v.string()) }, returns: v.array(partnerRow),
-  handler: async (ctx, args) => { await requireRole(ctx, args.sessionToken, ['admin']); return partnerRows(ctx, ['verified', 'rejected', 'suspended']) },
+export const listUsers = query({
+  args: { sessionToken: v.optional(v.string()), kind: v.optional(partnerKind), city: v.optional(v.string()), limit: v.optional(v.number()) }, returns: v.array(partnerRow),
+  handler: async (ctx, args) => { await requireRole(ctx, args.sessionToken, ['admin']); return partnerRows(ctx, { statuses: ['verified', 'rejected', 'suspended'], ...args }) },
 })
 
 export const verifyMerchant = mutation({
@@ -155,7 +221,7 @@ export const verifyMerchant = mutation({
     if (merchant.verificationStatus === 'suspended') fail('INVALID_TRANSITION', 'Akun harus direinstatement sebelum diverifikasi kembali.')
     const verifiedAt = Date.now()
     await ctx.db.patch(merchant._id, { verificationStatus: 'verified', verifiedAt, verificationNote: reviewNote, rejectionReason: undefined })
-    await recordAdminAction(ctx, { adminId: admin._id, action: 'verify_merchant', targetTable: 'merchants', targetId: merchant._id, note: reviewNote })
+    await recordAdminAction(ctx, { adminId: admin._id, action: 'verify_merchant', targetUserId: merchant.ownerId, targetEntityId: merchant._id, previousStatus: merchant.verificationStatus, reasonOrNote: reviewNote })
     await createNotification(ctx, { userId: merchant.ownerId, type: 'account_verified', title: 'Merchant terverifikasi', body: 'Profil disetujui. Anda sekarang dapat menerbitkan Rescue Item.', href: '/merchant' })
     return { merchantId: merchant._id, verificationStatus: 'verified' as const, verifiedAt }
   },
@@ -171,10 +237,16 @@ export const verifyProcessor = mutation({
     if (!processor) fail('NOT_FOUND', 'Profil Organic Processor tidak ditemukan.')
     if (processor.verificationStatus === 'verified') fail('ALREADY_RESOLVED', 'Organic Processor sudah terverifikasi.')
     if (processor.verificationStatus === 'suspended') fail('INVALID_TRANSITION', 'Akun harus direinstatement sebelum diverifikasi kembali.')
-    if (!processor.acceptedMaterialTypes?.length || !processor.outputTypes?.length || !processor.dailyCapacityGrams || processor.dailyCapacityGrams <= 0) fail('VALIDATION_FAILED', 'Profil kapasitas Processor belum lengkap.')
+    if (!processor.dailyCapacityGrams || processor.dailyCapacityGrams <= 0) fail('VALIDATION_FAILED', 'Profil kapasitas Processor belum lengkap.')
+    validateProcessorProfile({
+      name: processor.name, city: processor.city ?? '', latitude: processor.latitude ?? Number.NaN, longitude: processor.longitude ?? Number.NaN,
+      acceptedMaterialTypes: processor.acceptedMaterialTypes ?? [], dailyCapacityGrams: processor.dailyCapacityGrams,
+      maxPickupRadiusMeters: processor.maxPickupRadiusMeters ?? 0, outputTypes: processor.outputTypes ?? [],
+      operatingHoursStart: processor.operatingHoursStart ?? -1, operatingHoursEnd: processor.operatingHoursEnd ?? -1,
+    })
     const verifiedAt = Date.now()
     await ctx.db.patch(processor._id, { verificationStatus: 'verified', verifiedAt, verificationNote: reviewNote, rejectionReason: undefined })
-    await recordAdminAction(ctx, { adminId: admin._id, action: 'verify_processor', targetTable: 'processors', targetId: processor._id, note: reviewNote })
+    await recordAdminAction(ctx, { adminId: admin._id, action: 'verify_processor', targetUserId: processor.ownerId, targetEntityId: processor._id, previousStatus: processor.verificationStatus, reasonOrNote: reviewNote })
     await createNotification(ctx, { userId: processor.ownerId, type: 'account_verified', title: 'Organic Processor terverifikasi', body: 'Profil fasilitas disetujui dan dapat menerima Circular Routing.', href: '/processor' })
     return { processorId: processor._id, verificationStatus: 'verified' as const, verifiedAt }
   },
@@ -190,7 +262,7 @@ export const rejectAccount = mutation({
     if (!profile) fail('NOT_FOUND', 'Profil tidak ditemukan.')
     if (profile.verificationStatus !== 'pending') fail('ALREADY_RESOLVED', 'Permohonan ini sudah diputuskan.')
     await ctx.db.patch(profile._id, { verificationStatus: 'rejected', rejectionReason: reason })
-    await recordAdminAction(ctx, { adminId: admin._id, action: 'reject_account', targetTable: args.kind === 'merchant' ? 'merchants' : 'processors', targetId: profile._id, reason })
+    await recordAdminAction(ctx, { adminId: admin._id, action: 'reject_account', targetUserId: profile.ownerId, targetEntityId: profile._id, previousStatus: profile.verificationStatus, reasonOrNote: reason })
     await createNotification(ctx, { userId: profile.ownerId, type: 'account_rejected', title: 'Verifikasi ditolak', body: reason, href: '/pending-verification' })
     return { verificationStatus: 'rejected' as const, rejectedAt: Date.now() }
   },
@@ -237,7 +309,7 @@ export const suspendUser = mutation({
       }
     }
     for (const session of sessions) await ctx.db.delete(session._id)
-    await recordAdminAction(ctx, { adminId: admin._id, action: args.suspend ? 'suspend_user' : 'reinstate_user', targetTable: 'users', targetId: target._id, reason })
+    await recordAdminAction(ctx, { adminId: admin._id, action: args.suspend ? 'suspend_user' : 'reinstate_user', targetUserId: target._id, targetEntityId: target._id, previousStatus: target.status, reasonOrNote: reason })
     await createNotification(ctx, { userId: target._id, type: args.suspend ? 'account_suspended' : 'account_reinstated', title: args.suspend ? 'Akun ditangguhkan' : 'Akun diaktifkan kembali', body: reason, href: '/pending-verification' })
     return { userId: target._id, status, sessionsRevoked: sessions.length, affectedListings, affectedBatches }
   },
@@ -262,9 +334,11 @@ export const moderateListing = mutation({
     const reason = note(args.reason, true)!
     const item = await ctx.db.get(args.surplusItemId)
     if (!item) fail('NOT_FOUND', 'Rescue Item tidak ditemukan.')
+    const merchant = await ctx.db.get(item.merchantId)
+    if (!merchant) fail('NOT_FOUND', 'Merchant Rescue Item tidak ditemukan.')
     if (!['active', 'sold_out', 'recovery_pending'].includes(item.status)) fail('INVALID_TRANSITION', 'Rescue Item terminal atau tidak dipublikasikan tidak dapat dimoderasi.')
     const result = await moderateItem(ctx, { item, adminId: admin._id, reason })
-    await recordAdminAction(ctx, { adminId: admin._id, action: 'moderate_listing', targetTable: 'surplusItems', targetId: item._id, reason })
+    await recordAdminAction(ctx, { adminId: admin._id, action: 'moderate_listing', targetUserId: merchant.ownerId, targetEntityId: item._id, previousStatus: item.status, reasonOrNote: reason })
     return { surplusItemId: item._id, status: 'moderated' as const, ...result }
   },
 })
@@ -284,7 +358,7 @@ export const openDispute = mutation({
       orderId: order._id, consumerId: order.userId, openedBy: admin._id, assignedAdminId: admin._id,
       status: 'open', reason, createdAt: Date.now(),
     })
-    await recordAdminAction(ctx, { adminId: admin._id, action: 'dispute_opened', targetTable: 'orders', targetId: order._id, reason })
+    await recordAdminAction(ctx, { adminId: admin._id, action: 'dispute_opened', targetUserId: order.userId, targetEntityId: order._id, previousStatus: existing?.status ?? 'none', reasonOrNote: reason })
     await createNotification(ctx, { userId: order.userId, type: 'dispute_opened', title: 'Dispute order dibuka', body: 'Tim Cirquo sedang meninjau order ini.', href: `/orders/${order._id}` })
     return { orderId: order._id, status: 'open' as const }
   },
@@ -302,7 +376,7 @@ export const resolveDispute = mutation({
     if (!dispute) fail('NOT_FOUND', 'Dispute aktif tidak ditemukan.')
     if (dispute.status !== 'open') fail('ALREADY_RESOLVED', 'Dispute ini sudah diselesaikan.')
     await ctx.db.patch(dispute._id, { status: 'resolved', resolution, assignedAdminId: admin._id, resolvedAt: Date.now() })
-    await recordAdminAction(ctx, { adminId: admin._id, action: 'dispute_resolved', targetTable: 'orders', targetId: order._id, reason: resolution })
+    await recordAdminAction(ctx, { adminId: admin._id, action: 'dispute_resolved', targetUserId: order.userId, targetEntityId: order._id, previousStatus: dispute.status, reasonOrNote: resolution })
     await createNotification(ctx, { userId: order.userId, type: 'dispute_resolved', title: 'Dispute order selesai', body: resolution, href: `/orders/${order._id}` })
     return { orderId: order._id, status: 'resolved' as const }
   },
@@ -324,32 +398,43 @@ export const listDisputes = query({
 export const searchLedger = query({
   args: {
     sessionToken: v.optional(v.string()), query: v.optional(v.string()), merchantId: v.optional(v.id('merchants')),
-    fromAt: v.optional(v.number()), toAt: v.optional(v.number()), paginationOpts: paginationOptsValidator,
+    eventType: v.optional(ledgerEventType), fromAt: v.optional(v.number()), toAt: v.optional(v.number()), paginationOpts: paginationOptsValidator,
   },
   returns: paginationResultValidator(searchRow),
   handler: async (ctx, args) => {
     await requireRole(ctx, args.sessionToken, ['admin'])
+    validateLedgerRange(args.fromAt, args.toAt)
+    const eventType = args.eventType ?? eventTypeFromQuery(args.query)
+    const needle = eventType ? '' : args.query?.trim().toLocaleLowerCase('id-ID') ?? ''
     const page = args.merchantId
       ? await ctx.db.query('surplusItems').withIndex('by_merchant', (index) => index.eq('merchantId', args.merchantId!)).order('desc').paginate(args.paginationOpts)
       : await ctx.db.query('surplusItems').withIndex('by_created_at').order('desc').paginate(args.paginationOpts)
-    const needle = args.query?.trim().toLocaleLowerCase('id-ID') ?? ''
     const rows = await Promise.all(page.page.map(async (item) => {
       const [merchant, allEvents] = await Promise.all([
         ctx.db.get(item.merchantId),
         ctx.db.query('materialFlowLedger').withIndex('by_rescue_item', (index) => index.eq('surplusItemId', item._id)).collect(),
       ])
-      const events = allEvents.filter((event) => (args.fromAt === undefined || event.occurredAt >= args.fromAt)
-        && (args.toAt === undefined || event.occurredAt < args.toAt))
-      const haystack = `${item._id} ${item.name} ${merchant?.name ?? ''} ${events.map((event) => event.eventType).join(' ')}`.toLocaleLowerCase('id-ID')
-      if ((needle && !haystack.includes(needle)) || ((args.fromAt !== undefined || args.toAt !== undefined) && events.length === 0)) return null
+      const events = eventType
+        ? await ctx.db.query('materialFlowLedger').withIndex('by_rescue_item_and_event_type_and_occurred_at', (index) => {
+          const eventRange = index.eq('surplusItemId', item._id).eq('eventType', eventType)
+          return args.fromAt === undefined
+            ? args.toAt === undefined ? eventRange : eventRange.lt('occurredAt', args.toAt)
+            : args.toAt === undefined ? eventRange.gte('occurredAt', args.fromAt) : eventRange.gte('occurredAt', args.fromAt).lt('occurredAt', args.toAt)
+        }).collect()
+        : args.fromAt !== undefined || args.toAt !== undefined
+          ? await ctx.db.query('materialFlowLedger').withIndex('by_rescue_item_and_occurred_at', (index) => {
+            return args.fromAt === undefined ? index.eq('surplusItemId', item._id).lt('occurredAt', args.toAt!) : args.toAt === undefined ? index.eq('surplusItemId', item._id).gte('occurredAt', args.fromAt) : index.eq('surplusItemId', item._id).gte('occurredAt', args.fromAt).lt('occurredAt', args.toAt)
+          }).collect()
+          : allEvents
+      const haystack = `${item._id} ${item.name} ${merchant?.name ?? ''} ${allEvents.map((event) => event.eventType).join(' ')}`.toLocaleLowerCase('id-ID')
+      if ((needle && !haystack.includes(needle)) || (events.length === 0 && (eventType || args.fromAt !== undefined || args.toAt !== undefined))) return null
       return {
         surplusItemId: item._id, itemName: item.name, merchantId: item.merchantId, merchantName: merchant?.name ?? 'Merchant tidak ditemukan',
         status: item.status, eventCount: events.length, eventTypes: [...new Set(events.map((event) => event.eventType))],
         lastEventAt: events.length ? Math.max(...events.map((event) => event.occurredAt)) : null,
-        balanceGrams: events.reduce((sum, event) => sum + event.weightDeltaGrams, 0),
+        balanceGrams: allEvents.reduce((sum, event) => sum + event.weightDeltaGrams, 0),
       }
     }))
-    // ponytail: bounded post-filtering keeps one native cursor and avoids denormalising merchant data into the append-only ledger.
     return { ...page, page: rows.filter((row): row is NonNullable<typeof row> => row !== null) }
   },
 })
@@ -420,12 +505,15 @@ export const checkLedgerCompleteness = query({
   returns: v.object({ checkedItems: v.number(), violations: v.array(violation) }),
   handler: async (ctx, args) => {
     await requireRole(ctx, args.sessionToken, ['admin'])
-    const items = await terminalItems(ctx)
+    const items = await itemsWithStatuses(ctx, materialItemStatuses)
     const results = await Promise.all(items.map(async (item) => {
       const [merchant, entries] = await Promise.all([ctx.db.get(item.merchantId), ctx.db.query('materialFlowLedger').withIndex('by_rescue_item', (index) => index.eq('surplusItemId', item._id)).collect()])
       const summary = summariseLedger(toImpactEntries(entries))
       const integrityEntries = entries.map((entry) => ({ ...toImpactEntries([entry])[0]!, orderId: entry.orderId ? String(entry.orderId) : undefined, recoveryBatchId: entry.recoveryBatchId ? String(entry.recoveryBatchId) : undefined }))
-      const issues = checkItemLedgerIntegrity(item.status, integrityEntries, summary).filter((issue) => issue.code !== 'WEIGHT_NOT_CONSERVED')
+      const issues = [
+        ...checkItemLedgerIntegrity(item.status, integrityEntries, summary).filter((issue) => issue.code !== 'WEIGHT_NOT_CONSERVED'),
+        ...summary.integrity.issues.map(({ code, message, entryId }) => ({ code, message, entryId })),
+      ]
       return issues.length === 0 ? null : { surplusItemId: item._id, itemName: item.name, status: item.status, merchantName: merchant?.name ?? 'Merchant tidak ditemukan', expectedGrams: 0, observedGrams: summary.conservation.itemBalances[0]?.balanceGrams ?? 0, issues }
     }))
     return { checkedItems: items.length, violations: results.filter((result): result is NonNullable<typeof result> => result !== null) }

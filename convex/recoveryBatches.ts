@@ -330,9 +330,11 @@ export const adminReroute = mutation({
     if (!reason || reason.length < 10) fail('VALIDATION_FAILED', 'Alasan harus 10-500 karakter.')
     const batch = await ctx.db.get(args.batchId)
     if (!batch) fail('NOT_FOUND', 'Batch recovery tidak ditemukan.')
+    const merchant = await ctx.db.get(batch.merchantId)
+    if (!merchant) fail('NOT_FOUND', 'Merchant batch recovery tidak ditemukan.')
     if (!['offered', 'unroutable', 'pending'].includes(batch.status)) fail('INVALID_TRANSITION', 'Batch ini tidak dapat dirutekan ulang.')
     await ctx.db.patch(batch._id, { status: 'pending', processorId: undefined, offerExpiresAt: undefined })
-    await recordAdminAction(ctx, { adminId: admin._id, action: 'reroute_recovery_batch', targetTable: 'recoveryBatches', targetId: batch._id, reason })
+    await recordAdminAction(ctx, { adminId: admin._id, action: 'reroute_recovery_batch', targetUserId: merchant.ownerId, targetEntityId: batch._id, previousStatus: batch.status, reasonOrNote: reason })
     const refreshed = await ctx.db.get(batch._id)
     if (!refreshed) fail('NOT_FOUND', 'Batch recovery tidak ditemukan.')
     return { status: (await routePendingBatch(ctx, refreshed, Date.now())) === 'offered' ? 'offered' as const : 'unroutable' as const }

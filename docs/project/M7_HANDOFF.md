@@ -2,6 +2,10 @@
 
 **Status:** source M7 selesai; deployment UAT masih wajib · 2026-08-30
 
+**Status M7-03:** selesai di source dan test otomatis: moderasi, handoff refund
+M4, serta inbox notifikasi reaktif dimasukkan dalam M7. Tidak ada fitur M7-03
+yang diklaim ditunda.
+
 ## Permukaan yang tersedia
 
 - `/admin/verifications`: approve/reject Merchant dan Processor, suspend,
@@ -41,10 +45,21 @@ event material.
 Seed M8 harus deterministik, memakai identitas sintetis, dan memperlihatkan
 Rescued, Recovered, Residual, in-progress, serta minimal satu failure yang
 jujur. Circularity tidak boleh di-hardcode dan tidak boleh dipaksa 100%.
-Estimated CO2e tetap memakai label serta `methodologyVersion` final M6.
+Gunakan wording final: **"Estimated CO2e avoided — estimasi berdasarkan
+metodologi `impact-v1`, bukan hasil pengukuran langsung."** Jangan menyebut
+CO2e "saved" atau carbon offset.
 
-Repository belum memiliki reset/seed deployment yang aman; jangan menghapus
-deployment secara massal. M8 perlu menambahkan seed idempotent untuk preview
-deployment dan mendokumentasikan ID fixture sebelum merekam demo.
+## Akun demo dan reset aman
+
+Gunakan empat akun sintetis terpisah: `Demo Admin`, `Demo Merchant`,
+`Demo Consumer`, dan `Demo Processor`. Simpan kredensial hanya pada password
+manager tim, bukan di repository, screenshot, atau dokumen UAT. Catat ID
+Rescue Item/order/Recovery Batch yang dipakai sebagai ID Convex non-rahasia.
+
+Reset demo harus memakai preview deployment baru lalu menjalankan seed
+idempotent M8 satu kali. Jangan hapus data deployment bersama atau menjalankan
+reset massal. Seed tersebut perlu mengeluarkan ID fixture dan membentuk jalur
+demo enam langkah di atas; sebelum seed tersedia, reset aman belum ada dan
+`M8-SEED` tetap merupakan blocker rekaman demo.
 
 Bukti runnable dan sisa walkthrough ada di [M7_UAT.md](M7_UAT.md).

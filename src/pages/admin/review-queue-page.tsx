@@ -40,10 +40,20 @@ type Partner = {
   name: string;
   city: string | null;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   verificationStatus: string;
   businessType: string | null;
   facilityType: string | null;
+  acceptedMaterialTypes: string[];
   dailyCapacityGrams: number | null;
+  maxPickupRadiusMeters: number | null;
+  outputTypes: string[];
+  operatingHoursStart: number | null;
+  operatingHoursEnd: number | null;
+  profileComplete: boolean;
+  rejectionReason: string | null;
+  verificationNote: string | null;
   createdAt: number;
 };
 
@@ -132,10 +142,23 @@ function PartnerCard({
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
             {partner.address ?? partner.city ?? "Alamat belum tersedia"}
+            {partner.latitude !== null && partner.longitude !== null
+              ? ` · ${partner.latitude.toFixed(5)}, ${partner.longitude.toFixed(5)}`
+              : " · Koordinat belum tersedia"}
             {partner.dailyCapacityGrams
               ? ` · Kapasitas ${formatWeight(partner.dailyCapacityGrams)}/hari`
               : ""}
           </p>
+          {partner.kind === "processor" ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Material: {partner.acceptedMaterialTypes.join(", ") || "belum diisi"} · Output: {partner.outputTypes.join(", ") || "belum diisi"}
+              {partner.maxPickupRadiusMeters ? ` · Radius ${partner.maxPickupRadiusMeters.toLocaleString("id-ID")} m` : ""}
+            </p>
+          ) : null}
+          <p className={`mt-1 text-xs ${partner.profileComplete ? "text-muted-foreground" : "text-destructive"}`}>
+            {partner.profileComplete ? "Profil lengkap untuk ditinjau." : "Profil belum lengkap; verifikasi akan ditolak sampai data diperbarui."}
+          </p>
+          {partner.rejectionReason ? <p className="mt-1 text-xs text-destructive">Alasan penolakan: {partner.rejectionReason}</p> : null}
           <p className="mt-1 text-xs text-muted-foreground">
             Mendaftar {formatWibDateTime(partner.createdAt)} ·{" "}
             {pendingReview ? "menunggu" : "terdaftar"}{" "}
@@ -178,8 +201,9 @@ function PartnerCard({
 }
 
 function VerificationQueue({ sessionToken }: { sessionToken: string }) {
-  const pending = useQuery(api.admin.listPendingVerifications, { sessionToken });
-  const accounts = useQuery(api.admin.listPartnerAccounts, { sessionToken });
+  const merchantPending = useQuery(api.admin.listPendingVerifications, { sessionToken, kind: "merchant" });
+  const processorPending = useQuery(api.admin.listPendingVerifications, { sessionToken, kind: "processor" });
+  const accounts = useQuery(api.admin.listUsers, { sessionToken });
   const verifyMerchant = useMutation(api.admin.verifyMerchant);
   const verifyProcessor = useMutation(api.admin.verifyProcessor);
   const rejectAccount = useMutation(api.admin.rejectAccount);
@@ -188,7 +212,7 @@ function VerificationQueue({ sessionToken }: { sessionToken: string }) {
   const [decision, setDecision] = useState<{ partner: Partner; mode: DecisionMode } | null>(null);
   const [reason, setReason] = useState("");
 
-  if (pending === undefined || accounts === undefined) return <LoadingRows />;
+  if (merchantPending === undefined || processorPending === undefined || accounts === undefined) return <LoadingRows />;
 
   const now = Date.now();
   const copy = decision ? DECISION_COPY[decision.mode] : null;
@@ -254,30 +278,26 @@ function VerificationQueue({ sessionToken }: { sessionToken: string }) {
           Menunggu keputusan
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {pending.length
-            ? `${pending.length} permohonan, diurutkan dari yang paling lama menunggu.`
+          {merchantPending.length + processorPending.length
+            ? `${merchantPending.length + processorPending.length} permohonan, diurutkan dari yang paling lama menunggu per peran.`
             : "Diurutkan dari permohonan yang paling lama menunggu."}
         </p>
-        <div className="mt-3 space-y-3">
-          {pending.length ? (
-            pending.map((partner) => (
-              <PartnerCard
-                key={`${partner.kind}-${partner.entityId}`}
-                partner={partner}
-                pendingReview
-                busy={busyId === String(partner.entityId)}
-                now={now}
-                onDecide={(mode) => openDialog(partner, mode)}
-              />
-            ))
-          ) : (
-            <p
-              role="status"
-              className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground"
-            >
-              Tidak ada permohonan verifikasi yang menunggu.
-            </p>
-          )}
+        <div className="mt-3 grid gap-6 lg:grid-cols-2">
+          {([
+            ["Merchant", merchantPending],
+            ["Organic Processor", processorPending],
+          ] as ReadonlyArray<readonly [string, Partner[]]>).map(([label, partners]) => (
+            <section key={label} aria-label={`Antrean verifikasi ${label}`}>
+              <h3 className="text-sm font-semibold">{label}</h3>
+              <div className="mt-3 space-y-3">
+                {partners.length ? partners.map((partner) => (
+                  <PartnerCard key={`${partner.kind}-${partner.entityId}`} partner={partner} pendingReview busy={busyId === String(partner.entityId)} now={now} onDecide={(mode) => openDialog(partner, mode)} />
+                )) : (
+                  <p role="status" className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Tidak ada permohonan {label.toLowerCase()} yang menunggu.</p>
+                )}
+              </div>
+            </section>
+          ))}
         </div>
       </section>
 

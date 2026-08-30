@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
@@ -7,15 +8,27 @@ export type NotificationRow = FunctionReturnType<
   typeof api.notifications.listMine
 >[number];
 
+function useNotificationNow() {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return now;
+}
+
 /**
  * Reactive notification feed for the signed-in account, scoped server-side by
  * the session token.
  */
 export function useMyNotifications() {
   const { sessionToken } = useAuth();
+  const now = useNotificationNow();
   return useQuery(
     api.notifications.listMine,
-    sessionToken ? { sessionToken } : "skip",
+    sessionToken ? { sessionToken, now } : "skip",
   );
 }
 

@@ -68,6 +68,27 @@ export const createProfile = mutation({
       .unique()
 
     if (existing) {
+      if (existing.verificationStatus === 'rejected') {
+        await ctx.db.patch(existing._id, {
+          name: profile.name,
+          facilityType: args.facilityType,
+          city: profile.city,
+          latitude: args.latitude,
+          longitude: args.longitude,
+          acceptedMaterialTypes: args.acceptedMaterialTypes,
+          dailyCapacityGrams: args.dailyCapacityGrams,
+          maxPickupRadiusMeters: args.maxPickupRadiusMeters,
+          outputTypes: args.outputTypes,
+          operatingHoursStart: args.operatingHoursStart,
+          operatingHoursEnd: args.operatingHoursEnd,
+          verificationStatus: 'pending',
+          rejectionReason: undefined,
+          verificationNote: undefined,
+          verifiedAt: undefined,
+          updatedAt: now,
+        })
+        return { processorId: existing._id, verificationStatus: 'pending' as const }
+      }
       throw new ConvexError({
         code: 'PROFILE_ALREADY_EXISTS',
         message: 'Profil Organic Processor sudah tersedia.',
@@ -143,6 +164,10 @@ export const updateProfile = mutation({
       outputTypes: args.outputTypes,
       operatingHoursStart: args.operatingHoursStart,
       operatingHoursEnd: args.operatingHoursEnd,
+      verificationStatus: processor.verificationStatus === 'rejected' ? 'pending' : processor.verificationStatus,
+      rejectionReason: processor.verificationStatus === 'rejected' ? undefined : processor.rejectionReason,
+      verificationNote: processor.verificationStatus === 'rejected' ? undefined : processor.verificationNote,
+      verifiedAt: processor.verificationStatus === 'rejected' ? undefined : processor.verifiedAt,
       updatedAt,
     })
     return { updatedAt }
