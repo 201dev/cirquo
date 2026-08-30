@@ -54,6 +54,11 @@ test('M7 verifies partners, audits decisions, notifies owners, and blocks non-Ad
   expect((await t.run((ctx) => ctx.db.query('notifications').withIndex('by_user_and_visible_at', (index) => index.eq('userId', ids.processorOwnerId)).collect()))[0]?.type).toBe('account_verified')
   await expect(t.query(api.admin.listPendingVerifications, { sessionToken: merchantToken })).rejects.toThrow('FORBIDDEN')
   await expect(t.query(api.admin.listUsers, { sessionToken: merchantToken })).rejects.toThrow('FORBIDDEN')
+  await expect(t.mutation(api.admin.verifyMerchant, { sessionToken: merchantToken, merchantId: ids.merchantId })).rejects.toThrow('FORBIDDEN')
+  await expect(t.mutation(api.admin.verifyProcessor, { sessionToken: merchantToken, processorId: ids.processorId })).rejects.toThrow('FORBIDDEN')
+  await expect(t.mutation(api.admin.rejectAccount, { sessionToken: merchantToken, kind: 'merchant', entityId: ids.rejectedMerchantId, reason: 'Akses tidak sah harus ditolak.' })).rejects.toThrow('FORBIDDEN')
+  await expect(t.mutation(api.admin.suspendUser, { sessionToken: merchantToken, userId: ids.processorOwnerId, suspend: true, reason: 'Akses tidak sah harus ditolak.' })).rejects.toThrow('FORBIDDEN')
+  await expect(t.query(api.admin.listModeratableListings, { sessionToken: merchantToken })).rejects.toThrow('FORBIDDEN')
 
   await t.mutation(api.admin.verifyMerchant, { sessionToken: adminToken, merchantId: ids.rejectedMerchantId })
   await t.run((ctx) => ctx.db.patch(ids.rejectedMerchantId, { verificationStatus: 'rejected', rejectionReason: 'Lengkapi alamat usaha.' }))
@@ -117,7 +122,9 @@ test('M7 moderation preserves rescued material, refunds only open paid orders, a
     return { itemId, paidOrderId, pickedOrderId, consumerId, merchantOwnerId }
   })
 
-  const result = await t.mutation(api.admin.moderateListing, { sessionToken: adminToken, surplusItemId: ids.itemId, reason: 'Deskripsi Rescue Item menyesatkan konsumen.' })
+  const reason = 'Deskripsi Rescue Item menyesatkan konsumen.'
+  await expect(t.mutation(api.admin.moderateListing, { sessionToken: consumerToken, surplusItemId: ids.itemId, reason })).rejects.toThrow('FORBIDDEN')
+  const result = await t.mutation(api.admin.moderateListing, { sessionToken: adminToken, surplusItemId: ids.itemId, reason })
   expect(result).toMatchObject({ status: 'moderated', moderatedWeightGrams: 1_000, ordersRefunded: 1 })
   expect(await t.run((ctx) => ctx.db.get(ids.pickedOrderId))).toMatchObject({ status: 'picked_up' })
   expect(await t.run((ctx) => ctx.db.get(ids.paidOrderId))).toMatchObject({ status: 'expired' })
@@ -126,6 +133,12 @@ test('M7 moderation preserves rescued material, refunds only open paid orders, a
   expect(events.filter((event) => event.eventType === 'MODERATED')).toHaveLength(1)
   expect(events.reduce((sum, event) => sum + event.weightDeltaGrams, 0)).toBe(0)
   const queryNow = Date.now() + 1_000
+  expect(await t.query(api.surplusItems.listMine, { sessionToken: merchantToken })).toEqual(expect.arrayContaining([
+    expect.objectContaining({ _id: ids.itemId, status: 'moderated', moderationReason: reason }),
+  ]))
+  expect(await t.query(api.notifications.listMine, { sessionToken: merchantToken, now: queryNow })).toEqual(expect.arrayContaining([
+    expect.objectContaining({ type: 'listing_moderated', href: `/merchant/surplus/${ids.itemId}` }),
+  ]))
   await t.run((ctx) => ctx.db.insert('notifications', {
     userId: ids.consumerId, type: 'pickup_reminder', title: 'Pengingat pickup nanti', body: 'Buka pesanan saat waktunya tiba.', visibleAt: queryNow + 60_000, createdAt: queryNow,
   }))
