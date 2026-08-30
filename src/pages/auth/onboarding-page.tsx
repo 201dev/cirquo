@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { MapPin, ShieldCheck } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Controller, useForm } from "react-hook-form";
@@ -81,7 +82,15 @@ function OnboardingHeader({ role }: { role: "merchant" | "processor" }) {
   );
 }
 
-function LocationHint() {
+function LocationHint({
+  onUseCurrentLocation,
+  isLocating = false,
+  error,
+}: {
+  onUseCurrentLocation?: () => void;
+  isLocating?: boolean;
+  error?: string;
+}) {
   return (
     <div className="rounded-xl bg-secondary p-4">
       <p className="flex gap-3 text-sm">
@@ -94,12 +103,25 @@ function LocationHint() {
             milestone — a roadmap label means nothing to the merchant reading it.
           */}
           <span className="text-muted-foreground">
-            Salin latitude dan longitude lokasi usaha dari aplikasi peta, lalu
-            tempel di kolom di bawah. Koordinat ini dipakai untuk menghitung
-            jarak pickup dan Circular Routing.
+            {onUseCurrentLocation
+              ? "Gunakan posisi perangkat untuk mengisi koordinat secara otomatis. Koordinat ini dipakai untuk menghitung jarak pickup dan Circular Routing."
+              : "Salin latitude dan longitude dari aplikasi peta, lalu tempel di kolom di bawah."}
           </span>
         </span>
       </p>
+      {onUseCurrentLocation ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-4 w-full"
+          disabled={isLocating}
+          onClick={onUseCurrentLocation}
+        >
+          <MapPin aria-hidden="true" />
+          {isLocating ? "Mengambil posisi..." : "Gunakan posisi sekarang"}
+        </Button>
+      ) : null}
+      {error ? <p className="mt-2 text-sm text-destructive" role="alert">{error}</p> : null}
     </div>
   );
 }
@@ -108,11 +130,14 @@ function MerchantForm() {
   const navigate = useNavigate();
   const { sessionToken } = useAuth();
   const createProfile = useMutation(api.merchants.createProfile);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string>();
   const {
     register,
     control,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<MerchantOnboardingValues>({
     resolver: zodResolver(merchantOnboardingSchema),
@@ -123,6 +148,28 @@ function MerchantForm() {
       phone: "",
     },
   });
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Perangkat ini tidak mendukung lokasi.");
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationError(undefined);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setValue("latitude", coords.latitude, { shouldDirty: true, shouldValidate: true });
+        setValue("longitude", coords.longitude, { shouldDirty: true, shouldValidate: true });
+        setIsLocating(false);
+      },
+      () => {
+        setLocationError("Lokasi tidak dapat diakses. Izinkan permission lokasi lalu coba lagi.");
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+    );
+  };
 
   const onSubmit = async (data: MerchantOnboardingValues) => {
     if (!sessionToken) {
@@ -268,7 +315,11 @@ function MerchantForm() {
           </div>
         </div>
 
-        <LocationHint />
+        <LocationHint
+          onUseCurrentLocation={useCurrentLocation}
+          isLocating={isLocating}
+          error={locationError}
+        />
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="merchant-latitude">Latitude</Label>
