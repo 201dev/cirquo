@@ -5,6 +5,13 @@ import { requireRole, requireVerifiedProcessor } from './lib/guards'
 import { startOfWibDay } from '../src/lib/recovery'
 import { summariseLedger, summarisePlatformOperations, summariseProcessorOperations } from '../src/lib/impact'
 
+const IMPACT_READ_LIMIT = 2_000
+
+function requireComplete<T>(rows: T[], label: string): T[] {
+  if (rows.length === IMPACT_READ_LIMIT) throw new ConvexError({ code: 'IMPACT_REQUIRES_AGGREGATION', message: `${label} mencapai batas agregasi; angka tidak ditampilkan agar tidak terpotong.` })
+  return rows
+}
+
 const integrityIssue = v.object({
   code: v.string(),
   message: v.string(),
@@ -102,14 +109,14 @@ export const getConsumerSummary = query({
   returns: impactSummary,
   handler: async (ctx, args) => {
     const consumer = await requireRole(ctx, args.sessionToken, ['consumer'])
-    const orders = await ctx.db.query('orders')
+    const orders = requireComplete(await ctx.db.query('orders')
       .withIndex('by_user', (index) => index.eq('userId', consumer._id))
-      .collect()
+      .take(IMPACT_READ_LIMIT), 'Riwayat order Consumer')
     // ponytail: one indexed read per owned order is correct at pilot scale.
     // Add an order-owner ledger index only when Consumer history becomes large.
     const entries = (await Promise.all(orders.map((order) => ctx.db.query('materialFlowLedger')
       .withIndex('by_order', (index) => index.eq('orderId', order._id))
-      .collect()))).flat().filter((entry) => entry.eventType === 'RESCUED')
+      .take(IMPACT_READ_LIMIT)))).flat().filter((entry) => entry.eventType === 'RESCUED')
     return summariseLedger(toImpactEntries(entries))
   },
 })
@@ -119,12 +126,12 @@ export const getMerchantSummary = query({
   returns: impactSummary,
   handler: async (ctx, args) => {
     const merchant = await requireMerchant(ctx, args.sessionToken)
-    const items = await ctx.db.query('surplusItems')
+    const items = requireComplete(await ctx.db.query('surplusItems')
       .withIndex('by_merchant', (index) => index.eq('merchantId', merchant._id))
-      .collect()
+      .take(IMPACT_READ_LIMIT), 'Rescue Item Merchant')
     const entries = (await Promise.all(items.map((item) => ctx.db.query('materialFlowLedger')
       .withIndex('by_rescue_item', (index) => index.eq('surplusItemId', item._id))
-      .collect()))).flat()
+      .take(IMPACT_READ_LIMIT)))).flat()
     return summariseLedger(toImpactEntries(entries))
   },
 })
@@ -134,12 +141,12 @@ export const getProcessorSummary = query({
   returns: processorImpactSummary,
   handler: async (ctx, args) => {
     const processor = await requireProcessor(ctx, args.sessionToken)
-    const batches = await ctx.db.query('recoveryBatches')
+    const batches = requireComplete(await ctx.db.query('recoveryBatches')
       .withIndex('by_processor', (index) => index.eq('processorId', processor._id))
-      .collect()
+      .take(IMPACT_READ_LIMIT), 'Batch Processor')
     const entries = (await Promise.all(batches.map((batch) => ctx.db.query('materialFlowLedger')
       .withIndex('by_recovery_batch', (index) => index.eq('recoveryBatchId', batch._id))
-      .collect()))).flat()
+      .take(IMPACT_READ_LIMIT)))).flat()
     const impactEntries = toImpactEntries(entries)
     const now = Date.now()
     const summary = summariseLedger(impactEntries)
@@ -165,10 +172,13 @@ export const getPlatformSummary = query({
     // ponytail: read-time aggregation is intentional at pilot scale.
     // M6-01 forbids snapshot counters; paginate/aggregate only with measured load.
     const [entries, accounts, unroutableBatches] = await Promise.all([
-      ctx.db.query('materialFlowLedger').collect(),
-      ctx.db.query('users').collect(),
-      ctx.db.query('recoveryBatches').withIndex('by_status', (index) => index.eq('status', 'unroutable')).collect(),
+      ctx.db.query('materialFlowLedger').withIndex('by_occurred_at').take(IMPACT_READ_LIMIT),
+      ctx.db.query('users').take(IMPACT_READ_LIMIT),
+      ctx.db.query('recoveryBatches').withIndex('by_status', (index) => index.eq('status', 'unroutable')).take(IMPACT_READ_LIMIT),
     ])
+    requireComplete(entries, 'Material Flow Ledger')
+    requireComplete(accounts, 'Akun platform')
+    requireComplete(unroutableBatches, 'Batch unroutable')
     const summary = summariseLedger(toImpactEntries(entries))
     return {
       ...summary,

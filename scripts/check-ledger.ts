@@ -29,6 +29,13 @@ for (const path of files) {
       violations.push(`${path}:${line}`);
     }
   }
+
+  // Catch indirect deletes (for example: query ledger rows, then delete each
+  // row) that the call-site regex above cannot associate with the table name.
+  if (source.includes('"materialFlowLedger"') && /\bdb\.delete\(/.test(source)) {
+    const line = source.slice(0, source.indexOf("db.delete(")).split("\n").length;
+    violations.push(`${path}:${line} (indirect ledger delete)`);
+  }
 }
 
 if (violations.length > 0) {

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useMyOrder,
+  useCancelReservation,
   type ConsumerOrderDetail,
 } from "@/features/orders/use-consumer-orders";
 import { usePaymentHold } from "@/features/orders/use-payment-hold";
@@ -203,6 +204,7 @@ function OrderTimeline({ order }: { order: ConsumerOrderDetail }) {
 function OrderDetailContent() {
   const { id } = useParams();
   const order = useMyOrder(id);
+  const cancelReservation = useCancelReservation();
 
   if (order === undefined) return <OrderDetailSkeleton />;
 
@@ -300,6 +302,21 @@ function OrderDetailContent() {
           </div>
         </dl>
       </section>
+
+      {order.status === "reserved" ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-4"
+          onClick={() => {
+            void cancelReservation(order._id)
+              .then(() => toast.success("Reservasi dibatalkan dan stok dikembalikan."))
+              .catch(() => toast.error("Reservasi tidak dapat dibatalkan."));
+          }}
+        >
+          Batalkan reservasi
+        </Button>
+      ) : null}
 
       <OrderTimeline order={order} />
     </div>

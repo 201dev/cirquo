@@ -9,22 +9,8 @@ export const MATERIAL_TYPES = [
 ] as const;
 
 export type MaterialType = (typeof MATERIAL_TYPES)[number];
-
-export const PRICING_CONFIG = {
-  baseDiscountByMaterial: {
-    prepared_food: 0.5,
-    bakery: 0.45,
-    produce: 0.4,
-    dairy: 0.4,
-    protein: 0.45,
-    dry_goods: 0.3,
-    mixed: 0.4,
-  },
-  URGENCY_MAX: 0.25,
-  STOCK_MAX: 0.1,
-  MAX_DISCOUNT: 0.75,
-  MIN_PRICE_IDR: 5_000,
-} as const;
+export { PRICING_CONFIG } from "./pricing-config";
+import { PRICING_CONFIG } from "./pricing-config";
 
 export type PricingInput = {
   originalPrice: number;

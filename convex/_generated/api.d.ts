@@ -32,7 +32,6 @@ import type * as orders from "../orders.js";
 import type * as payments from "../payments.js";
 import type * as processors from "../processors.js";
 import type * as recoveryBatches from "../recoveryBatches.js";
-import type * as seed from "../seed.js";
 import type * as surplusItems from "../surplusItems.js";
 import type * as users from "../users.js";
 
@@ -67,7 +66,6 @@ declare const fullApi: ApiFromModules<{
   payments: typeof payments;
   processors: typeof processors;
   recoveryBatches: typeof recoveryBatches;
-  seed: typeof seed;
   surplusItems: typeof surplusItems;
   users: typeof users;
 }>;
