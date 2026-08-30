@@ -8,10 +8,26 @@ import { PageHeader } from "@/components/common/page-header";
 import { QueryErrorBoundary } from "@/components/common/query-error-boundary";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/auth-context";
+import {
+  REVIEW_REASON_MAX,
+  REVIEW_REASON_MIN,
+  VERIFICATION_NOTE_MAX,
+  formatWaitingTime,
+  partnerTypeLabel,
+  reviewReasonError,
+  verificationNoteError,
+} from "@/lib/admin-review";
 import { getErrorMessage } from "@/lib/errors";
 import { formatWeight, formatWibDateTime } from "@/lib/format";
 
@@ -28,10 +44,137 @@ type Partner = {
   businessType: string | null;
   facilityType: string | null;
   dailyCapacityGrams: number | null;
+  createdAt: number;
+};
+
+type DecisionMode = "approve" | "reject" | "suspend" | "reinstate";
+
+/**
+ * Dialog copy per decision. Suspension and rejection state their side effects
+ * up front: an Admin has to know the owner is signed out of every device and
+ * that unfinished listings stop, before confirming rather than afterwards.
+ */
+const DECISION_COPY: Record<
+  DecisionMode,
+  { title: string; description: string; label: string; confirm: string; destructive: boolean }
+> = {
+  approve: {
+    title: "Setujui verifikasi",
+    description:
+      "Akun langsung dapat beroperasi. Catatan bersifat opsional dan tersimpan pada audit Admin.",
+    label: "Catatan verifikasi (opsional)",
+    confirm: "Setujui",
+    destructive: false,
+  },
+  reject: {
+    title: "Tolak verifikasi",
+    description:
+      "Alasan tersimpan pada audit Admin dan ditampilkan kepada pemilik akun agar dapat diperbaiki lalu diajukan ulang.",
+    label: "Alasan penolakan",
+    confirm: "Tolak permohonan",
+    destructive: true,
+  },
+  suspend: {
+    title: "Tangguhkan akun",
+    description:
+      "Semua sesi pemilik akun dicabut sehingga ia langsung keluar dari seluruh perangkat, dan listing atau recovery batch yang belum selesai ikut terhenti. Riwayat material tidak berubah.",
+    label: "Alasan penangguhan",
+    confirm: "Tangguhkan",
+    destructive: true,
+  },
+  reinstate: {
+    title: "Aktifkan kembali akun",
+    description:
+      "Akun kembali menunggu verifikasi dan perlu diputuskan ulang. Alasan tersimpan pada audit Admin.",
+    label: "Alasan pengaktifan",
+    confirm: "Aktifkan kembali",
+    destructive: false,
+  },
 };
 
 function LoadingRows() {
-  return <div role="status" aria-label="Memuat antrean" className="space-y-3">{Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-32 rounded-xl" />)}</div>;
+  return (
+    <div role="status" aria-label="Memuat antrean" className="space-y-3">
+      {Array.from({ length: 3 }, (_, index) => (
+        <Skeleton key={index} className="h-32 rounded-xl" />
+      ))}
+    </div>
+  );
+}
+
+function PartnerCard({
+  partner,
+  pendingReview,
+  busy,
+  now,
+  onDecide,
+}: {
+  partner: Partner;
+  pendingReview: boolean;
+  busy: boolean;
+  now: number;
+  onDecide: (mode: DecisionMode) => void;
+}) {
+  const suspended = partner.verificationStatus === "suspended";
+  return (
+    <article className="rounded-xl border bg-card p-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-secondary text-primary">
+          <ShieldCheck className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-semibold">{partner.name}</h3>
+            <StatusBadge status={partner.verificationStatus} />
+          </div>
+          <p className="mt-1 break-all text-sm text-muted-foreground">
+            {partnerTypeLabel(partner)} · {partner.ownerName} · {partner.ownerEmail}
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {partner.address ?? partner.city ?? "Alamat belum tersedia"}
+            {partner.dailyCapacityGrams
+              ? ` · Kapasitas ${formatWeight(partner.dailyCapacityGrams)}/hari`
+              : ""}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Mendaftar {formatWibDateTime(partner.createdAt)} ·{" "}
+            {pendingReview ? "menunggu" : "terdaftar"}{" "}
+            {formatWaitingTime(partner.createdAt, now)}
+          </p>
+        </div>
+        <div className="flex w-full gap-2 sm:w-auto">
+          {pendingReview ? (
+            <>
+              <Button
+                variant="outline"
+                className="flex-1 sm:flex-none"
+                disabled={busy}
+                onClick={() => onDecide("reject")}
+              >
+                <X /> Tolak
+              </Button>
+              <Button
+                className="flex-1 sm:flex-none"
+                disabled={busy}
+                onClick={() => onDecide("approve")}
+              >
+                <Check /> Setujui
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              disabled={busy}
+              onClick={() => onDecide(suspended ? "reinstate" : "suspend")}
+            >
+              {suspended ? "Aktifkan kembali" : "Tangguhkan"}
+            </Button>
+          )}
+        </div>
+      </div>
+    </article>
+  );
 }
 
 function VerificationQueue({ sessionToken }: { sessionToken: string }) {
@@ -41,50 +184,188 @@ function VerificationQueue({ sessionToken }: { sessionToken: string }) {
   const verifyProcessor = useMutation(api.admin.verifyProcessor);
   const rejectAccount = useMutation(api.admin.rejectAccount);
   const suspendUser = useMutation(api.admin.suspendUser);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [decision, setDecision] = useState<{ partner: Partner; mode: "reject" | "suspend" | "reinstate" } | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [decision, setDecision] = useState<{ partner: Partner; mode: DecisionMode } | null>(null);
   const [reason, setReason] = useState("");
 
   if (pending === undefined || accounts === undefined) return <LoadingRows />;
 
-  const approve = async (partner: Partner) => {
-    setBusy(String(partner.entityId));
-    try {
-      if (partner.kind === "merchant") await verifyMerchant({ sessionToken, merchantId: partner.entityId as Id<"merchants"> });
-      else await verifyProcessor({ sessionToken, processorId: partner.entityId as Id<"processors"> });
-      toast.success(`${partner.name} berhasil diverifikasi.`);
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Verifikasi gagal."));
-    } finally {
-      setBusy(null);
-    }
+  const now = Date.now();
+  const copy = decision ? DECISION_COPY[decision.mode] : null;
+  const optional = decision?.mode === "approve";
+  const limit = optional ? VERIFICATION_NOTE_MAX : REVIEW_REASON_MAX;
+  const error = decision
+    ? optional
+      ? verificationNoteError(reason)
+      : reviewReasonError(reason)
+    : null;
+  // Only nag once there is something to be wrong about; an untouched field
+  // shows the requirement instead of an error.
+  const showError = error !== null && reason.trim().length > 0;
+
+  /** Always clears the reason: the next partner must start from a blank field. */
+  const openDialog = (partner: Partner, mode: DecisionMode) => {
+    setDecision({ partner, mode });
+    setReason("");
   };
 
-  const confirmDecision = async () => {
-    if (!decision) return;
-    const cleanReason = reason.trim();
-    if (cleanReason.length < 10 || cleanReason.length > 500) return toast.error("Alasan harus 10-500 karakter.");
-    setBusy(String(decision.partner.entityId));
+  const closeDialog = () => {
+    setDecision(null);
+    setReason("");
+  };
+
+  const confirm = async () => {
+    if (!decision || error !== null) return;
+    const trimmed = reason.trim();
+    const { partner, mode } = decision;
+    setBusyId(String(partner.entityId));
     try {
-      if (decision.mode === "reject") {
-        await rejectAccount({ sessionToken, kind: decision.partner.kind, entityId: decision.partner.entityId, reason: cleanReason });
-        toast.success("Permohonan ditolak dan alasan dikirim.");
+      if (mode === "approve") {
+        const note = trimmed.length > 0 ? trimmed : undefined;
+        if (partner.kind === "merchant") {
+          await verifyMerchant({ sessionToken, merchantId: partner.entityId as Id<"merchants">, note });
+        } else {
+          await verifyProcessor({ sessionToken, processorId: partner.entityId as Id<"processors">, note });
+        }
+        toast.success(`${partner.name} berhasil diverifikasi.`);
+      } else if (mode === "reject") {
+        await rejectAccount({ sessionToken, kind: partner.kind, entityId: partner.entityId, reason: trimmed });
+        toast.success("Permohonan ditolak dan alasan dikirim ke pemilik akun.");
       } else {
-        await suspendUser({ sessionToken, userId: decision.partner.ownerId, suspend: decision.mode === "suspend", reason: cleanReason });
-        toast.success(decision.mode === "suspend" ? "Akun ditangguhkan dan semua sesi dicabut." : "Akun diaktifkan kembali untuk verifikasi ulang.");
+        const result = await suspendUser({ sessionToken, userId: partner.ownerId, suspend: mode === "suspend", reason: trimmed });
+        toast.success(
+          mode === "suspend"
+            ? `Akun ditangguhkan · ${result.sessionsRevoked} sesi dicabut · ${result.affectedListings} listing dan ${result.affectedBatches} recovery batch terdampak.`
+            : "Akun diaktifkan kembali dan menunggu verifikasi ulang.",
+        );
       }
-      setDecision(null);
-      setReason("");
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Keputusan tidak dapat disimpan."));
+      closeDialog();
+    } catch (caught) {
+      toast.error(getErrorMessage(caught, "Keputusan tidak dapat disimpan."));
     } finally {
-      setBusy(null);
+      setBusyId(null);
     }
   };
 
-  const row = (partner: Partner, pendingReview: boolean) => <article key={`${partner.kind}-${partner.entityId}`} className="rounded-xl border bg-card p-4"><div className="flex flex-col gap-4 sm:flex-row sm:items-start"><span className="grid size-10 shrink-0 place-items-center rounded-lg bg-secondary text-primary"><ShieldCheck className="size-5" /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">{partner.name}</h2><StatusBadge status={partner.verificationStatus} /></div><p className="mt-1 break-all text-sm text-muted-foreground">{partner.kind === "merchant" ? "Merchant" : "Organic Processor"} · {partner.ownerName} · {partner.ownerEmail}</p><p className="mt-2 text-xs text-muted-foreground">{partner.address ?? partner.city ?? "Alamat belum tersedia"}{partner.dailyCapacityGrams ? ` · Kapasitas ${formatWeight(partner.dailyCapacityGrams)}/hari` : ""}</p></div><div className="flex w-full gap-2 sm:w-auto">{pendingReview ? <><Button variant="outline" className="flex-1 sm:flex-none" disabled={busy === String(partner.entityId)} onClick={() => setDecision({ partner, mode: "reject" })}><X /> Tolak</Button><Button className="flex-1 sm:flex-none" disabled={busy === String(partner.entityId)} onClick={() => approve(partner)}><Check /> Setujui</Button></> : <Button variant="outline" className="w-full sm:w-auto" disabled={busy === String(partner.entityId)} onClick={() => setDecision({ partner, mode: partner.verificationStatus === "suspended" ? "reinstate" : "suspend" })}>{partner.verificationStatus === "suspended" ? "Aktifkan kembali" : "Tangguhkan"}</Button>}</div></div></article>;
+  return (
+    <>
+      <section aria-labelledby="pending-title">
+        <h2 id="pending-title" className="text-lg font-semibold">
+          Menunggu keputusan
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {pending.length
+            ? `${pending.length} permohonan, diurutkan dari yang paling lama menunggu.`
+            : "Diurutkan dari permohonan yang paling lama menunggu."}
+        </p>
+        <div className="mt-3 space-y-3">
+          {pending.length ? (
+            pending.map((partner) => (
+              <PartnerCard
+                key={`${partner.kind}-${partner.entityId}`}
+                partner={partner}
+                pendingReview
+                busy={busyId === String(partner.entityId)}
+                now={now}
+                onDecide={(mode) => openDialog(partner, mode)}
+              />
+            ))
+          ) : (
+            <p
+              role="status"
+              className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground"
+            >
+              Tidak ada permohonan verifikasi yang menunggu.
+            </p>
+          )}
+        </div>
+      </section>
 
-  return <><section aria-labelledby="pending-title"><h2 id="pending-title" className="text-lg font-semibold">Menunggu keputusan</h2><div className="mt-3 space-y-3">{pending.length ? pending.map((partner) => row(partner, true)) : <p role="status" className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Tidak ada permohonan verifikasi yang menunggu.</p>}</div></section><section className="mt-8" aria-labelledby="accounts-title"><h2 id="accounts-title" className="text-lg font-semibold">Akun mitra</h2><p className="mt-1 text-sm text-muted-foreground">Suspend atau aktifkan kembali tanpa mengubah riwayat material.</p><div className="mt-3 space-y-3">{accounts.length ? accounts.map((partner) => row(partner, false)) : <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Belum ada akun mitra yang sudah diputuskan.</p>}</div></section><Dialog open={decision !== null} onOpenChange={(open) => !open && setDecision(null)}><DialogContent><DialogHeader><DialogTitle>{decision?.mode === "reject" ? "Tolak verifikasi" : decision?.mode === "suspend" ? "Tangguhkan akun" : "Aktifkan kembali akun"}</DialogTitle><DialogDescription>Alasan 10-500 karakter akan disimpan pada audit Admin dan ditampilkan kepada pemilik akun.</DialogDescription></DialogHeader><label className="text-sm font-medium">Alasan<Textarea value={reason} onChange={(event) => setReason(event.target.value)} className="mt-2 min-h-28" maxLength={500} /></label><DialogFooter><Button variant="outline" onClick={() => setDecision(null)}>Batal</Button><Button onClick={confirmDecision} disabled={!decision || busy !== null}>Simpan keputusan</Button></DialogFooter></DialogContent></Dialog></>;
+      <section className="mt-8" aria-labelledby="accounts-title">
+        <h2 id="accounts-title" className="text-lg font-semibold">
+          Akun mitra
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Tangguhkan atau aktifkan kembali tanpa mengubah riwayat material.
+        </p>
+        <div className="mt-3 space-y-3">
+          {accounts.length ? (
+            accounts.map((partner) => (
+              <PartnerCard
+                key={`${partner.kind}-${partner.entityId}`}
+                partner={partner}
+                pendingReview={false}
+                busy={busyId === String(partner.entityId)}
+                now={now}
+                onDecide={(mode) => openDialog(partner, mode)}
+              />
+            ))
+          ) : (
+            <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+              Belum ada akun mitra yang sudah diputuskan.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <Dialog
+        open={decision !== null}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{copy?.title}</DialogTitle>
+            <DialogDescription>{copy?.description}</DialogDescription>
+          </DialogHeader>
+          <p className="text-sm">
+            <span className="font-medium">{decision?.partner.name}</span>
+            <span className="block break-all text-xs text-muted-foreground">
+              {decision?.partner.ownerName} · {decision?.partner.ownerEmail}
+            </span>
+          </p>
+          <div>
+            <label htmlFor="decision-reason" className="text-sm font-medium">
+              {copy?.label}
+            </label>
+            <Textarea
+              id="decision-reason"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              className="mt-2 min-h-28"
+              maxLength={limit}
+              aria-invalid={showError}
+              aria-describedby="decision-reason-help"
+            />
+            <p
+              id="decision-reason-help"
+              role={showError ? "alert" : undefined}
+              className={`mt-2 text-xs ${showError ? "text-destructive" : "text-muted-foreground"}`}
+            >
+              {showError
+                ? error
+                : optional
+                  ? `${reason.trim().length} dari ${limit} karakter, boleh dikosongkan.`
+                  : `${reason.trim().length} dari ${limit} karakter, minimal ${REVIEW_REASON_MIN}.`}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDialog}>
+              Batal
+            </Button>
+            <Button
+              variant={copy?.destructive ? "destructive" : "default"}
+              onClick={confirm}
+              disabled={busyId !== null || error !== null}
+            >
+              {busyId !== null ? "Memproses..." : copy?.confirm}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
 
 function ModerationQueue({ sessionToken }: { sessionToken: string }) {
@@ -93,33 +374,168 @@ function ModerationQueue({ sessionToken }: { sessionToken: string }) {
   const [selected, setSelected] = useState<NonNullable<typeof items>[number] | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+
   if (items === undefined) return <LoadingRows />;
+
+  const error = reviewReasonError(reason);
+  const showError = error !== null && reason.trim().length > 0;
+
+  const openDialog = (item: NonNullable<typeof items>[number]) => {
+    setSelected(item);
+    setReason("");
+  };
+
+  const closeDialog = () => {
+    setSelected(null);
+    setReason("");
+  };
+
   const submit = async () => {
-    if (!selected) return;
-    const cleanReason = reason.trim();
-    if (cleanReason.length < 10 || cleanReason.length > 500) return toast.error("Alasan moderasi harus 10-500 karakter.");
+    if (!selected || error !== null) return;
     setBusy(true);
     try {
-      const result = await moderate({ sessionToken, surplusItemId: selected.surplusItemId, reason: cleanReason });
-      toast.success(`${formatWeight(result.moderatedWeightGrams)} material unresolved dimoderasi.`);
-      setSelected(null);
-      setReason("");
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Moderasi gagal."));
+      const result = await moderate({
+        sessionToken,
+        surplusItemId: selected.surplusItemId,
+        reason: reason.trim(),
+      });
+      toast.success(
+        `${formatWeight(result.moderatedWeightGrams)} material unresolved dimoderasi · ${result.ordersRefunded} order masuk jalur refund · ${result.batchesCancelled} recovery batch dibatalkan.`,
+      );
+      closeDialog();
+    } catch (caught) {
+      toast.error(getErrorMessage(caught, "Moderasi gagal."));
     } finally {
       setBusy(false);
     }
   };
-  return <><div className="space-y-3">{items.length ? items.map((item) => <article key={item.surplusItemId} className="rounded-xl border bg-card p-4"><div className="flex flex-col gap-4 sm:flex-row sm:items-center"><span className="grid size-10 shrink-0 place-items-center rounded-lg bg-secondary text-primary"><FileWarning className="size-5" /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">{item.name}</h2><StatusBadge status={item.status} /></div><p className="mt-1 text-sm text-muted-foreground">{item.merchantName} · {item.remainingQuantity} porsi · {formatWeight(item.weightPerItemGrams)} per porsi</p><p className="mt-1 text-xs text-muted-foreground">Pickup selesai {formatWibDateTime(item.pickupEndAt)}</p></div><Button variant="outline" className="w-full sm:w-auto" onClick={() => setSelected(item)}><FileWarning /> Moderasi</Button></div></article>) : <p role="status" className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Tidak ada Rescue Item aktif yang dapat dimoderasi.</p>}</div><Dialog open={selected !== null} onOpenChange={(open) => !open && setSelected(null)}><DialogContent><DialogHeader><DialogTitle>Moderasi {selected?.name}</DialogTitle><DialogDescription>Tindakan ini terminal. Material unresolved menjadi Residual, order belum terpenuhi masuk jalur refund M4, dan ledger tidak dapat diedit.</DialogDescription></DialogHeader><label className="text-sm font-medium">Alasan untuk Merchant<Textarea value={reason} onChange={(event) => setReason(event.target.value)} className="mt-2 min-h-28" maxLength={500} /></label><DialogFooter><Button variant="outline" onClick={() => setSelected(null)}>Batal</Button><Button variant="destructive" onClick={submit} disabled={busy}>{busy ? "Memproses..." : "Konfirmasi moderasi"}</Button></DialogFooter></DialogContent></Dialog></>;
+
+  return (
+    <>
+      <div className="space-y-3">
+        {items.length ? (
+          items.map((item) => (
+            <article key={item.surplusItemId} className="rounded-xl border bg-card p-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-secondary text-primary">
+                  <FileWarning className="size-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="font-semibold">{item.name}</h2>
+                    <StatusBadge status={item.status} />
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {item.merchantName} · {item.remainingQuantity} porsi ·{" "}
+                    {formatWeight(item.weightPerItemGrams)} per porsi
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Pickup selesai {formatWibDateTime(item.pickupEndAt)}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => openDialog(item)}
+                >
+                  <FileWarning /> Moderasi
+                </Button>
+              </div>
+            </article>
+          ))
+        ) : (
+          <p
+            role="status"
+            className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground"
+          >
+            Tidak ada Rescue Item aktif yang dapat dimoderasi.
+          </p>
+        )}
+      </div>
+
+      <Dialog
+        open={selected !== null}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Moderasi {selected?.name}</DialogTitle>
+            <DialogDescription>
+              Tindakan ini terminal. Material unresolved menjadi Residual, order yang belum
+              terpenuhi masuk jalur refund M4, dan event ledger tidak dapat diedit setelahnya.
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <label htmlFor="moderation-reason" className="text-sm font-medium">
+              Alasan untuk Merchant
+            </label>
+            <Textarea
+              id="moderation-reason"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              className="mt-2 min-h-28"
+              maxLength={REVIEW_REASON_MAX}
+              aria-invalid={showError}
+              aria-describedby="moderation-reason-help"
+            />
+            <p
+              id="moderation-reason-help"
+              role={showError ? "alert" : undefined}
+              className={`mt-2 text-xs ${showError ? "text-destructive" : "text-muted-foreground"}`}
+            >
+              {showError
+                ? error
+                : `${reason.trim().length} dari ${REVIEW_REASON_MAX} karakter, minimal ${REVIEW_REASON_MIN}.`}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDialog}>
+              Batal
+            </Button>
+            <Button variant="destructive" onClick={submit} disabled={busy || error !== null}>
+              {busy ? "Memproses..." : "Konfirmasi moderasi"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
 
 function ReviewContent({ type }: { type: "verifications" | "moderation" }) {
   const { sessionToken } = useAuth();
   if (!sessionToken) return null;
-  return type === "verifications" ? <VerificationQueue sessionToken={sessionToken} /> : <ModerationQueue sessionToken={sessionToken} />;
+  return type === "verifications" ? (
+    <VerificationQueue sessionToken={sessionToken} />
+  ) : (
+    <ModerationQueue sessionToken={sessionToken} />
+  );
 }
 
 export default function ReviewQueuePage({ type }: { type: "verifications" | "moderation" }) {
   const verification = type === "verifications";
-  return <><PageHeader title={verification ? "Verifikasi mitra" : "Moderasi Rescue Item"} description={verification ? "Setujui, tolak, suspend, dan aktifkan kembali Merchant atau Organic Processor." : "Tutup Rescue Item bermasalah secara terminal dengan alasan yang dapat dilihat Merchant."} action={verification ? <UserRoundCheck className="size-6 text-primary" /> : <FileWarning className="size-6 text-primary" />} /><QueryErrorBoundary title="Antrean Admin tidak dapat dimuat"><ReviewContent type={type} /></QueryErrorBoundary></>;
+  return (
+    <>
+      <PageHeader
+        title={verification ? "Verifikasi mitra" : "Moderasi Rescue Item"}
+        description={
+          verification
+            ? "Setujui, tolak, tangguhkan, dan aktifkan kembali Merchant atau Organic Processor."
+            : "Tutup Rescue Item bermasalah secara terminal dengan alasan yang dapat dilihat Merchant."
+        }
+        action={
+          verification ? (
+            <UserRoundCheck className="size-6 text-primary" />
+          ) : (
+            <FileWarning className="size-6 text-primary" />
+          )
+        }
+      />
+      <QueryErrorBoundary title="Antrean Admin tidak dapat dimuat">
+        <ReviewContent type={type} />
+      </QueryErrorBoundary>
+    </>
+  );
 }

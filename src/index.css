@@ -65,7 +65,7 @@
   --accent: #e2f8e9;
   --accent-foreground: var(--brand-charcoal);
   --destructive: oklch(0.58 0.22 27);
-  /* Caution surfaces (nearly-expired pickup, demo-data notices). Raw
+  /* Caution surfaces (nearly-expired pickup, location fallbacks). Raw
      yellow-* utilities were used here before and stayed light in dark mode. */
   --warning: #fff6da;
   --warning-foreground: #6b4e00;

@@ -38,8 +38,9 @@ export function AuthLayout() {
       >
         <header className="flex h-[4.5rem] items-center border-b px-5 sm:px-8">
           <AppLogo />
-          <span className="ml-auto" />
-          <ThemeToggle />
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </header>
         <div className="flex flex-1 items-center justify-center p-5 sm:p-8">
           <div className="w-full max-w-lg">

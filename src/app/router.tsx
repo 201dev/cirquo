@@ -10,6 +10,7 @@ import {
   GuestRoute,
   PostAuthRoute,
   ProtectedRoute,
+  PublicRoute,
   RoleRoute,
 } from "@/components/common/route-guards";
 import NotFoundPage from "@/pages/not-found-page";
@@ -119,8 +120,11 @@ export const router = createBrowserRouter([
   },
 
   // --- Consumer routes ---
+  // The shell is shared. Browsing is open to visitors; anything tied to an
+  // account sits behind RoleRoute one level deeper, so a signed-out visitor who
+  // opens /orders directly still gets sent to login.
   {
-    element: <RoleRoute role="consumer" />,
+    element: <PublicRoute />,
     children: [
       {
         element: <ConsumerLayout />,
@@ -130,13 +134,18 @@ export const router = createBrowserRouter([
           { path: "merchant/:merchantId", element: <ConsumerMerchantPage /> },
           { path: "discover", element: <ExplorePage /> },
           { path: "explore", element: <ExplorePage /> },
-          { path: "orders", element: <OrdersPage /> },
-          { path: "orders/:id", element: <OrderDetailPage /> },
-          { path: "checkout/:orderId", element: <CheckoutPage /> },
           { path: "item/:id", element: <ItemDetailPage /> },
-          { path: "impact", element: <ImpactPage /> },
-          { path: "profile", element: <ProfilePage /> },
-          { path: "notifications", element: <NotificationsPage /> },
+          {
+            element: <RoleRoute role="consumer" />,
+            children: [
+              { path: "orders", element: <OrdersPage /> },
+              { path: "orders/:id", element: <OrderDetailPage /> },
+              { path: "checkout/:orderId", element: <CheckoutPage /> },
+              { path: "impact", element: <ImpactPage /> },
+              { path: "profile", element: <ProfilePage /> },
+              { path: "notifications", element: <NotificationsPage /> },
+            ],
+          },
         ],
       },
     ],

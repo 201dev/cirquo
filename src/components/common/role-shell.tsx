@@ -7,6 +7,7 @@ import { AppLogo } from "@/components/common/app-logo";
 import { PageLoader } from "@/components/common/page-loader";
 import { RouteFocus } from "@/components/common/route-focus";
 import { ThemeToggle } from "@/components/common/theme-toggle";
+import { UnreadBadge } from "@/components/common/unread-badge";
 import {
   Sheet,
   SheetContent,
@@ -17,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { NavigationItem } from "@/types/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { useUnreadNotificationCount } from "@/features/notifications/use-unread-notifications";
 
 interface RoleShellProps {
   roleLabel: string;
@@ -25,26 +27,39 @@ interface RoleShellProps {
 }
 
 function RoleNavigation({ navigation }: { navigation: NavigationItem[] }) {
+  const unreadCount = useUnreadNotificationCount();
   return (
     <nav aria-label="Navigasi utama" className="space-y-1.5">
-      {navigation.map(({ href, icon: Icon, label, end }) => (
-        <NavLink
-          key={href}
-          end={end}
-          to={href}
-          className={({ isActive }) =>
-            cn(
-              "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
-              isActive
-                ? "bg-primary text-primary-foreground shadow-[0_8px_20px_-14px_var(--primary)]"
-                : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
-            )
-          }
-        >
-          <Icon aria-hidden="true" />
-          {label}
-        </NavLink>
-      ))}
+      {navigation.map(({ href, icon: Icon, label, end }) => {
+        // One badge, on whichever route this role uses for notifications.
+        const badgeCount = href.endsWith("/notifications") ? unreadCount : 0;
+        return (
+          <NavLink
+            key={href}
+            end={end}
+            to={href}
+            className={({ isActive }) =>
+              cn(
+                "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-primary text-primary-foreground shadow-[0_8px_20px_-14px_var(--primary)]"
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
+              )
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Icon aria-hidden="true" />
+                <span className="flex-1">{label}</span>
+                <UnreadBadge
+                  count={badgeCount}
+                  className={isActive ? "bg-primary-foreground text-primary" : undefined}
+                />
+              </>
+            )}
+          </NavLink>
+        );
+      })}
     </nav>
   );
 }
@@ -117,11 +132,12 @@ export function RoleShell({ roleLabel, navigation, children }: RoleShellProps) {
             </SheetContent>
           </Sheet>
           <p className="font-medium">{roleLabel}</p>
-          <span className="ml-auto" />
-          <ThemeToggle />
-          <Button variant="ghost" size="icon" aria-label="Keluar" onClick={handleLogout}>
-            <LogOut aria-hidden="true" />
-          </Button>
+          <div className="ml-auto flex items-center gap-1">
+            <ThemeToggle />
+            <Button variant="ghost" size="icon" aria-label="Keluar" onClick={handleLogout}>
+              <LogOut aria-hidden="true" />
+            </Button>
+          </div>
         </header>
         <main
           id="main-content"

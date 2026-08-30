@@ -1,6 +1,6 @@
 import { ChevronRight, Clock3, Info, MapPin, ShieldCheck, Store } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Breadcrumbs } from "@/components/common/breadcrumbs";
 import { QueryErrorBoundary } from "@/components/common/query-error-boundary";
@@ -87,7 +87,8 @@ function MoreFromMerchant({
 function ItemDetailContent() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { sessionToken } = useAuth();
+  const { pathname, search } = useLocation();
+  const { sessionToken, isAuthenticated } = useAuth();
 
   const item = useQuery(
     api.discovery.getListing,
@@ -158,6 +159,20 @@ function ItemDetailContent() {
   }
 
   const hasStock = item.remainingQuantity > 0;
+
+  /**
+   * A visitor can read this page without an account, so the reserve button has
+   * two jobs. Signed out it goes to login carrying this item as returnTo, rather
+   * than opening the sheet and letting the mutation fail after they picked a
+   * quantity — the sign-in requirement belongs before that work, not after.
+   */
+  const handleReserveClick = () => {
+    if (!isAuthenticated) {
+      navigate(`/login?returnTo=${encodeURIComponent(`${pathname}${search}`)}`);
+      return;
+    }
+    setIsSheetOpen(true);
+  };
 
   const handleReserve = async (quantity: number) => {
     if (!hasStock || quantity < 1 || quantity > item.remainingQuantity) return;
@@ -296,7 +311,7 @@ function ItemDetailContent() {
             </div>
             <Button
               size="lg"
-              onClick={() => setIsSheetOpen(true)}
+              onClick={handleReserveClick}
               disabled={!hasStock || isReserving}
             >
               <ShieldCheck />
@@ -317,7 +332,7 @@ function ItemDetailContent() {
           <p className="font-semibold">{formatIdr(item.currentPrice)}</p>
         </div>
         <Button
-          onClick={() => setIsSheetOpen(true)}
+          onClick={handleReserveClick}
           disabled={!hasStock || isReserving}
         >
           {hasStock ? "Reservasi" : "Stok habis"}
