@@ -9,6 +9,7 @@ export const listNearby = query({
     latitude: v.number(),
     longitude: v.number(),
     radiusMeters: v.number(),
+    city: v.optional(v.string()),
     materialType: v.optional(materialType),
     dietaryTags: v.optional(v.array(v.string())),
     maxPrice: v.optional(v.number()),
@@ -27,19 +28,16 @@ export const listNearby = query({
     
     const radiusMeters = Math.max(500, Math.min(30000, args.radiusMeters))
 
-    // ponytail: in-memory Haversine filter over all active items.
-    // Fine at pilot scale (~50 items/day). Add a city-prefixed index
-    // before multi-city — see docs/domain/DATABASE.md §6.
-    const activeItems = await ctx.db
-      .query('surplusItems')
-      .withIndex('by_status', (q) => q.eq('status', 'active'))
-      .collect()
+    // Keep the geospatial scan bounded until a geo index/aggregate is introduced.
+    const activeItems = args.city
+      ? await ctx.db.query('surplusItems').withIndex('by_status_and_city', (q) => q.eq('status', 'active').eq('city', args.city)).take(500)
+      : await ctx.db.query('surplusItems').withIndex('by_status', (q) => q.eq('status', 'active')).take(500)
 
     const now = Date.now()
     const candidates = []
     
     // We also need merchants to check verification status and location
-    const merchants = await ctx.db.query('merchants').collect()
+    const merchants = await ctx.db.query('merchants').take(500)
     const merchantMap = new Map(merchants.map(m => [m._id, m]))
 
     for (const item of activeItems) {
@@ -74,7 +72,7 @@ export const listNearby = query({
       candidates.push({
         _id: item._id,
         name: item.name,
-        imageUrl: item.imageUrl,
+        imageUrl: item.imageStorageId ? await ctx.storage.getUrl(item.imageStorageId) ?? undefined : item.imageUrl,
         materialType: item.materialType,
         dietaryTags: item.dietaryTags,
         originalPrice: item.originalPrice,
@@ -125,7 +123,7 @@ export const getListing = query({
       _id: item._id,
       name: item.name,
       description: item.description,
-      imageUrl: item.imageUrl,
+      imageUrl: item.imageStorageId ? await ctx.storage.getUrl(item.imageStorageId) ?? undefined : item.imageUrl,
       materialType: item.materialType,
       dietaryTags: item.dietaryTags,
       originalPrice: item.originalPrice,

@@ -2,7 +2,7 @@
 
 **Jenis dokumen:** Snapshot implementasi dan rencana pengiriman
 **Sumber kebenaran:** source saat ini (`convex/`, `src/`, dan konfigurasi proyek)
-**Verifikasi source:** 2026-08-29
+**Verifikasi source:** 2026-08-30
 **Bukan:** bukti UAT, catatan rilis, atau pengganti PRD
 
 ---
@@ -43,6 +43,7 @@ Semua status di bawah adalah **source-level** kecuali dinyatakan lain.
 | Rescue Item draft/publish/edit/cancel/list | ✅ Source tersedia | `surplusItems.create`, `publish`, `update`, `cancel`, dan `listMine`. |
 | Dynamic Rescue Pricing | ✅ Source tersedia | Fungsi murni `src/lib/pricing.ts`; server tetap menegakkan harga dan validasi listing. |
 | Ledger listing dan perubahan harga | ✅ Source tersedia | `LISTED`, `PRICE_ADJUSTED`, dan `CANCELLED` ditulis oleh mutasi Merchant yang relevan. |
+| Processing-only Rescue Item | ✅ Source tersedia | Flag `processingOnly` tervalidasi saat create/edit; publish langsung membuat recovery batch dan memulai Circular Routing. |
 
 ### Consumer discovery, reservasi, dan pembayaran — M3
 
@@ -53,6 +54,7 @@ Semua status di bawah adalah **source-level** kecuali dinyatakan lain.
 | Payment hold | ✅ Source tersedia | `orders.reserve` menjadwalkan `orders.expireHold`; hold kedaluwarsa mengembalikan stok satu kali dan menulis `CANCELLED` bernilai 0 gram. |
 | Midtrans Sandbox | 🧪 UAT diperlukan | `payments.createTransaction` membuat Snap transaction; `/midtrans/webhook` memverifikasi signature dan jumlah sebelum mengubah order menjadi `paid` serta menulis `PAID`. |
 | Riwayat dan detail pesanan | ✅ Source tersedia | `orders.listMine` consumer-scoped tanpa pickup code; `orders.get` mengembalikan code hanya untuk pemilik dengan status `paid`; halaman memakai query reaktif. |
+| Pembatalan hold Consumer | ✅ Source tersedia | `orders.cancelReservation` hanya menerima pemilik dengan status `reserved` sebelum hold habis, mengembalikan stok dan menulis `CANCELLED` dalam transaksi yang sama. |
 | M3-07 | 🧪 UAT diperlukan | Rekam bukti discovery → reserve → webhook Sandbox → paid → expiry, lalu periksa ledger dan handoff M4. |
 
 ### Batas implementasi saat ini
@@ -62,7 +64,7 @@ Semua status di bawah adalah **source-level** kecuali dinyatakan lain.
 | M4 | 🧪 UAT deployment diperlukan | Konfirmasi pickup, expiry/recovery batch, refund Sandbox no-show, Circular Routing, dan UI status reaktif Merchant/Consumer tersedia di source. Kontrak M5 ada di `M5_HANDOFF.md`; UAT browser/Midtrans masih diperlukan. |
 | M5 | 🧪 UAT deployment diperlukan | Queue dan detail batch Processor, accept/decline, intake terukur, outcome, dashboard operasional, serta edit profil kapasitas tersedia di source. UAT browser pada deployment masih diperlukan. |
 | M6 | 🧪 UAT deployment diperlukan | `src/lib/impact.ts`, empat query scoped, serta dashboard Consumer, Merchant, Processor, dan Admin tanpa angka mock tersedia di source. Bukti otomatis dan handoff M7 ada di `M6_UAT.md` serta `M6_HANDOFF.md`; walkthrough browser/mobile deployment masih diperlukan. |
-| M7 | 📋 Target | Operasi Admin, ledger inspector, moderasi, dan notifikasi. Route halaman bukan bukti mutasi/query Admin telah tersedia. |
+| M7 | 🧪 UAT deployment diperlukan | Verifikasi/suspensi Admin, dispute order, manual reroute batch, ledger inspector read-only, moderasi, notifikasi Rescue Item baru, dan perubahan kata sandi terautentikasi tersedia di source dan lulus pemeriksaan otomatis. Walkthrough browser/mobile deployment masih diperlukan. |
 | M8 | 📋 Target | Validasi Android, seed demo, video, dan aset submission. Konfigurasi Capacitor sudah ada. |
 
 ---

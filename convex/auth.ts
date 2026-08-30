@@ -44,6 +44,7 @@ const profileSummaryValidator = v.union(
       v.literal('rejected'),
       v.literal('suspended'),
     ),
+    rejectionReason: v.optional(v.string()),
   }),
   v.object({
     id: v.id('processors'),
@@ -55,6 +56,7 @@ const profileSummaryValidator = v.union(
       v.literal('rejected'),
       v.literal('suspended'),
     ),
+    rejectionReason: v.optional(v.string()),
   }),
   v.null(),
 )
@@ -65,12 +67,14 @@ type ProfileSummary =
       type: 'merchant'
       name: string
       verificationStatus: Doc<'merchants'>['verificationStatus']
+      rejectionReason?: string
     }
   | {
       id: Id<'processors'>
       type: 'processor'
       name: string
       verificationStatus: Doc<'processors'>['verificationStatus']
+      rejectionReason?: string
     }
 
 export const register = action({
@@ -202,6 +206,21 @@ export const logout = mutation({
   },
 })
 
+export const changePassword = action({
+  args: { sessionToken: v.string(), currentPassword: v.string(), newPassword: v.string() },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    const user = await ctx.runQuery(internal.users.getBySession, { sessionToken: args.sessionToken })
+    if (!user) throw new ConvexError({ code: 'AUTH_REQUIRED', message: 'Sesi tidak valid.' })
+    const valid = await ctx.runAction(internal.authNode.verifyPassword, { password: args.currentPassword, passwordHash: user.passwordHash })
+    if (!valid) throw new ConvexError({ code: 'INVALID_CREDENTIALS', message: 'Kata sandi saat ini tidak sesuai.' })
+    validateRegistrationInput(user.name, user.email, args.newPassword)
+    const passwordHash = await ctx.runAction(internal.authNode.hashPassword, { password: args.newPassword })
+    await ctx.runMutation(internal.authInternal.updatePassword, { userId: user._id, passwordHash })
+    return { success: true }
+  },
+})
+
 export const getCurrentUser = query({
   args: { sessionToken: v.optional(v.string()) },
   returns: v.union(
@@ -235,6 +254,7 @@ export const getCurrentUser = query({
           type: 'merchant',
           name: merchant.name,
           verificationStatus: merchant.verificationStatus,
+          rejectionReason: merchant.rejectionReason,
         }
       }
     } else if (user.role === 'processor') {
@@ -249,6 +269,7 @@ export const getCurrentUser = query({
           type: 'processor',
           name: processor.name,
           verificationStatus: processor.verificationStatus,
+          rejectionReason: processor.rejectionReason,
         }
       }
     }

@@ -2,7 +2,7 @@
 
 **Document type:** Delivery plan  
 **Status:** Delivery plan — source status tracked separately
-**Last updated:** 2026-08-29
+**Last updated:** 2026-08-30
 **Competition:** DSDC ANFORCOM 2026  
 **Preliminary deadline:** 31 August 2026
 
@@ -10,7 +10,7 @@
 
 > **Current source boundary — 2026-08-29.** M1 and M2 source is available;
 > M3 source awaits Sandbox/mobile UAT; M4 dan M5 source tersedia tetapi masih
-> membutuhkan UAT deployment/browser. M6 source tersedia; M7–M8 remain target
+> membutuhkan UAT deployment/browser. M6 dan M7 source tersedia; M8 remains target
 > work. The dates and
 > estimates below are the original planning baseline, not a live burndown. See
 > [IMPLEMENTATION_STATUS.md](../project/IMPLEMENTATION_STATUS.md).

@@ -316,6 +316,78 @@ test("kode pickup tidak pernah ada di daftar pesanan dan hanya terbuka setelah p
   ).toHaveLength(0);
 });
 
+test("consumer dapat membatalkan hold yang belum dibayar dan ledger tetap konsisten", async () => {
+  const t = convexTest(schema, modules);
+  const now = Date.now();
+  const token = "z".repeat(43);
+  const ids = await t.run(async (ctx) => {
+    const merchantUserId = await ctx.db.insert("users", {
+      name: "Merchant Cancel",
+      email: "merchant.cancel.m303@example.com",
+      passwordHash: "test-password-hash",
+      role: "merchant",
+      status: "active",
+      createdAt: now,
+    });
+    const merchantId = await ctx.db.insert("merchants", {
+      ownerId: merchantUserId,
+      name: "Dapur Cancel",
+      address: "Semarang",
+      verificationStatus: "verified",
+      createdAt: now,
+    });
+    const consumerId = await ctx.db.insert("users", {
+      name: "Consumer Cancel",
+      email: "consumer.cancel.m303@example.com",
+      passwordHash: "test-password-hash",
+      role: "consumer",
+      status: "active",
+      createdAt: now,
+    });
+    await ctx.db.insert("sessions", {
+      userId: consumerId,
+      tokenHash: await hashSessionToken(token),
+      expiresAt: now + HOUR_MS,
+      createdAt: now,
+    });
+    const itemId = await ctx.db.insert("surplusItems", {
+      merchantId,
+      name: "Roti Cancel",
+      originalPrice: 20_000,
+      floorPrice: 8_000,
+      currentPrice: 12_000,
+      initialQuantity: 2,
+      remainingQuantity: 2,
+      weightPerItemGrams: 450,
+      pickupStartAt: now + HOUR_MS,
+      pickupEndAt: now + 3 * HOUR_MS,
+      materialType: "bakery",
+      dietaryTags: [],
+      processingOnly: false,
+      status: "active",
+      publishedAt: now,
+      createdAt: now,
+    });
+    return { itemId };
+  });
+  const orderId = await t.mutation(api.orders.reserve, {
+    surplusItemId: ids.itemId,
+    quantity: 1,
+    idempotencyKey: "cancel-key",
+    sessionToken: token,
+  });
+  await t.mutation(api.orders.cancelReservation, { orderId, sessionToken: token });
+  expect(await t.run((ctx) => ctx.db.get(orderId))).toMatchObject({ status: "cancelled" });
+  expect(await t.run((ctx) => ctx.db.get(ids.itemId))).toMatchObject({
+    remainingQuantity: 2,
+    status: "active",
+  });
+  const events = await t.run((ctx) =>
+    ctx.db.query("materialFlowLedger").withIndex("by_order", (q) => q.eq("orderId", orderId)).collect(),
+  );
+  expect(events.filter((event) => event.eventType === "CANCELLED")).toHaveLength(1);
+});
+
 test("merchant mengonfirmasi pickup sekali tanpa menerima kode dari antrean", async () => {
   const t = convexTest(schema, modules);
   const now = Date.now();

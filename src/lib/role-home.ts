@@ -1,7 +1,12 @@
 import type { UserRole } from "@/types/domain";
 
+/**
+ * Where each role lands after signing in. Consumers get the homepage rather than
+ * the search surface: arriving straight in a filter form asks them what they want
+ * before showing them what is there.
+ */
 const roleHomes: Record<UserRole, string> = {
-  consumer: "/discover",
+  consumer: "/",
   merchant: "/merchant",
   processor: "/processor",
   admin: "/admin",

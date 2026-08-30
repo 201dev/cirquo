@@ -44,6 +44,17 @@ const dayFormatter = new Intl.DateTimeFormat(LOCALE, {
   timeZone: TIME_ZONE,
 });
 
+const dateTimeFormatter = new Intl.DateTimeFormat(LOCALE, {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+  timeZone: TIME_ZONE,
+});
+
 export function formatIdr(amountIdr: number) {
   return idrFormatter.format(amountIdr);
 }
@@ -79,6 +90,10 @@ export function formatWibDate(epochMs: number) {
 /** "Kamis, 27 Agu" */
 export function formatWibDay(epochMs: number) {
   return dayFormatter.format(epochMs);
+}
+
+export function formatWibDateTime(epochMs: number) {
+  return `${dateTimeFormatter.format(epochMs)} WIB`;
 }
 
 /** "17.00-19.00 WIB" */

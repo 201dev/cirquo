@@ -53,8 +53,21 @@ export default function PendingVerificationPage() {
 
   const verificationStatus = profile?.verificationStatus ?? "pending";
 
-  const config = statusConfig[verificationStatus];
+  // An unmapped status must still render a page rather than crash the shell.
+  const config =
+    statusConfig[verificationStatus as keyof typeof statusConfig] ?? statusConfig.pending;
   const Icon = config.icon;
+
+  /**
+   * Both rejection and suspension record the Admin's reason on the profile, and
+   * the owner is the person who has to act on it — showing the generic copy
+   * instead would hide the one sentence that tells them what to fix.
+   */
+  const adminReason =
+    (verificationStatus === "rejected" || verificationStatus === "suspended") &&
+    profile?.rejectionReason
+      ? profile.rejectionReason
+      : null;
 
   const handleLogout = async () => {
     await logout();
@@ -74,6 +87,12 @@ export default function PendingVerificationPage() {
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
         {config.description}
       </p>
+      {adminReason ? (
+        <div className="mt-4 rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-left">
+          <p className="text-sm font-semibold">Alasan dari Admin</p>
+          <p className="mt-1 text-sm text-muted-foreground">{adminReason}</p>
+        </div>
+      ) : null}
 
       {user && (
         <div className="mt-8 rounded-xl border bg-card p-5">

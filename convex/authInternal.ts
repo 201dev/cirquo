@@ -105,3 +105,12 @@ export const expireSession = internalMutation({
     return null
   },
 })
+
+export const updatePassword = internalMutation({
+  args: { userId: v.id('users'), passwordHash: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, { passwordHash: args.passwordHash })
+    return null
+  },
+})

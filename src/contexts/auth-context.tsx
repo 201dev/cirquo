@@ -20,12 +20,14 @@ type Profile =
       type: "merchant";
       name: string;
       verificationStatus: VerificationStatus;
+      rejectionReason?: string;
     }
   | {
       id: Id<"processors">;
       type: "processor";
       name: string;
       verificationStatus: VerificationStatus;
+      rejectionReason?: string;
     }
   | null;
 

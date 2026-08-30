@@ -69,6 +69,29 @@ export function RoleRoute({
 }
 
 /**
+ * Wraps the marketplace surfaces a visitor may read before signing in: the
+ * homepage, search, categories, merchant pages, and item detail. Sending a
+ * first-time visitor to /login instead asked them to commit before they had seen
+ * anything worth committing to.
+ *
+ * Partners and admins are still bounced to their own dashboard — those accounts
+ * have no consumer view, and dropping them into one hides the queue they signed
+ * in to work. Anything that acts on an account (orders, checkout, profile,
+ * notifications) stays behind RoleRoute inside this same layout.
+ */
+export function PublicRoute() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return <PageLoader />;
+
+  if (user && user.role !== "consumer") {
+    return <Navigate to={homeForRole(user.role)} replace />;
+  }
+
+  return <Outlet />;
+}
+
+/**
  * Wraps auth pages (login, register).
  * If already authenticated, redirects to the role-appropriate home.
  */

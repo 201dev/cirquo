@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import heroImage from "@/assets/cirquo-hero.webp";
 import { AppLogo } from "@/components/common/app-logo";
-import { DemoNotice } from "@/components/common/demo-notice";
 import { PageLoader } from "@/components/common/page-loader";
 import { RouteFocus } from "@/components/common/route-focus";
 import { ThemeToggle } from "@/components/common/theme-toggle";
@@ -39,8 +38,9 @@ export function AuthLayout() {
       >
         <header className="flex h-[4.5rem] items-center border-b px-5 sm:px-8">
           <AppLogo />
-          <DemoNotice compact className="ml-auto" />
-          <ThemeToggle />
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </header>
         <div className="flex flex-1 items-center justify-center p-5 sm:p-8">
           <div className="w-full max-w-lg">

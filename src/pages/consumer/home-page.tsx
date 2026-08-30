@@ -331,14 +331,21 @@ export default function ConsumerHomePage() {
         </h2>
         <div className="mt-5 grid gap-5 sm:grid-cols-3">
           {HOW_IT_WORKS.map(({ icon: Icon, title, body }) => (
-            <div key={title}>
-              <span className="grid size-10 place-items-center rounded-lg bg-leaf-100 text-leaf-700 dark:bg-leaf-900 dark:text-leaf-200">
+            /*
+              Icon beside the text, not above it. `shrink-0` keeps the tile square
+              when the body wraps to a third line, and `items-start` holds it level
+              with the heading instead of centring it against the whole block.
+            */
+            <div key={title} className="flex items-start gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-leaf-100 text-leaf-700 dark:bg-leaf-900 dark:text-leaf-200">
                 <Icon className="size-5" strokeWidth={1.8} aria-hidden="true" />
               </span>
-              <h3 className="mt-3 font-semibold">{title}</h3>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                {body}
-              </p>
+              <div>
+                <h3 className="font-semibold">{title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  {body}
+                </p>
+              </div>
             </div>
           ))}
         </div>

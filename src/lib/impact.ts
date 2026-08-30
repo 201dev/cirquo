@@ -234,7 +234,10 @@ export function summariseLedger(entries: readonly ImpactLedgerEntry[]): ImpactSu
       continue
     }
     if (entry.eventType === 'MODERATED') {
-      totals.residualGrams += Math.abs(entry.weightDeltaGrams)
+      const data = metadata(entry.metadata)
+      totals.residualGrams += data && integer(data.residualWeightGrams)
+        ? data.residualWeightGrams
+        : Math.abs(entry.weightDeltaGrams)
     }
   }
 

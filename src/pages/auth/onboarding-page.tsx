@@ -88,9 +88,15 @@ function LocationHint() {
         <MapPin className="size-5 shrink-0 text-primary" aria-hidden="true" />
         <span>
           <strong className="block">Koordinat lokasi</strong>
+          {/*
+            The coordinates are typed in, not picked on a map. Saying so plainly
+            beats the old copy, which explained the gap by naming an internal
+            milestone — a roadmap label means nothing to the merchant reading it.
+          */}
           <span className="text-muted-foreground">
-            Untuk tahap ini, salin latitude dan longitude dari aplikasi peta.
-            Pemilih lokasi Mapbox masuk milestone M3.
+            Salin latitude dan longitude lokasi usaha dari aplikasi peta, lalu
+            tempel di kolom di bawah. Koordinat ini dipakai untuk menghitung
+            jarak pickup dan Circular Routing.
           </span>
         </span>
       </p>

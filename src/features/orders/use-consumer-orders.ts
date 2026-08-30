@@ -1,4 +1,4 @@
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -38,4 +38,11 @@ export function useMyOrder(orderId: string | undefined) {
       ? { orderId: orderId as Id<"orders">, sessionToken }
       : "skip",
   );
+}
+
+export function useCancelReservation() {
+  const { sessionToken } = useAuth();
+  const cancel = useMutation(api.orders.cancelReservation);
+  return (orderId: Id<"orders">) =>
+    cancel({ orderId, sessionToken: sessionToken ?? undefined });
 }

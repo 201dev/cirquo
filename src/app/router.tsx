@@ -10,6 +10,7 @@ import {
   GuestRoute,
   PostAuthRoute,
   ProtectedRoute,
+  PublicRoute,
   RoleRoute,
 } from "@/components/common/route-guards";
 import NotFoundPage from "@/pages/not-found-page";
@@ -21,6 +22,7 @@ const OnboardingPage = lazy(() => import("@/pages/auth/onboarding-page"));
 const RegisterFormPage = lazy(() => import("@/pages/auth/register-form-page"));
 const RegisterPage = lazy(() => import("@/pages/auth/register-page"));
 const LedgerPage = lazy(() => import("@/pages/admin/ledger-page"));
+const OperationsPage = lazy(() => import("@/pages/admin/operations-page"));
 const ReviewQueuePage = lazy(() => import("@/pages/admin/review-queue-page"));
 const ExplorePage = lazy(() => import("@/pages/consumer/explore-page"));
 const CheckoutPage = lazy(() => import("@/pages/consumer/checkout-page"));
@@ -62,6 +64,7 @@ const RecoveryPage = lazy(() => import("@/pages/processor/recovery-page"));
 const PendingVerificationPage = lazy(
   () => import("@/pages/auth/pending-verification-page"),
 );
+const NotificationsPage = lazy(() => import("@/pages/notifications-page"));
 export const router = createBrowserRouter([
   // --- Guest-only routes (login, register) ---
   {
@@ -117,8 +120,11 @@ export const router = createBrowserRouter([
   },
 
   // --- Consumer routes ---
+  // The shell is shared. Browsing is open to visitors; anything tied to an
+  // account sits behind RoleRoute one level deeper, so a signed-out visitor who
+  // opens /orders directly still gets sent to login.
   {
-    element: <RoleRoute role="consumer" />,
+    element: <PublicRoute />,
     children: [
       {
         element: <ConsumerLayout />,
@@ -128,12 +134,18 @@ export const router = createBrowserRouter([
           { path: "merchant/:merchantId", element: <ConsumerMerchantPage /> },
           { path: "discover", element: <ExplorePage /> },
           { path: "explore", element: <ExplorePage /> },
-          { path: "orders", element: <OrdersPage /> },
-          { path: "orders/:id", element: <OrderDetailPage /> },
-          { path: "checkout/:orderId", element: <CheckoutPage /> },
           { path: "item/:id", element: <ItemDetailPage /> },
-          { path: "impact", element: <ImpactPage /> },
-          { path: "profile", element: <ProfilePage /> },
+          {
+            element: <RoleRoute role="consumer" />,
+            children: [
+              { path: "orders", element: <OrdersPage /> },
+              { path: "orders/:id", element: <OrderDetailPage /> },
+              { path: "checkout/:orderId", element: <CheckoutPage /> },
+              { path: "impact", element: <ImpactPage /> },
+              { path: "profile", element: <ProfilePage /> },
+              { path: "notifications", element: <NotificationsPage /> },
+            ],
+          },
         ],
       },
     ],
@@ -150,6 +162,7 @@ export const router = createBrowserRouter([
           { index: true, element: <MerchantDashboardPage /> },
           { path: "surplus", element: <MerchantSurplusPage /> },
           { path: "impact", element: <MerchantImpactPage /> },
+          { path: "notifications", element: <NotificationsPage /> },
           {
             element: <RoleRoute role="merchant" requiresVerified />,
             children: [
@@ -174,6 +187,7 @@ export const router = createBrowserRouter([
           { index: true, element: <ProcessorDashboardPage /> },
           { path: "history", element: <ProcessorHistoryPage /> },
           { path: "profile", element: <ProcessorProfilePage /> },
+          { path: "notifications", element: <NotificationsPage /> },
           {
             element: <RoleRoute role="processor" requiresVerified />,
             children: [
@@ -204,7 +218,8 @@ export const router = createBrowserRouter([
             element: <ReviewQueuePage type="moderation" />,
           },
           { path: "ledger", element: <LedgerPage /> },
-          { path: "disputes", element: <ReviewQueuePage type="disputes" /> },
+          { path: "operations", element: <OperationsPage /> },
+          { path: "notifications", element: <NotificationsPage /> },
         ],
       },
     ],

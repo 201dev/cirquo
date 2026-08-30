@@ -5,6 +5,7 @@ import type { MutationCtx } from './_generated/server'
 import { requireRole, requireVerifiedMerchant } from './lib/guards'
 import { recordLedgerEvent } from './lib/ledger'
 import { internal } from './_generated/api'
+import { createNotification } from './lib/notifications'
 
 const PAYMENT_HOLD_MS = 15 * 60 * 1000
 const PICKUP_CODE_PATTERN = /^\d{6}$/
@@ -197,6 +198,22 @@ export const reserve = mutation({
       actorRole: 'consumer',
     })
 
+    await Promise.all([
+      createNotification(ctx, {
+        userId: user._id, type: 'reservation_confirmed', title: 'Reservasi berhasil',
+        body: `${item.name} sudah direservasi. Selesaikan pembayaran sebelum batas waktu.`, href: `/orders/${orderId}`,
+      }),
+      createNotification(ctx, {
+        userId: merchant.ownerId, type: 'merchant_reservation', title: 'Reservasi baru',
+        body: `${args.quantity} porsi ${item.name} baru saja direservasi.`, href: '/merchant/pickup',
+      }),
+      createNotification(ctx, {
+        userId: user._id, type: 'pickup_reminder', title: 'Pengingat pickup',
+        body: `Waktu pickup ${item.name} segera dimulai. Buka pesanan untuk melihat detail.`, href: `/orders/${orderId}`,
+        visibleAt: Math.max(now, item.pickupStartAt - 60 * 60 * 1_000),
+      }),
+    ])
+
     await ctx.scheduler.runAt(paymentHoldExpiresAt, internal.orders.expireHold, { orderId })
 
     return orderId
@@ -235,6 +252,37 @@ export const expireHold = internalMutation({
       metadata: { reason: 'PAYMENT_HOLD_EXPIRED' },
     })
   }
+})
+
+export const cancelReservation = mutation({
+  args: { orderId: v.id('orders'), sessionToken: v.optional(v.string()) },
+  returns: v.object({ status: v.literal('cancelled') }),
+  handler: async (ctx, args) => {
+    const user = await requireRole(ctx, args.sessionToken, ['consumer'])
+    const order = await ctx.db.get(args.orderId)
+    if (!order || order.userId !== user._id) throw new ConvexError('NOT_FOUND')
+    if (order.status !== 'reserved') throw new ConvexError('CANCEL_WINDOW_CLOSED')
+    const item = await ctx.db.get(order.surplusItemId)
+    if (!item) throw new ConvexError('NOT_FOUND')
+    const holdExpiresAt = order.paymentHoldExpiresAt ?? order.createdAt + PAYMENT_HOLD_MS
+    if (holdExpiresAt <= Date.now()) throw new ConvexError('CANCEL_WINDOW_CLOSED')
+
+    await ctx.db.patch(order._id, { status: 'cancelled' })
+    await ctx.db.patch(item._id, {
+      remainingQuantity: item.remainingQuantity + order.quantity,
+      status: 'active',
+    })
+    await recordLedgerEvent(ctx, {
+      surplusItemId: item._id,
+      orderId: order._id,
+      eventType: 'CANCELLED',
+      weightDeltaGrams: 0,
+      actorId: user._id,
+      actorRole: 'consumer',
+      metadata: { reason: 'CONSUMER_CANCELLED' },
+    })
+    return { status: 'cancelled' as const }
+  },
 })
 
 export const listMine = query({
