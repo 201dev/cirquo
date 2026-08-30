@@ -14,6 +14,7 @@ import {
   RoleRoute,
 } from "@/components/common/route-guards";
 import NotFoundPage from "@/pages/not-found-page";
+import RouteErrorPage from "@/pages/route-error-page";
 import WelcomePage from "@/pages/welcome-page";
 
 const AdminDashboardPage = lazy(() => import("@/pages/admin/dashboard-page"));
@@ -65,7 +66,7 @@ const PendingVerificationPage = lazy(
   () => import("@/pages/auth/pending-verification-page"),
 );
 const NotificationsPage = lazy(() => import("@/pages/notifications-page"));
-export const router = createBrowserRouter([
+const routes = [
   // --- Guest-only routes (login, register) ---
   {
     element: <GuestRoute />,
@@ -226,4 +227,8 @@ export const router = createBrowserRouter([
   },
 
   { path: "*", element: <NotFoundPage /> },
+];
+
+export const router = createBrowserRouter([
+  { errorElement: <RouteErrorPage />, children: routes },
 ]);
