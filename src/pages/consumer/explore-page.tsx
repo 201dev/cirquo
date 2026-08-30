@@ -1,4 +1,5 @@
 import { Search, AlertCircle, Loader2 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/common/page-header";
@@ -52,6 +53,12 @@ type MapItem = {
   merchant: { latitude: number; longitude: number };
 };
 
+/** A light basemap under a dark shell reads as a hole in the page, not a map. */
+const MAP_STYLE_URLS = {
+  light: "mapbox://styles/mapbox/light-v11",
+  dark: "mapbox://styles/mapbox/dark-v11",
+} as const;
+
 function updateMapSource(map: MapboxMap, items: readonly MapItem[]) {
   const source = map.getSource("rescue-items") as GeoJSONSource | undefined;
   source?.setData({
@@ -65,6 +72,62 @@ function updateMapSource(map: MapboxMap, items: readonly MapItem[]) {
       },
     })),
   } satisfies FeatureCollection);
+}
+
+/**
+ * Switching basemaps discards every source and layer the app added, so the
+ * cluster layers have to be rebuilt on each `style.load` — the initial load and
+ * every later theme change run the exact same setup.
+ */
+function installRescueLayers(map: MapboxMap, items: readonly MapItem[]) {
+  if (map.getSource("rescue-items")) return;
+
+  map.addSource("rescue-items", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] },
+    cluster: true,
+    clusterMaxZoom: 14,
+    clusterRadius: 50,
+  });
+
+  map.addLayer({
+    id: "clusters",
+    type: "circle",
+    source: "rescue-items",
+    filter: ["has", "point_count"],
+    paint: {
+      "circle-color": "#1BAC4B",
+      "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 50, 40],
+    },
+  });
+
+  map.addLayer({
+    id: "cluster-count",
+    type: "symbol",
+    source: "rescue-items",
+    filter: ["has", "point_count"],
+    layout: {
+      "text-field": "{point_count_abbreviated}",
+      "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+      "text-size": 12,
+    },
+    paint: { "text-color": "#272727" },
+  });
+
+  map.addLayer({
+    id: "unclustered-point",
+    type: "circle",
+    source: "rescue-items",
+    filter: ["!", ["has", "point_count"]],
+    paint: {
+      "circle-color": "#1BAC4B",
+      "circle-radius": 8,
+      "circle-stroke-width": 2,
+      "circle-stroke-color": "#fff",
+    },
+  });
+
+  updateMapSource(map, items);
 }
 
 export default function ExplorePage() {
@@ -93,6 +156,21 @@ export default function ExplorePage() {
   const [mapLoading, setMapLoading] = useState(true);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
+
+  /**
+   * The basemap follows the shell's theme, but rebuilding the map on every
+   * toggle would lose the viewport the user panned to — so the theme reaches
+   * initialisation through a ref and later changes go through setStyle().
+   */
+  const { resolvedTheme } = useTheme();
+  const mapStyle = resolvedTheme === "dark" ? "dark" : "light";
+  const styleRef = useRef<keyof typeof MAP_STYLE_URLS>(mapStyle);
+
+  useEffect(() => {
+    if (styleRef.current === mapStyle) return;
+    styleRef.current = mapStyle;
+    mapRef.current?.setStyle(MAP_STYLE_URLS[mapStyle]);
+  }, [mapStyle]);
   
   const [selectedItemId, setSelectedItemId] = useState<Id<"surplusItems"> | null>(null);
 
@@ -222,7 +300,7 @@ export default function ExplorePage() {
         mapboxgl.accessToken = accessToken;
         const map = new mapboxgl.Map({
           container: mapContainerRef.current,
-          style: "mapbox://styles/mapbox/light-v11",
+          style: MAP_STYLE_URLS[styleRef.current],
           center: [location.lng, location.lat],
           zoom: 13,
           attributionControl: false,
@@ -230,55 +308,12 @@ export default function ExplorePage() {
 
         map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
 
+        // Fires on the first style and again after every setStyle().
+        map.on("style.load", () => {
+          installRescueLayers(map, filteredRef.current);
+        });
+
         map.on("load", () => {
-          map.addSource("rescue-items", {
-            type: "geojson",
-            data: {
-              type: "FeatureCollection",
-              features: []
-            },
-            cluster: true,
-            clusterMaxZoom: 14,
-            clusterRadius: 50
-          });
-
-          map.addLayer({
-            id: "clusters",
-            type: "circle",
-            source: "rescue-items",
-            filter: ["has", "point_count"],
-            paint: {
-              "circle-color": "#1BAC4B",
-              "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 50, 40]
-            }
-          });
-
-          map.addLayer({
-            id: "cluster-count",
-            type: "symbol",
-            source: "rescue-items",
-            filter: ["has", "point_count"],
-            layout: {
-              "text-field": "{point_count_abbreviated}",
-              "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-              "text-size": 12
-            },
-            paint: { "text-color": "#272727" }
-          });
-
-          map.addLayer({
-            id: "unclustered-point",
-            type: "circle",
-            source: "rescue-items",
-            filter: ["!", ["has", "point_count"]],
-            paint: {
-              "circle-color": "#1BAC4B",
-              "circle-radius": 8,
-              "circle-stroke-width": 2,
-              "circle-stroke-color": "#fff"
-            }
-          });
-
           map.on("click", "unclustered-point", (e) => {
             if (!e.features || !e.features[0].properties) return;
             const id = e.features[0].properties.id as Id<"surplusItems">;
@@ -293,7 +328,6 @@ export default function ExplorePage() {
             map.getCanvas().style.cursor = "";
           });
 
-          updateMapSource(map, filteredRef.current);
           setMapLoading(false);
         });
 

@@ -7,22 +7,13 @@ import { RescueItemCard } from "@/components/common/rescue-item-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNearbyRescueItems } from "@/features/discovery/use-nearby-rescue-items";
+import { BUSINESS_TYPE_LABELS } from "@/lib/admin-review";
 import { toRescueItemPreview } from "@/lib/discovery";
 import { formatDistance, formatIdr, formatWibTime } from "@/lib/format";
 import {
   MATERIAL_CATEGORIES,
   rescueItemImageForMaterialType,
 } from "@/lib/rescue-item-images";
-
-const BUSINESS_TYPE_LABELS: Record<string, string> = {
-  bakery: "Toko roti",
-  restaurant: "Restoran",
-  cafe: "Kafe",
-  grocery: "Toko bahan pangan",
-  catering: "Katering",
-  warung: "Warung",
-  other: "Mitra Usaha",
-};
 
 /**
  * One fact per column, all of it derived from the merchant's live items — there

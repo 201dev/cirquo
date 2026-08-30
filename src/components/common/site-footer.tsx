@@ -89,7 +89,7 @@ export function SiteFooter() {
 
         <div className="mt-12 border-t border-leaf-700/60 pt-8">
           <h3 className="text-sm font-semibold text-leaf-50">
-            Area uji coba saat ini
+            Area layanan saat ini
           </h3>
           <ul className="mt-3 flex flex-wrap gap-2">
             {AREAS.map((area) => (
@@ -109,7 +109,7 @@ export function SiteFooter() {
 
         <div className="mt-10 flex flex-col gap-3 border-t border-leaf-700/60 pt-6 text-xs text-leaf-300 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} Cirquo · Semarang, Indonesia</p>
-          <p>Prototipe DSDC ANFORCOM 2026. Angka dampak dihitung dari Material Flow Ledger.</p>
+          <p>Angka dampak dihitung dari Material Flow Ledger.</p>
         </div>
       </div>
     </footer>
