@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { Capacitor } from "@capacitor/core";
 import {
   CircleUserRound,
   Compass,
@@ -68,6 +69,7 @@ export function ConsumerLayout() {
   const [query, setQuery] = useState("");
   const unreadCount = useUnreadNotificationCount();
   const isCheckout = pathname.startsWith("/checkout/");
+  const showFooter = !isCheckout && Capacitor.getPlatform() !== "android";
   const bottomNavigation = isAuthenticated
     ? mobileNavigation
     : guestMobileNavigation;
@@ -229,7 +231,7 @@ export function ConsumerLayout() {
         </Suspense>
       </main>
       {/* Checkout owns the bottom of the viewport with its own pay bar. */}
-      {!isCheckout && <SiteFooter />}
+      {showFooter && <SiteFooter />}
       <nav
         className={cn(
           "fixed inset-x-0 bottom-0 z-30 grid border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl sm:hidden",
