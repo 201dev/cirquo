@@ -7,6 +7,9 @@ import { requireVerifiedMerchant, requireOwnership, requireRole } from './lib/gu
 import { recordLedgerEvent } from './lib/ledger'
 import { createNotification } from './lib/notifications'
 import { queueSandboxRefund } from './lib/refunds'
+import { internal } from './_generated/api'
+import { createRecoveryBatchForItem } from './recoveryBatches'
+import { calculateHaversineDistanceMeters } from '../src/lib/geo'
 
 export const listByStatus = internalQuery({
   args: { status: rescueItemStatus },
@@ -20,6 +23,7 @@ const surplusItemInputArgs = {
   name: v.string(),
   description: v.optional(v.string()),
   imageUrl: v.optional(v.string()),
+  imageStorageId: v.optional(v.id('_storage')),
   originalPrice: v.number(),
   floorPrice: v.number(),
   currentPrice: v.number(),
@@ -29,6 +33,7 @@ const surplusItemInputArgs = {
   pickupEndAt: v.number(),
   materialType: materialType,
   dietaryTags: v.array(v.string()),
+  processingOnly: v.optional(v.boolean()),
   sessionToken: v.optional(v.string()),
 }
 
@@ -46,6 +51,7 @@ type SurplusItemFields = Pick<
   | 'pickupEndAt'
   | 'materialType'
   | 'dietaryTags'
+  | 'processingOnly'
 >
 
 type SurplusItemField = keyof SurplusItemFields
@@ -189,6 +195,7 @@ const surplusItemUpdateArgs = {
   pickupEndAt: v.optional(v.number()),
   materialType: v.optional(materialType),
   dietaryTags: v.optional(v.array(v.string())),
+  processingOnly: v.optional(v.boolean()),
 }
 
 function validateItemFields(args: SurplusItemFields) {
@@ -212,13 +219,15 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await requireRole(ctx, args.sessionToken, ['merchant'])
     const merchant = await requireVerifiedMerchant(ctx, user)
-    validateItemFields(args)
+    validateItemFields({ ...args, processingOnly: args.processingOnly ?? false })
 
     return ctx.db.insert('surplusItems', {
       merchantId: merchant._id,
+      city: merchant.city,
       name: args.name,
       description: args.description,
       imageUrl: args.imageUrl,
+      imageStorageId: args.imageStorageId,
       originalPrice: args.originalPrice,
       floorPrice: args.floorPrice,
       currentPrice: args.currentPrice,
@@ -229,10 +238,20 @@ export const create = mutation({
       pickupEndAt: args.pickupEndAt,
       materialType: args.materialType,
       dietaryTags: args.dietaryTags,
-      processingOnly: false,
+      processingOnly: args.processingOnly ?? false,
       status: 'draft',
       createdAt: Date.now(),
     })
+  },
+})
+
+export const generateImageUploadUrl = mutation({
+  args: { sessionToken: v.optional(v.string()) },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    const user = await requireRole(ctx, args.sessionToken, ['merchant'])
+    await requireVerifiedMerchant(ctx, user)
+    return ctx.storage.generateUploadUrl()
   },
 })
 
@@ -250,7 +269,7 @@ export const publish = mutation({
 
     const publishedAt = Date.now()
     await ctx.db.patch(item._id, {
-      status: 'active',
+      status: item.processingOnly ? 'recovery_pending' : 'active',
       publishedAt,
     })
 
@@ -272,6 +291,33 @@ export const publish = mutation({
         processingOnly: item.processingOnly,
       }
     })
+
+    if (!item.processingOnly) {
+      // ponytail: consumer profiles do not yet store coordinates; notify the
+      // bounded pilot audience and let discovery filtering decide relevance.
+      const consumers = merchant.city && merchant.latitude !== undefined && merchant.longitude !== undefined
+        ? await ctx.db.query('users').withIndex('by_role_and_status_and_city', (q) =>
+            q.eq('role', 'consumer').eq('status', 'active').eq('city', merchant.city),
+          ).take(500)
+        : []
+      for (const consumer of consumers) {
+        if (consumer.latitude === undefined || consumer.longitude === undefined) continue
+        const distanceMeters = calculateHaversineDistanceMeters(consumer.latitude, consumer.longitude, merchant.latitude!, merchant.longitude!)
+        if (distanceMeters > (consumer.notificationRadiusMeters ?? 5_000)) continue
+        await createNotification(ctx, {
+          userId: consumer._id,
+          type: 'nearby_rescue_item',
+          title: 'Rescue Item baru di sekitar Anda',
+          body: `${item.name} tersedia ${Math.round(distanceMeters).toLocaleString('id-ID')} m dari lokasi Anda.`,
+          href: `/item/${item._id}`,
+        })
+      }
+    }
+
+    if (item.processingOnly) {
+      await createRecoveryBatchForItem(ctx, item, merchant._id)
+      await ctx.scheduler.runAfter(0, internal.recoveryBatches.runRouting, {})
+    }
   }
 })
 
@@ -305,6 +351,7 @@ export const update = mutation({
       pickupEndAt: args.pickupEndAt ?? item.pickupEndAt,
       materialType: args.materialType ?? item.materialType,
       dietaryTags: args.dietaryTags ?? item.dietaryTags,
+      processingOnly: args.processingOnly ?? item.processingOnly,
     }
     const hasChanges =
       nextItem.name !== item.name ||
@@ -318,6 +365,7 @@ export const update = mutation({
       nextItem.pickupStartAt !== item.pickupStartAt ||
       nextItem.pickupEndAt !== item.pickupEndAt ||
       nextItem.materialType !== item.materialType ||
+      nextItem.processingOnly !== item.processingOnly ||
       nextItem.dietaryTags.length !== item.dietaryTags.length ||
       nextItem.dietaryTags.some((tag, index) => tag !== item.dietaryTags[index])
     if (!hasChanges) throw new ConvexError('EMPTY_UPDATE')

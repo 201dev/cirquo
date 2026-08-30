@@ -4,7 +4,6 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AppLogo } from "@/components/common/app-logo";
-import { DemoNotice } from "@/components/common/demo-notice";
 import { PageLoader } from "@/components/common/page-loader";
 import { RouteFocus } from "@/components/common/route-focus";
 import { ThemeToggle } from "@/components/common/theme-toggle";
@@ -118,7 +117,7 @@ export function RoleShell({ roleLabel, navigation, children }: RoleShellProps) {
             </SheetContent>
           </Sheet>
           <p className="font-medium">{roleLabel}</p>
-          <DemoNotice className="ml-auto hidden sm:flex" />
+          <span className="ml-auto" />
           <ThemeToggle />
           <Button variant="ghost" size="icon" aria-label="Keluar" onClick={handleLogout}>
             <LogOut aria-hidden="true" />
@@ -129,7 +128,6 @@ export function RoleShell({ roleLabel, navigation, children }: RoleShellProps) {
           tabIndex={-1}
           className="mx-auto max-w-7xl p-4 focus:outline-none sm:p-6 lg:p-8"
         >
-          <DemoNotice compact className="mb-4 flex w-fit sm:hidden" />
           {children ?? (
             <Suspense fallback={<PageLoader />}>
               <Outlet />

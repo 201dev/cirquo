@@ -103,9 +103,15 @@ export default defineSchema({
     passwordHash: v.string(),
     role: userRole,
     phone: v.optional(v.string()),
+    city: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+    notificationRadiusMeters: v.optional(v.number()),
     status: v.union(v.literal('active'), v.literal('suspended')),
     createdAt: v.number(),
-  }).index('by_email', ['email']),
+  })
+    .index('by_email', ['email'])
+    .index('by_role_and_status_and_city', ['role', 'status', 'city']),
 
   sessions: defineTable({
     userId: v.id('users'),
@@ -181,9 +187,11 @@ export default defineSchema({
 
   surplusItems: defineTable({
     merchantId: v.id('merchants'),
+    city: v.optional(v.string()),
     name: v.string(),
     description: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
+    imageStorageId: v.optional(v.id('_storage')),
     originalPrice: v.number(),
     floorPrice: v.number(),
     currentPrice: v.number(),
@@ -203,6 +211,7 @@ export default defineSchema({
     .index('by_merchant', ['merchantId'])
     .index('by_created_at', ['createdAt'])
     .index('by_status', ['status'])
+    .index('by_status_and_city', ['status', 'city'])
     .index('by_status_pickup_end', ['status', 'pickupEndAt']),
 
   materialFlowLedger: defineTable({
@@ -328,4 +337,19 @@ export default defineSchema({
     note: v.optional(v.string()),
     occurredAt: v.number(),
   }).index('by_admin_and_occurred_at', ['adminId', 'occurredAt']),
+
+  disputes: defineTable({
+    orderId: v.id('orders'),
+    consumerId: v.id('users'),
+    openedBy: v.id('users'),
+    assignedAdminId: v.optional(v.id('users')),
+    status: v.union(v.literal('open'), v.literal('resolved'), v.literal('rejected')),
+    reason: v.string(),
+    resolution: v.optional(v.string()),
+    createdAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index('by_order', ['orderId'])
+    .index('by_status_and_created_at', ['status', 'createdAt'])
+    .index('by_consumer_and_created_at', ['consumerId', 'createdAt']),
 })

@@ -269,6 +269,58 @@ export const moderateListing = mutation({
   },
 })
 
+export const openDispute = mutation({
+  args: { sessionToken: v.optional(v.string()), orderId: v.id('orders'), reason: v.string() },
+  returns: v.object({ orderId: v.id('orders'), status: v.literal('open') }),
+  handler: async (ctx, args) => {
+    const admin = await requireRole(ctx, args.sessionToken, ['admin'])
+    const reason = note(args.reason, true)!
+    const order = await ctx.db.get(args.orderId)
+    if (!order) fail('NOT_FOUND', 'Order tidak ditemukan.')
+    const existing = await ctx.db.query('disputes').withIndex('by_order', (index) => index.eq('orderId', order._id)).unique()
+    if (existing?.status === 'open') fail('ALREADY_RESOLVED', 'Order ini sudah memiliki dispute aktif.')
+    if (existing) await ctx.db.patch(existing._id, { status: 'open', reason, openedBy: admin._id, assignedAdminId: admin._id, resolution: undefined, resolvedAt: undefined, createdAt: Date.now() })
+    else await ctx.db.insert('disputes', {
+      orderId: order._id, consumerId: order.userId, openedBy: admin._id, assignedAdminId: admin._id,
+      status: 'open', reason, createdAt: Date.now(),
+    })
+    await recordAdminAction(ctx, { adminId: admin._id, action: 'dispute_opened', targetTable: 'orders', targetId: order._id, reason })
+    await createNotification(ctx, { userId: order.userId, type: 'dispute_opened', title: 'Dispute order dibuka', body: 'Tim Cirquo sedang meninjau order ini.', href: `/orders/${order._id}` })
+    return { orderId: order._id, status: 'open' as const }
+  },
+})
+
+export const resolveDispute = mutation({
+  args: { sessionToken: v.optional(v.string()), orderId: v.id('orders'), resolution: v.string() },
+  returns: v.object({ orderId: v.id('orders'), status: v.literal('resolved') }),
+  handler: async (ctx, args) => {
+    const admin = await requireRole(ctx, args.sessionToken, ['admin'])
+    const resolution = note(args.resolution, true)!
+    const order = await ctx.db.get(args.orderId)
+    if (!order) fail('NOT_FOUND', 'Order tidak ditemukan.')
+    const dispute = await ctx.db.query('disputes').withIndex('by_order', (index) => index.eq('orderId', order._id)).unique()
+    if (!dispute) fail('NOT_FOUND', 'Dispute aktif tidak ditemukan.')
+    if (dispute.status !== 'open') fail('ALREADY_RESOLVED', 'Dispute ini sudah diselesaikan.')
+    await ctx.db.patch(dispute._id, { status: 'resolved', resolution, assignedAdminId: admin._id, resolvedAt: Date.now() })
+    await recordAdminAction(ctx, { adminId: admin._id, action: 'dispute_resolved', targetTable: 'orders', targetId: order._id, reason: resolution })
+    await createNotification(ctx, { userId: order.userId, type: 'dispute_resolved', title: 'Dispute order selesai', body: resolution, href: `/orders/${order._id}` })
+    return { orderId: order._id, status: 'resolved' as const }
+  },
+})
+
+export const listDisputes = query({
+  args: { sessionToken: v.optional(v.string()), status: v.union(v.literal('open'), v.literal('resolved'), v.literal('rejected')) },
+  returns: v.array(v.object({
+    _id: v.id('disputes'), orderId: v.id('orders'), consumerId: v.id('users'), status: v.union(v.literal('open'), v.literal('resolved'), v.literal('rejected')),
+    reason: v.string(), resolution: v.optional(v.string()), createdAt: v.number(), resolvedAt: v.optional(v.number()),
+  })),
+  handler: async (ctx, args) => {
+    await requireRole(ctx, args.sessionToken, ['admin'])
+    const rows = await ctx.db.query('disputes').withIndex('by_status_and_created_at', (index) => index.eq('status', args.status)).order('desc').take(100)
+    return rows.map(({ _id, orderId, consumerId, status, reason, resolution, createdAt, resolvedAt }) => ({ _id, orderId, consumerId, status, reason, resolution, createdAt, resolvedAt }))
+  },
+})
+
 export const searchLedger = query({
   args: {
     sessionToken: v.optional(v.string()), query: v.optional(v.string()), merchantId: v.optional(v.id('merchants')),

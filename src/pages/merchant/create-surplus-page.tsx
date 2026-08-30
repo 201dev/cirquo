@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { useAuth } from "@/contexts/auth-context";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,7 @@ const schema = z
     imageUrl: z.string().url("Masukkan URL gambar yang valid.").or(z.literal("")),
     materialType: z.enum(MATERIAL_TYPES),
     dietaryTags: z.array(z.string()),
+    processingOnly: z.boolean(),
     quantity: z.number().int().min(1, "Jumlah minimal 1 unit."),
     weight: z.number().int().min(1, "Berat minimal 1 gram."),
     originalPrice: z.number().int().min(1, "Harga awal minimal Rp1."),
@@ -107,6 +109,7 @@ const serverFieldMap = {
   name: "name",
   description: "description",
   imageUrl: "imageUrl",
+  processingOnly: "processingOnly",
   materialType: "materialType",
   dietaryTags: "dietaryTags",
   originalPrice: "originalPrice",
@@ -130,18 +133,19 @@ function getSubmitAction(event: unknown): SubmitAction {
 function getDefaultValues(): FormValues {
   const pickupStart = getDefaultDatetime(1);
   const pickupEnd = getDefaultDatetime(4);
-  const originalPrice = 36_000;
-  const floorPrice = 12_000;
-  const quantity = 4;
+  const originalPrice = 0;
+  const floorPrice = 0;
+  const quantity = 1;
 
   return {
     name: "",
     description: "",
     imageUrl: "",
+    processingOnly: false,
     materialType: "bakery",
-    dietaryTags: ["vegetarian"],
+    dietaryTags: [],
     quantity,
-    weight: 450,
+    weight: 1,
     originalPrice,
     floorPrice,
     rescuePrice: suggestRescuePrice({
@@ -176,6 +180,8 @@ export default function CreateSurplusPage() {
   const navigate = useNavigate();
   const createItem = useMutation(api.surplusItems.create);
   const publishItem = useMutation(api.surplusItems.publish);
+  const generateImageUploadUrl = useMutation(api.surplusItems.generateImageUploadUrl);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [submitAction, setSubmitAction] = useState<SubmitAction>("draft");
   const [hasManualPrice, setHasManualPrice] = useState(false);
   const defaultValues = useMemo(getDefaultValues, []);
@@ -240,10 +246,18 @@ export default function CreateSurplusPage() {
     setSubmitAction(action);
 
     try {
+      let imageStorageId: Id<"_storage"> | undefined;
+      if (imageFile) {
+        const uploadUrl = await generateImageUploadUrl({ sessionToken: sessionToken || undefined });
+        const response = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": imageFile.type }, body: imageFile });
+        if (!response.ok) throw new Error("IMAGE_UPLOAD_FAILED");
+        imageStorageId = ((await response.json()) as { storageId: Id<"_storage"> }).storageId;
+      }
       const itemId = await createItem({
         name: data.name,
         description: data.description || undefined,
         imageUrl: data.imageUrl || undefined,
+        imageStorageId,
         originalPrice: data.originalPrice,
         floorPrice: data.floorPrice,
         currentPrice: data.rescuePrice,
@@ -253,6 +267,7 @@ export default function CreateSurplusPage() {
         pickupEndAt: toTimestamp(data.pickupEnd),
         materialType: data.materialType,
         dietaryTags: data.dietaryTags,
+        processingOnly: data.processingOnly,
         sessionToken: sessionToken || undefined,
       });
 
@@ -384,8 +399,9 @@ export default function CreateSurplusPage() {
                         />
                       </FormControl>
                       <FormDescription>
-                        Masukkan URL gambar; unggah file belum tersedia.
+                        Gunakan URL atau unggah gambar dari perangkat.
                       </FormDescription>
+                      <Input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setImageFile(event.target.files?.[0] ?? null)} />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -427,6 +443,26 @@ export default function CreateSurplusPage() {
                         alergi atau bebas kontaminasi silang.
                       </FormDescription>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="processingOnly"
+                  render={({ field }) => (
+                    <FormItem className="rounded-lg border bg-background p-3">
+                      <label className="flex min-h-11 items-center gap-3 text-sm font-medium">
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={field.onChange}
+                          className="size-4 accent-primary"
+                        />
+                        Langsung untuk Organic Processor
+                      </label>
+                      <FormDescription>
+                        Item tidak muncul di marketplace dan langsung masuk Circular Routing setelah dibuat.
+                      </FormDescription>
                     </FormItem>
                   )}
                 />

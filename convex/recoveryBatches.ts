@@ -9,6 +9,7 @@ import { materialType, outputType, recoveryBatchStatus } from './schema'
 import { requireRole, requireVerifiedMerchant, requireVerifiedProcessor } from './lib/guards'
 import { recordLedgerEvent } from './lib/ledger'
 import { createNotification } from './lib/notifications'
+import { recordAdminAction } from './lib/adminAudit'
 
 const ROUTING_BATCH_SIZE = 50
 const NOTE_MAX_LENGTH = 500
@@ -172,6 +173,23 @@ async function routePendingBatch(ctx: MutationCtx, batch: Doc<'recoveryBatches'>
   return 'offered'
 }
 
+export async function createRecoveryBatchForItem(
+  ctx: MutationCtx,
+  item: Doc<'surplusItems'>,
+  merchantId: Id<'merchants'>,
+) {
+  return ctx.db.insert('recoveryBatches', {
+    merchantId,
+    surplusItemId: item._id,
+    offeredWeightGrams: item.initialQuantity * item.weightPerItemGrams,
+    status: 'pending',
+    routingAttempts: 0,
+    attemptedProcessorIds: [],
+    declinedByProcessorIds: [],
+    createdAt: Date.now(),
+  })
+}
+
 export const listByStatus = internalQuery({
   args: { status: recoveryBatchStatus }, returns: v.array(v.any()),
   handler: async (ctx, { status }) => ctx.db.query('recoveryBatches').withIndex('by_status', (q) => q.eq('status', status)).collect(),
@@ -300,6 +318,41 @@ export const decline = mutation({
     const pending = await ctx.db.get(batch._id)
     if (pending) await routePendingBatch(ctx, pending, Date.now())
     return { status: 'pending' as const }
+  },
+})
+
+export const adminReroute = mutation({
+  args: { sessionToken: v.optional(v.string()), batchId: v.id('recoveryBatches'), reason: v.string() },
+  returns: v.object({ status: recoveryBatchStatus }),
+  handler: async (ctx, args) => {
+    const admin = await requireRole(ctx, args.sessionToken, ['admin'])
+    const reason = validateNote(args.reason)
+    if (!reason || reason.length < 10) fail('VALIDATION_FAILED', 'Alasan harus 10-500 karakter.')
+    const batch = await ctx.db.get(args.batchId)
+    if (!batch) fail('NOT_FOUND', 'Batch recovery tidak ditemukan.')
+    if (!['offered', 'unroutable', 'pending'].includes(batch.status)) fail('INVALID_TRANSITION', 'Batch ini tidak dapat dirutekan ulang.')
+    await ctx.db.patch(batch._id, { status: 'pending', processorId: undefined, offerExpiresAt: undefined })
+    await recordAdminAction(ctx, { adminId: admin._id, action: 'reroute_recovery_batch', targetTable: 'recoveryBatches', targetId: batch._id, reason })
+    const refreshed = await ctx.db.get(batch._id)
+    if (!refreshed) fail('NOT_FOUND', 'Batch recovery tidak ditemukan.')
+    return { status: (await routePendingBatch(ctx, refreshed, Date.now())) === 'offered' ? 'offered' as const : 'unroutable' as const }
+  },
+})
+
+export const adminListReroutable = query({
+  args: { sessionToken: v.optional(v.string()) },
+  returns: v.array(v.object({ _id: v.id('recoveryBatches'), itemName: v.string(), status: recoveryBatchStatus, offeredWeightGrams: v.number() })),
+  handler: async (ctx, args) => {
+    await requireRole(ctx, args.sessionToken, ['admin'])
+    const batches = (await Promise.all(['offered', 'pending', 'unroutable'].map((status) =>
+      ctx.db.query('recoveryBatches').withIndex('by_status', (q) => q.eq('status', status as 'offered' | 'pending' | 'unroutable')).take(100),
+    ))).flat()
+    return Promise.all(batches.map(async (batch) => ({
+      _id: batch._id,
+      itemName: (await ctx.db.get(batch.surplusItemId))?.name ?? 'Rescue Item',
+      status: batch.status,
+      offeredWeightGrams: batch.offeredWeightGrams,
+    })))
   },
 })
 

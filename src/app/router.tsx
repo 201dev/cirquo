@@ -21,6 +21,7 @@ const OnboardingPage = lazy(() => import("@/pages/auth/onboarding-page"));
 const RegisterFormPage = lazy(() => import("@/pages/auth/register-form-page"));
 const RegisterPage = lazy(() => import("@/pages/auth/register-page"));
 const LedgerPage = lazy(() => import("@/pages/admin/ledger-page"));
+const OperationsPage = lazy(() => import("@/pages/admin/operations-page"));
 const ReviewQueuePage = lazy(() => import("@/pages/admin/review-queue-page"));
 const ExplorePage = lazy(() => import("@/pages/consumer/explore-page"));
 const CheckoutPage = lazy(() => import("@/pages/consumer/checkout-page"));
@@ -208,6 +209,7 @@ export const router = createBrowserRouter([
             element: <ReviewQueuePage type="moderation" />,
           },
           { path: "ledger", element: <LedgerPage /> },
+          { path: "operations", element: <OperationsPage /> },
           { path: "notifications", element: <NotificationsPage /> },
         ],
       },
