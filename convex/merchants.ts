@@ -50,6 +50,22 @@ export const createProfile = mutation({
       .unique()
 
     if (existing) {
+      if (existing.verificationStatus === 'rejected') {
+        await ctx.db.patch(existing._id, {
+          name: profile.name,
+          businessType: args.businessType,
+          address: profile.address,
+          city: profile.city,
+          latitude: args.latitude,
+          longitude: args.longitude,
+          phone: profile.phone,
+          verificationStatus: 'pending',
+          rejectionReason: undefined,
+          verificationNote: undefined,
+          verifiedAt: undefined,
+        })
+        return { merchantId: existing._id, verificationStatus: 'pending' as const }
+      }
       throw new ConvexError({
         code: 'PROFILE_ALREADY_EXISTS',
         message: 'Profil Merchant sudah tersedia.',

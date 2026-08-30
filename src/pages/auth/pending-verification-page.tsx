@@ -17,7 +17,7 @@ const statusConfig = {
     icon: ShieldX,
     title: "Verifikasi ditolak",
     description:
-      "Profil Anda tidak lolos verifikasi. Silakan hubungi tim support untuk informasi lebih lanjut.",
+      "Perbarui profil sesuai alasan Admin, lalu ajukan kembali untuk ditinjau.",
     color: "text-destructive",
     bgColor: "bg-destructive/10",
   },
@@ -122,8 +122,18 @@ export default function PendingVerificationPage() {
       )}
 
       <div className="mt-8 flex flex-col gap-3">
+        {verificationStatus === "rejected" ? (
+          <Button
+            size="lg"
+            className="w-full"
+            onClick={() => navigate(`/${user.role}/onboarding`)}
+          >
+            Perbarui profil dan ajukan kembali
+          </Button>
+        ) : null}
         <Button
-          size="lg"
+          size={verificationStatus === "rejected" ? "default" : "lg"}
+          variant={verificationStatus === "rejected" ? "outline" : "default"}
           className="w-full"
           onClick={() => navigate(homeForRole(user.role))}
         >

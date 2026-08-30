@@ -15,9 +15,11 @@ test('M7 verifies partners, audits decisions, notifies owners, and blocks non-Ad
   const adminToken = 'a'.repeat(43)
   const merchantToken = 'm'.repeat(43)
   const processorToken = 'p'.repeat(43)
+  const rejectedToken = 'r'.repeat(43)
   const ids = await t.run(async (ctx) => {
-    const [adminId, merchantOwnerId, processorOwnerId, rejectedOwnerId] = await Promise.all([
+    const [adminId, otherAdminId, merchantOwnerId, processorOwnerId, rejectedOwnerId] = await Promise.all([
       ctx.db.insert('users', { name: 'Admin', email: 'm7.admin@example.com', passwordHash: 'hash', role: 'admin', status: 'active', createdAt: now }),
+      ctx.db.insert('users', { name: 'Admin Kedua', email: 'm7.admin.two@example.com', passwordHash: 'hash', role: 'admin', status: 'active', createdAt: now }),
       ctx.db.insert('users', { name: 'Merchant', email: 'm7.merchant@example.com', passwordHash: 'hash', role: 'merchant', status: 'active', createdAt: now }),
       ctx.db.insert('users', { name: 'Processor', email: 'm7.processor@example.com', passwordHash: 'hash', role: 'processor', status: 'active', createdAt: now }),
       ctx.db.insert('users', { name: 'Merchant Ditolak', email: 'm7.rejected@example.com', passwordHash: 'hash', role: 'merchant', status: 'active', createdAt: now }),
@@ -26,17 +28,22 @@ test('M7 verifies partners, audits decisions, notifies owners, and blocks non-Ad
       ctx.db.insert('sessions', { userId: adminId, tokenHash: await hashSessionToken(adminToken), expiresAt: now + HOUR, createdAt: now }),
       ctx.db.insert('sessions', { userId: merchantOwnerId, tokenHash: await hashSessionToken(merchantToken), expiresAt: now + HOUR, createdAt: now }),
       ctx.db.insert('sessions', { userId: processorOwnerId, tokenHash: await hashSessionToken(processorToken), expiresAt: now + HOUR, createdAt: now }),
+      ctx.db.insert('sessions', { userId: rejectedOwnerId, tokenHash: await hashSessionToken(rejectedToken), expiresAt: now + HOUR, createdAt: now }),
     ])
     const merchantId = await ctx.db.insert('merchants', { ownerId: merchantOwnerId, name: 'Toko M7', address: 'Semarang', city: 'Semarang', verificationStatus: 'pending', createdAt: now })
     const rejectedMerchantId = await ctx.db.insert('merchants', { ownerId: rejectedOwnerId, name: 'Toko Ditolak', address: 'Semarang', verificationStatus: 'pending', createdAt: now + 1 })
     const processorId = await ctx.db.insert('processors', {
       ownerId: processorOwnerId, name: 'Processor M7', facilityType: 'composting', city: 'Semarang', acceptedMaterialTypes: ['bakery'],
-      dailyCapacityGrams: 10_000, maxPickupRadiusMeters: 10_000, outputTypes: ['compost'], operatingHoursStart: 480, operatingHoursEnd: 1_020,
+      latitude: -6.9932, longitude: 110.4203, dailyCapacityGrams: 10_000, maxPickupRadiusMeters: 10_000, outputTypes: ['compost'], operatingHoursStart: 480, operatingHoursEnd: 1_020,
       verificationStatus: 'pending', createdAt: now,
     })
-    return { merchantId, processorId, rejectedMerchantId, merchantOwnerId, processorOwnerId, rejectedOwnerId }
+    return { adminId, otherAdminId, merchantId, processorId, rejectedMerchantId, merchantOwnerId, processorOwnerId, rejectedOwnerId }
   })
 
+  const merchantQueue = await t.query(api.admin.listPendingVerifications, { sessionToken: adminToken, kind: 'merchant', city: 'Semarang', limit: 1 })
+  expect(merchantQueue).toHaveLength(1)
+  expect(merchantQueue[0]?.kind).toBe('merchant')
+  expect(await t.query(api.admin.listPendingVerifications, { sessionToken: adminToken, kind: 'processor' })).toHaveLength(1)
   expect(await t.query(api.admin.listPendingVerifications, { sessionToken: adminToken })).toHaveLength(3)
   await t.mutation(api.admin.verifyMerchant, { sessionToken: adminToken, merchantId: ids.merchantId })
   await t.mutation(api.admin.verifyProcessor, { sessionToken: adminToken, processorId: ids.processorId })
@@ -46,12 +53,38 @@ test('M7 verifies partners, audits decisions, notifies owners, and blocks non-Ad
   expect((await t.run((ctx) => ctx.db.get(ids.rejectedMerchantId)))?.rejectionReason).toContain('Alamat usaha')
   expect((await t.run((ctx) => ctx.db.query('notifications').withIndex('by_user_and_visible_at', (index) => index.eq('userId', ids.processorOwnerId)).collect()))[0]?.type).toBe('account_verified')
   await expect(t.query(api.admin.listPendingVerifications, { sessionToken: merchantToken })).rejects.toThrow('FORBIDDEN')
+  await expect(t.query(api.admin.listUsers, { sessionToken: merchantToken })).rejects.toThrow('FORBIDDEN')
+
+  await t.mutation(api.admin.verifyMerchant, { sessionToken: adminToken, merchantId: ids.rejectedMerchantId })
+  await t.run((ctx) => ctx.db.patch(ids.rejectedMerchantId, { verificationStatus: 'rejected', rejectionReason: 'Lengkapi alamat usaha.' }))
+  expect(await t.mutation(api.merchants.createProfile, {
+    sessionToken: rejectedToken, name: 'Toko Ditolak Diperbarui', businessType: 'bakery', address: 'Jl. Pemuda 1, Semarang', city: 'Semarang', latitude: -6.99, longitude: 110.42,
+  })).toMatchObject({ merchantId: ids.rejectedMerchantId, verificationStatus: 'pending' })
+
+  await t.run((ctx) => ctx.db.patch(ids.processorId, { verificationStatus: 'rejected', latitude: undefined }))
+  await expect(t.mutation(api.admin.verifyProcessor, { sessionToken: adminToken, processorId: ids.processorId })).rejects.toThrow('Latitude')
+  expect(await t.mutation(api.processors.createProfile, {
+    sessionToken: processorToken, name: 'Processor M7', facilityType: 'composting', city: 'Semarang', latitude: -6.9932, longitude: 110.4203,
+    acceptedMaterialTypes: ['bakery'], dailyCapacityGrams: 10_000, maxPickupRadiusMeters: 10_000, outputTypes: ['compost'], operatingHoursStart: 480, operatingHoursEnd: 1_020,
+  })).toMatchObject({ processorId: ids.processorId, verificationStatus: 'pending' })
+  await t.mutation(api.admin.verifyProcessor, { sessionToken: adminToken, processorId: ids.processorId })
+
+  const users = await t.query(api.admin.listUsers, { sessionToken: adminToken })
+  expect(users).toHaveLength(2)
+  expect(users.every((user) => user.verificationStatus === 'verified')).toBe(true)
+  const verifiedAfterRejection = await t.run((ctx) => ctx.db.query('adminActions').withIndex('by_admin_and_occurred_at', (index) => index.eq('adminId', ids.adminId)).collect())
+  expect(verifiedAfterRejection).toEqual(expect.arrayContaining([
+    expect.objectContaining({ action: 'verify_merchant', targetUserId: ids.rejectedOwnerId, targetEntityId: ids.rejectedMerchantId, previousStatus: 'rejected' }),
+  ]))
+
+  await expect(t.mutation(api.admin.suspendUser, { sessionToken: adminToken, userId: ids.adminId, suspend: true, reason: 'Tidak boleh menangguhkan akun Admin.' })).rejects.toThrow('FORBIDDEN')
+  await expect(t.mutation(api.admin.suspendUser, { sessionToken: adminToken, userId: ids.otherAdminId, suspend: true, reason: 'Tidak boleh menangguhkan akun Admin.' })).rejects.toThrow('FORBIDDEN')
 
   expect(await t.mutation(api.admin.suspendUser, { sessionToken: adminToken, userId: ids.processorOwnerId, suspend: true, reason: 'Dokumen operasional perlu ditinjau ulang.' })).toMatchObject({ status: 'suspended', sessionsRevoked: 1 })
   await expect(t.query(api.notifications.listMine, { sessionToken: processorToken })).rejects.toThrow('AUTH_REQUIRED')
   expect(await t.mutation(api.admin.suspendUser, { sessionToken: adminToken, userId: ids.processorOwnerId, suspend: false, reason: 'Peninjauan ulang telah selesai.' })).toMatchObject({ status: 'active' })
   expect((await t.run((ctx) => ctx.db.get(ids.processorId)))?.verificationStatus).toBe('pending')
-  expect((await t.run((ctx) => ctx.db.query('adminActions').collect()))).toHaveLength(5)
+  expect((await t.run((ctx) => ctx.db.query('adminActions').collect()))).toHaveLength(7)
 })
 
 test('M7 moderation preserves rescued material, refunds only open paid orders, and enforces notification ownership', async () => {
