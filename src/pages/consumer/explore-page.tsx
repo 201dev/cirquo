@@ -6,6 +6,13 @@ import { PageHeader } from "@/components/common/page-header";
 import { RescueItemCard } from "@/components/common/rescue-item-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -683,21 +690,22 @@ function FilterSelect({
   options: [string, string][];
 }) {
   return (
-    <label className="min-w-0 space-y-1">
+    <div className="min-w-0 space-y-1">
       <span className="block text-[0.7rem] font-medium text-muted-foreground">
         {label}
       </span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full min-w-0 rounded-md border border-input bg-background px-2 text-sm"
-      >
-        {options.map(([optionValue, optionLabel]) => (
-          <option key={optionValue} value={optionValue}>
-            {optionLabel}
-          </option>
-        ))}
-      </select>
-    </label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger aria-label={label} className="min-w-0">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map(([optionValue, optionLabel]) => (
+            <SelectItem key={optionValue} value={optionValue}>
+              {optionLabel}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
