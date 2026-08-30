@@ -81,7 +81,7 @@ test('M7 verifies partners, audits decisions, notifies owners, and blocks non-Ad
   await expect(t.mutation(api.admin.suspendUser, { sessionToken: adminToken, userId: ids.otherAdminId, suspend: true, reason: 'Tidak boleh menangguhkan akun Admin.' })).rejects.toThrow('FORBIDDEN')
 
   expect(await t.mutation(api.admin.suspendUser, { sessionToken: adminToken, userId: ids.processorOwnerId, suspend: true, reason: 'Dokumen operasional perlu ditinjau ulang.' })).toMatchObject({ status: 'suspended', sessionsRevoked: 1 })
-  await expect(t.query(api.notifications.listMine, { sessionToken: processorToken })).rejects.toThrow('AUTH_REQUIRED')
+  await expect(t.query(api.notifications.listMine, { sessionToken: processorToken, now })).rejects.toThrow('AUTH_REQUIRED')
   expect(await t.mutation(api.admin.suspendUser, { sessionToken: adminToken, userId: ids.processorOwnerId, suspend: false, reason: 'Peninjauan ulang telah selesai.' })).toMatchObject({ status: 'active' })
   expect((await t.run((ctx) => ctx.db.get(ids.processorId)))?.verificationStatus).toBe('pending')
   expect((await t.run((ctx) => ctx.db.query('adminActions').collect()))).toHaveLength(7)
@@ -125,8 +125,14 @@ test('M7 moderation preserves rescued material, refunds only open paid orders, a
   const events = await t.run((ctx) => ctx.db.query('materialFlowLedger').withIndex('by_rescue_item', (index) => index.eq('surplusItemId', ids.itemId)).collect())
   expect(events.filter((event) => event.eventType === 'MODERATED')).toHaveLength(1)
   expect(events.reduce((sum, event) => sum + event.weightDeltaGrams, 0)).toBe(0)
-  const mine = await t.query(api.notifications.listMine, { sessionToken: consumerToken })
+  const queryNow = Date.now() + 1_000
+  await t.run((ctx) => ctx.db.insert('notifications', {
+    userId: ids.consumerId, type: 'pickup_reminder', title: 'Pengingat pickup nanti', body: 'Buka pesanan saat waktunya tiba.', visibleAt: queryNow + 60_000, createdAt: queryNow,
+  }))
+  const mine = await t.query(api.notifications.listMine, { sessionToken: consumerToken, now: queryNow })
   expect(JSON.stringify(mine)).not.toContain('222222')
+  expect(mine.some((notification) => notification.title === 'Pengingat pickup nanti')).toBe(false)
+  expect((await t.query(api.notifications.listMine, { sessionToken: consumerToken, now: queryNow + 60_000 })).some((notification) => notification.title === 'Pengingat pickup nanti')).toBe(true)
   const notificationId = mine[0]!._id
   await t.mutation(api.notifications.markRead, { sessionToken: consumerToken, notificationId })
   await expect(t.mutation(api.notifications.markRead, { sessionToken: merchantToken, notificationId })).rejects.toThrow('NOT_FOUND')
