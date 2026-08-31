@@ -1,4 +1,5 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Check, Circle, Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,6 +29,7 @@ const copy = {
 };
 
 function RegisterForm({ role }: { role: RegistrationRole }) {
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const page = copy[role];
   const registerAccount = useAction(api.auth.register);
@@ -37,11 +39,18 @@ function RegisterForm({ role }: { role: RegistrationRole }) {
     register,
     handleSubmit,
     setError,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: { name: "", email: "", password: "" },
   });
+  const password = watch("password");
+  const passwordRequirements = [
+    { label: "10–128 karakter", met: password.length >= 10 && password.length <= 128 },
+    { label: "Mengandung huruf", met: /[A-Za-z]/.test(password) },
+    { label: "Mengandung angka", met: /[0-9]/.test(password) },
+  ];
 
   const onSubmit = async (data: RegisterFormValues) => {
     try {
@@ -111,24 +120,40 @@ function RegisterForm({ role }: { role: RegistrationRole }) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="register-password">Kata sandi</Label>
-          <Input
-            id="register-password"
-            type="password"
-            autoComplete="new-password"
-            maxLength={128}
-            aria-invalid={Boolean(errors.password)}
-            aria-describedby="register-password-hint register-password-error"
-            {...register("password")}
-          />
+          <div className="relative">
+            <Input
+              id="register-password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              maxLength={128}
+              className="pr-12"
+              aria-invalid={Boolean(errors.password)}
+              aria-describedby="register-password-requirements register-password-error"
+              {...register("password")}
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="absolute right-0 top-0"
+              onClick={() => setShowPassword((value) => !value)}
+              aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+            >
+              {showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+            </Button>
+          </div>
           <FieldError
             id="register-password-error"
             message={errors.password?.message}
           />
-          {!errors.password ? (
-            <p id="register-password-hint" className="text-xs text-muted-foreground">
-              Minimal 10 karakter, mengandung huruf dan angka.
-            </p>
-          ) : null}
+          <ul id="register-password-requirements" className="grid gap-1 text-xs" aria-label="Ketentuan kata sandi">
+            {passwordRequirements.map((requirement) => (
+              <li key={requirement.label} className={requirement.met ? "flex items-center gap-1.5 text-primary" : "flex items-center gap-1.5 text-muted-foreground"}>
+                {requirement.met ? <Check className="size-3.5" aria-hidden="true" /> : <Circle className="size-3.5" aria-hidden="true" />}
+                {requirement.label}
+              </li>
+            ))}
+          </ul>
         </div>
         <FieldError
           id="register-server-error"
