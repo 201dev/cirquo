@@ -3,14 +3,9 @@
  * needs the Consumer's attention and what is finished has one definition.
  */
 
-export const ACTIVE_ORDER_STATUSES = ["reserved", "paid"] as const;
-export const PAST_ORDER_STATUSES = [
-  "picked_up",
-  "cancelled",
-  "expired",
-] as const;
+const ACTIVE_ORDER_STATUSES = ["reserved", "paid"] as const;
 
-export function isActiveOrderStatus(status: string): boolean {
+function isActiveOrderStatus(status: string): boolean {
   return (ACTIVE_ORDER_STATUSES as readonly string[]).includes(status);
 }
 

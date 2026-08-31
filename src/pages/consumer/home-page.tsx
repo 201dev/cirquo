@@ -254,12 +254,15 @@ export default function ConsumerHomePage() {
         <h2 id="category-title" className="text-lg font-semibold sm:text-xl">
           Pilih berdasarkan kategori
         </h2>
-        <div className="-mx-4 mt-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-7 sm:px-0">
+        {/* `sm:grid-cols-7` alone gave each of the seven tracks ~71px at 640px
+            while every tile is `min-w-20` (80px), so the row overflowed its
+            container. Four up first, seven only once there is room. */}
+        <div className="site-bleed no-scrollbar mt-4 flex snap-x gap-4 overflow-x-auto pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:px-0 sm:pb-0 lg:grid-cols-7">
           {MATERIAL_CATEGORIES.map((category) => (
             <Link
               key={category.type}
               to={`/category/${category.type}`}
-              className="group flex min-w-20 snap-start flex-col items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="group flex min-w-20 snap-start flex-col items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-w-0"
             >
               <span className="overflow-hidden rounded-full border bg-muted">
                 <img
@@ -271,7 +274,9 @@ export default function ConsumerHomePage() {
                   className="size-20 object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               </span>
-              <span className="text-center text-xs font-medium">{category.label}</span>
+              <span className="text-balance text-center text-xs font-medium leading-tight">
+                {category.label}
+              </span>
             </Link>
           ))}
         </div>
@@ -324,7 +329,7 @@ export default function ConsumerHomePage() {
       </section>
       <section
         aria-labelledby="how-title"
-        className="rounded-xl border bg-leaf-50 p-5 sm:p-7 dark:bg-card"
+        className="rounded-xl border bg-leaf-50 p-5 sm:p-7"
       >
         <h2 id="how-title" className="text-xl font-bold sm:text-2xl">
           Kenapa lewat Cirquo?
@@ -337,7 +342,7 @@ export default function ConsumerHomePage() {
               with the heading instead of centring it against the whole block.
             */
             <div key={title} className="flex items-start gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-leaf-100 text-leaf-700 dark:bg-leaf-900 dark:text-leaf-200">
+              <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-leaf-100 text-leaf-700">
                 <Icon className="size-5" strokeWidth={1.8} aria-hidden="true" />
               </span>
               <div>

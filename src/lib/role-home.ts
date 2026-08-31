@@ -6,7 +6,7 @@ import type { UserRole } from "@/types/domain";
  * before showing them what is there.
  */
 const roleHomes: Record<UserRole, string> = {
-  consumer: "/",
+  consumer: "/home",
   merchant: "/merchant",
   processor: "/processor",
   admin: "/admin",

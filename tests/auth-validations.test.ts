@@ -20,7 +20,7 @@ import { homeForRole, safeReturnTo } from "../src/lib/role-home";
 
 describe("validasi akun", () => {
   test("setiap peran memiliki halaman tujuan yang aman", () => {
-    expect(homeForRole("consumer")).toBe("/");
+    expect(homeForRole("consumer")).toBe("/home");
     expect(homeForRole("merchant")).toBe("/merchant");
     expect(homeForRole("processor")).toBe("/processor");
     expect(homeForRole("admin")).toBe("/admin");

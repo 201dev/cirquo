@@ -90,7 +90,7 @@ export function RescueItemCard({
           {formatWeight(item.weightPerItemGrams)} / paket
         </p>
         <p className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5">
-          <span className="font-semibold tabular-nums text-leaf-700 dark:text-brand-mint">
+          <span className="font-semibold tabular-nums text-leaf-700">
             {formatIdr(item.currentPrice)}
           </span>
           <s className="text-xs tabular-nums text-muted-foreground">

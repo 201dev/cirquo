@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { AppLogo } from "@/components/common/app-logo";
 import { PageLoader } from "@/components/common/page-loader";
 import { RouteFocus } from "@/components/common/route-focus";
-import { ThemeToggle } from "@/components/common/theme-toggle";
 import { UnreadBadge } from "@/components/common/unread-badge";
 import {
   Sheet,
@@ -132,8 +131,7 @@ export function RoleShell({ roleLabel, navigation, children }: RoleShellProps) {
             </SheetContent>
           </Sheet>
           <p className="font-medium">{roleLabel}</p>
-          <div className="ml-auto flex items-center gap-1">
-            <ThemeToggle />
+          <div className="ml-auto">
             <Button variant="ghost" size="icon" aria-label="Keluar" onClick={handleLogout}>
               <LogOut aria-hidden="true" />
             </Button>

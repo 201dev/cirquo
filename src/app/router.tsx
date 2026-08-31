@@ -67,11 +67,12 @@ const PendingVerificationPage = lazy(
 );
 const NotificationsPage = lazy(() => import("@/pages/notifications-page"));
 const routes = [
+  { path: "/", element: <WelcomePage /> },
+
   // --- Guest-only routes (login, register) ---
   {
     element: <GuestRoute />,
     children: [
-      { path: "welcome", element: <WelcomePage /> },
       {
         element: <AuthLayout />,
         children: [
@@ -130,7 +131,7 @@ const routes = [
       {
         element: <ConsumerLayout />,
         children: [
-          { index: true, element: <ConsumerHomePage /> },
+          { path: "home", element: <ConsumerHomePage /> },
           { path: "category/:categorySlug", element: <CategoryPage /> },
           { path: "merchant/:merchantId", element: <ConsumerMerchantPage /> },
           { path: "discover", element: <ExplorePage /> },

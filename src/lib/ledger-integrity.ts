@@ -106,7 +106,3 @@ export function checkItemLedgerIntegrity(
   }
   return issues
 }
-
-export function isTerminalItemStatus(status: string): boolean {
-  return terminalStatuses.has(status)
-}

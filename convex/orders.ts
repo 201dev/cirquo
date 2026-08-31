@@ -1,5 +1,5 @@
 import { v, ConvexError } from 'convex/values'
-import { internalQuery, internalMutation, mutation, query } from './_generated/server'
+import { internalMutation, mutation, query } from './_generated/server'
 import type { Id } from './_generated/dataModel'
 import type { MutationCtx } from './_generated/server'
 import { requireRole, requireVerifiedMerchant } from './lib/guards'
@@ -93,14 +93,6 @@ async function completePickup(
     ledgerEventId,
   }
 }
-
-export const listByUser = internalQuery({
-  args: { userId: v.id('users') },
-  handler: async (ctx, { userId }) => ctx.db
-    .query('orders')
-    .withIndex('by_user', (q) => q.eq('userId', userId))
-    .collect(),
-})
 
 export const reserve = mutation({
   args: {

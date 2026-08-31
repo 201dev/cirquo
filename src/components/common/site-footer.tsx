@@ -1,115 +1,67 @@
 import { Link } from "react-router-dom";
-import { AppLogo } from "@/components/common/app-logo";
+import logoMarkWhite from "@/assets/landing/logo-mark-white.svg";
+import mascotWave from "@/assets/mascot/mascot-wave.webp";
 
-// Slugs are the raw materialType values — see `categories` in category-page.tsx.
-const CATEGORY_LINKS = [
-  { label: "Siap santap", to: "/category/prepared_food" },
-  { label: "Roti & pastry", to: "/category/bakery" },
-  { label: "Sayur & buah", to: "/category/produce" },
-  { label: "Protein", to: "/category/protein" },
-  { label: "Susu & olahan", to: "/category/dairy" },
-  { label: "Bahan kering", to: "/category/dry_goods" },
-];
-
-const PARTNER_LINKS = [
-  { label: "Daftar sebagai Mitra Usaha", to: "/register/merchant" },
-  { label: "Daftar sebagai Mitra Pengolah", to: "/register/processor" },
-  { label: "Masuk ke dashboard", to: "/login" },
-];
-
-const CONSUMER_LINKS = [
-  { label: "Jelajah Rescue Item", to: "/explore" },
-  { label: "Pesanan saya", to: "/orders" },
-  { label: "Dampak material", to: "/impact" },
-];
-
-/** Pilot coverage today, not an aspiration. */
-const AREAS = [
-  "Tembalang",
-  "Banyumanik",
-  "Semarang Tengah",
-  "Semarang Selatan",
-  "Pedurungan",
-  "Gunungpati",
-  "Ngaliyan",
-  "Candisari",
-];
-
-function FooterColumn({
-  title,
-  links,
-}: {
-  title: string;
-  links: { label: string; to: string }[];
-}) {
-  return (
-    <div>
-      <h3 className="text-sm font-semibold text-leaf-50">{title}</h3>
-      <ul className="mt-3 space-y-2">
-        {links.map((link) => (
-          <li key={link.to}>
-            <Link
-              to={link.to}
-              className="rounded text-sm text-leaf-200 transition-colors hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-mint"
-            >
-              {link.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
+/**
+ * Shared landing-style closing CTA for consumer-facing pages.
+ *
+ * This used to be three absolutely-positioned blocks inside a fixed-height box
+ * with a hand-tuned sprite crop per breakpoint, so nothing reflowed when the
+ * copy or the viewport changed. It is normal flow now: the heading wraps, the
+ * mascot scales, and the height follows the content.
+ *
+ * Clearance for the mobile tab bar belongs to whoever renders that bar — see
+ * `ConsumerLayout`. The landing route has no tab bar and used to inherit that
+ * clearance here as a strip of dead green space at the bottom of every phone.
+ */
 export function SiteFooter() {
   return (
-    <footer className="mt-16 bg-leaf-900 text-leaf-100">
-      {/* Extra bottom room so the mobile tab bar never covers the last row. */}
-      <div className="mx-auto max-w-7xl px-4 py-12 pb-32 sm:px-6 sm:py-14 sm:pb-14">
-        <div className="grid gap-10 lg:grid-cols-[1.2fr_2fr]">
+    <footer
+      id="download"
+      className="mt-16 scroll-mt-[var(--site-header-h)] bg-[#1bac4b] text-white"
+    >
+      <div className="site-container">
+        <div className="grid items-center gap-8 py-10 sm:py-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-12 lg:py-14">
           <div>
-            <AppLogo className="text-leaf-50" />
-            <p className="mt-4 max-w-sm text-sm leading-relaxed text-leaf-200">
-              Cirquo menyalurkan surplus pangan yang masih layak konsumsi ke
-              orang di sekitarnya, dan mengarahkan sisanya ke Mitra Pengolah.
-              Setiap kilogram dicatat di Material Flow Ledger.
-            </p>
-            <p className="mt-4 text-xs leading-relaxed text-leaf-300">
-              Pengambilan dilakukan langsung di lokasi merchant dengan kode
-              pickup enam digit. Cirquo tidak melakukan pengantaran.
+            <h2 className="max-w-md text-balance text-2xl font-bold leading-tight sm:text-3xl lg:text-4xl">
+              Yuk, mulai selamatkan makanan baik hari ini!
+            </h2>
+            <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/90 sm:text-base">
+              Download aplikasi Cirquo dan temukan Rescue Item terdekat darimu.
             </p>
           </div>
-
-          <div className="grid gap-8 sm:grid-cols-3">
-            <FooterColumn title="Kategori" links={CATEGORY_LINKS} />
-            <FooterColumn title="Untuk kamu" links={CONSUMER_LINKS} />
-            <FooterColumn title="Untuk mitra" links={PARTNER_LINKS} />
+          {/*
+            A square box with `object-contain` keeps the aspect ratio without
+            hardcoding the asset's intrinsic pixels, and reserves its space
+            before the image decodes.
+          */}
+          <div className="mx-auto aspect-square w-40 shrink-0 sm:w-48 lg:mx-0 lg:w-64">
+            <img
+              src={mascotWave}
+              alt=""
+              loading="lazy"
+              className="size-full object-contain"
+            />
           </div>
         </div>
+      </div>
 
-        <div className="mt-12 border-t border-leaf-700/60 pt-8">
-          <h3 className="text-sm font-semibold text-leaf-50">
-            Area layanan saat ini
-          </h3>
-          <ul className="mt-3 flex flex-wrap gap-2">
-            {AREAS.map((area) => (
-              <li
-                key={area}
-                className="rounded-full border border-leaf-700 px-3 py-1 text-xs text-leaf-200"
-              >
-                {area}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-xs text-leaf-300">
-            Radius pencarian dibatasi 30 km dari Tembalang, Semarang. Merchant
-            di luar radius belum tampil di pencarian.
-          </p>
-        </div>
-
-        <div className="mt-10 flex flex-col gap-3 border-t border-leaf-700/60 pt-6 text-xs text-leaf-300 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} Cirquo · Semarang, Indonesia</p>
-          <p>Angka dampak dihitung dari Material Flow Ledger.</p>
+      <div className="border-t border-white/40">
+        <div className="site-container flex min-h-[3.75rem] items-center">
+          <Link
+            to="/"
+            className="inline-flex min-h-11 items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            aria-label="Cirquo, ke halaman utama"
+          >
+            <img
+              src={logoMarkWhite}
+              alt=""
+              width="29"
+              height="33"
+              className="h-[33px] w-[29px]"
+            />
+            <span className="text-base font-bold tracking-[-0.025em]">Cirquo</span>
+          </Link>
         </div>
       </div>
     </footer>

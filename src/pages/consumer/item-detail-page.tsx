@@ -152,7 +152,7 @@ function ItemDetailContent() {
       <div className="py-16 text-center">
         <h1 className="text-2xl font-semibold">Rescue Item tidak ditemukan atau sudah tidak aktif</h1>
         <Button asChild className="mt-5">
-          <Link to="/">Kembali menjelajah</Link>
+          <Link to="/explore">Kembali menjelajah</Link>
         </Button>
       </div>
     );
@@ -207,7 +207,7 @@ function ItemDetailContent() {
   const category = materialCategory(item.materialType);
 
   return (
-    <div className="-mt-2 pb-20 sm:pb-0 max-w-5xl mx-auto">
+    <div className="-mt-2 mx-auto max-w-5xl pb-24 sm:pb-0">
       <div className="mb-4">
         <Breadcrumbs
           items={[
@@ -326,7 +326,13 @@ function ItemDetailContent() {
         excludeItemId={item._id}
       />
 
-      <div className="fixed inset-x-0 bottom-[4.5rem] z-20 flex items-center justify-between gap-4 border-t bg-background/95 p-4 backdrop-blur-xl sm:hidden">
+      {/*
+        Sits directly on top of the consumer tab bar, whose height is
+        `4.5rem` plus the safe-area inset it pads itself with. The old
+        `bottom-[4.5rem]` ignored the inset, so on a phone with a home bar the
+        two overlapped.
+      */}
+      <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex items-center justify-between gap-4 border-t bg-background/95 p-4 backdrop-blur-xl sm:hidden">
         <div>
           <p className="text-xs text-muted-foreground">Harga per paket</p>
           <p className="font-semibold">{formatIdr(item.currentPrice)}</p>
