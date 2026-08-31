@@ -1,4 +1,11 @@
-import { Bell, CircleUserRound, LogOut, MapPin, Menu } from "lucide-react";
+import {
+  Bell,
+  CircleUserRound,
+  LoaderCircle,
+  LogOut,
+  MapPin,
+  Menu,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { AppLogo } from "@/components/common/app-logo";
@@ -21,6 +28,7 @@ import {
 } from "@/components/ui/sheet";
 import { UnreadBadge } from "@/components/common/unread-badge";
 import { useAuth } from "@/contexts/auth-context";
+import { useCurrentLocation } from "@/features/discovery/use-current-location";
 import { useUnreadNotificationCount } from "@/features/notifications/use-unread-notifications";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +49,57 @@ const navClass = ({ isActive }: { isActive: boolean }) =>
     isActive &&
       "text-[#272727] after:absolute after:inset-x-0 after:-bottom-[13px] after:h-px after:bg-[#272727]",
   );
+
+/**
+ * The area name comes from the device, reverse geocoded, and falls back to the
+ * pilot area when the reader says no. It is a button because a browser fires no
+ * event when someone flips the location permission by hand, so pressing the chip
+ * is the only way back from a refusal without a full reload.
+ */
+function LocationChip({
+  className,
+  withRadius = false,
+}: {
+  className?: string;
+  withRadius?: boolean;
+}) {
+  const { label, isFallback, status, refresh } = useCurrentLocation();
+  const isResolving = status === "resolving";
+
+  return (
+    <button
+      type="button"
+      onClick={refresh}
+      disabled={isResolving}
+      title={
+        isFallback
+          ? "Perkiraan area pilot. Tekan untuk memakai lokasi perangkat."
+          : "Lokasi perangkat. Tekan untuk memperbarui."
+      }
+      className={cn(
+        "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-80",
+        className,
+      )}
+    >
+      {isResolving ? (
+        <LoaderCircle
+          className="size-4 shrink-0 animate-spin text-[#1bac4b]"
+          aria-hidden="true"
+        />
+      ) : (
+        <MapPin className="size-4 shrink-0 text-[#1bac4b]" aria-hidden="true" />
+      )}
+      {/*
+        `aria-live` so the change is announced when it lands a second or two
+        after paint, rather than silently replacing what was just read out.
+      */}
+      <span className="truncate" aria-live="polite">
+        {isFallback ? `${label} (perkiraan)` : label}
+        {withRadius ? " · radius 30 km" : ""}
+      </span>
+    </button>
+  );
+}
 
 /**
  * Below `lg` the nav links have nowhere to go, and the landing route has no
@@ -92,10 +151,12 @@ function MobileNav({ loginTo }: { loginTo: string | null }) {
             </SheetClose>
           ))}
         </nav>
-        <p className="mt-5 flex items-center gap-1.5 border-t px-5 pt-5 text-xs font-medium text-[#5b5b5b]">
-          <MapPin className="size-4 shrink-0 text-[#1bac4b]" aria-hidden="true" />
-          Tembalang, Semarang · radius 30 km
-        </p>
+        <div className="mt-5 border-t px-5 pt-5">
+          <LocationChip
+            withRadius
+            className="flex w-full items-center gap-1.5 text-left text-xs font-medium text-[#5b5b5b]"
+          />
+        </div>
         {/* Only below `sm`, and only for a visitor who is not signed in — the
             bar itself has no room for Masuk at that width. */}
         {loginTo !== null ? (
@@ -147,10 +208,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <p className="hidden h-10 items-center gap-1.5 rounded-full border border-[#1bac4b]/50 px-3 text-xs font-medium xl:flex">
-            <MapPin className="size-4 text-[#1bac4b]" aria-hidden="true" />
-            Tembalang, Semarang
-          </p>
+          <LocationChip className="hidden h-10 max-w-56 items-center gap-1.5 rounded-full border border-[#1bac4b]/50 px-3 text-xs font-medium hover:bg-secondary xl:flex" />
 
           {isAuthenticated ? (
             <div className="flex items-center gap-1">

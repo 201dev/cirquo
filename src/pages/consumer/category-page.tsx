@@ -7,6 +7,7 @@ import { QueryErrorBoundary } from "@/components/common/query-error-boundary";
 import { RescueItemCard } from "@/components/common/rescue-item-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCurrentLocation } from "@/features/discovery/use-current-location";
 import {
   type MaterialType,
   useNearbyRescueItems,
@@ -117,6 +118,9 @@ function CategoryResults({
 
 export default function CategoryPage() {
   const { categorySlug } = useParams<{ categorySlug: string }>();
+  // Names the centre the radius is actually measured from, which is no longer
+  // always Tembalang.
+  const { label: locationLabel } = useCurrentLocation();
   const category = isMaterialType(categorySlug)
     ? materialCategory(categorySlug)
     : undefined;
@@ -154,7 +158,7 @@ export default function CategoryPage() {
                 {category.label}
               </h1>
               <p className="mt-1 max-w-lg text-xs text-white/80 sm:text-sm">
-                {category.blurb} · dalam radius 30 km dari Tembalang
+                {category.blurb} · dalam radius 30 km dari {locationLabel}
               </p>
             </div>
           </div>
