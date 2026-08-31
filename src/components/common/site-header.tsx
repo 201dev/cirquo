@@ -27,12 +27,8 @@ import { cn } from "@/lib/utils";
 const navigation = [
   { label: "Beranda", to: "/", end: true },
   { label: "Jelajahi Rescue Item", to: "/explore", end: false },
-] as const;
-
-/** In-page sections of the landing route, so they stay plain anchors. */
-const anchors = [
-  { label: "Tentang Kami", href: "/#kenapa" },
-  { label: "Download", href: "/#download" },
+  { label: "Tentang Kami", to: "/about", end: false },
+  { label: "Download", to: "/download", end: false },
 ] as const;
 
 const linkClass =
@@ -95,16 +91,6 @@ function MobileNav({ loginTo }: { loginTo: string | null }) {
               </NavLink>
             </SheetClose>
           ))}
-          {anchors.map((anchor) => (
-            <SheetClose asChild key={anchor.href}>
-              <a
-                href={anchor.href}
-                className="flex min-h-12 items-center px-5 text-sm font-semibold text-[#5b5b5b]"
-              >
-                {anchor.label}
-              </a>
-            </SheetClose>
-          ))}
         </nav>
         <p className="mt-5 flex items-center gap-1.5 border-t px-5 pt-5 text-xs font-medium text-[#5b5b5b]">
           <MapPin className="size-4 shrink-0 text-[#1bac4b]" aria-hidden="true" />
@@ -157,11 +143,6 @@ export function SiteHeader() {
             <NavLink key={item.to} to={item.to} end={item.end} className={navClass}>
               {item.label}
             </NavLink>
-          ))}
-          {anchors.map((anchor) => (
-            <a key={anchor.href} href={anchor.href} className={linkClass}>
-              {anchor.label}
-            </a>
           ))}
         </nav>
 

@@ -9,7 +9,10 @@ import mascotPickup from "@/assets/mascot/mascot-pickup.webp";
 import { QueryErrorBoundary } from "@/components/common/query-error-boundary";
 import { SiteFooter } from "@/components/common/site-footer";
 import { SiteHeader } from "@/components/common/site-header";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/contexts/auth-context";
 import { useNearbyRescueItems } from "@/features/discovery/use-nearby-rescue-items";
 import { isConvexConfigured } from "@/lib/convex";
 import { toRescueItemPreview } from "@/lib/discovery";
@@ -201,7 +204,11 @@ function WhyCard({
 
 export default function WelcomePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
+  // Same slice as the consumer homepage: first word, capped so a long legal
+  // name cannot push the heading onto an extra line.
+  const firstName = user?.name.trim().split(/\s+/)[0]?.slice(0, 20);
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -219,64 +226,77 @@ export default function WelcomePage() {
 
       <main id="main-content" className="site-container pb-4">
         {/*
-          `min-h` rather than `h`: the section is `overflow-hidden`, so a fixed
-          400px box silently clipped the heading and the search bar at tablet
-          widths where the text column is at its narrowest.
+          Ukuran dan isi mengikuti hero `/home` (`src/pages/consumer/home-page.tsx`)
+          supaya dua beranda tidak tampil dua gaya: tinggi 320px lewat `min-h-80`
+          di kolom foto, dan sapaan nama di depan judul. `scroll-mt` tetap dipakai
+          karena nav landing menuju `#beranda`.
+
+          Baris "Tembalang, Semarang · radius 30 km" tidak diulang di sini —
+          site-header sudah menampilkannya di desktop dan mobile.
         */}
         <section
           id="beranda"
           aria-labelledby="hero-title"
-          className="mt-6 grid scroll-mt-[var(--site-header-h)] overflow-hidden rounded-2xl bg-[#1bac4b] text-white sm:mt-8 md:min-h-[400px] md:grid-cols-2 lg:min-h-[450px] lg:grid-cols-[521fr_455fr]"
+          className="mt-6 grid scroll-mt-[var(--site-header-h)] overflow-hidden rounded-xl bg-brand-green text-white sm:mt-8 md:grid-cols-2 lg:grid-cols-[1.15fr_.85fr]"
         >
-          <div className="flex flex-col justify-center px-5 py-9 sm:px-8 sm:py-12 md:px-8 lg:px-14 lg:py-16">
-            <p className="flex items-center gap-2 text-sm font-medium sm:text-base">
-              <MapPin className="size-5 shrink-0" aria-hidden="true" />
-              Tembalang, Semarang · radius 30 km
-            </p>
-            {/*
-              Steps down at `md`, where the two-column split makes this the
-              narrowest the text column ever gets. A vw-based clamp cannot see
-              that and overflowed the column.
-            */}
+          <div className="flex flex-col justify-center px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
             <h1
               id="hero-title"
-              className="mt-4 max-w-[560px] text-balance text-3xl font-bold leading-[1.15] tracking-[-0.025em] sm:text-4xl md:text-3xl lg:text-4xl xl:text-5xl"
+              className="max-w-2xl text-3xl font-bold leading-tight tracking-[-0.025em] sm:text-4xl"
             >
-              Makanan baik di dekatmu, siap diselamatkan.
+              {firstName ? `Halo, ${firstName}. ` : ""}Makanan baik di dekatmu,
+              siap diselamatkan.
             </h1>
-            <p className="mt-4 max-w-[540px] text-base leading-relaxed sm:text-lg">
+            <p className="mt-3 max-w-xl text-sm leading-relaxed sm:text-base">
               Pilih Rescue Item, reservasi, lalu ambil langsung di Mitra Usaha.
             </p>
             <form
               onSubmit={handleSearch}
               role="search"
-              className="mt-7 flex h-14 w-full max-w-[560px] items-center rounded-xl bg-white p-2 text-[#444053] shadow-raised sm:mt-8 sm:h-16"
+              className="mt-6 flex max-w-xl items-center rounded-lg bg-card p-1.5 text-card-foreground shadow-raised"
             >
-              <Search className="ml-2 size-5 shrink-0 sm:ml-3 sm:size-6" aria-hidden="true" />
-              <input
+              <Search
+                className="ml-3 size-5 shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Cari makanan atau Mitra Usaha"
                 aria-label="Cari Rescue Item"
-                className="w-0 min-w-0 flex-1 bg-transparent px-2 text-sm outline-none placeholder:text-[#444053] sm:px-3 sm:text-base"
+                className="h-11 min-w-0 border-0 bg-transparent shadow-none focus-visible:ring-0"
               />
-              <button
-                type="submit"
-                className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[10px] bg-[#107333] px-4 text-sm font-medium text-[#f7faf8] shadow-sm transition-colors hover:bg-[#0e5b2b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:h-12 sm:px-5 sm:text-base"
-              >
-                Cari <ArrowRight className="size-4" aria-hidden="true" />
-              </button>
+              <Button type="submit" className="h-11 shrink-0 rounded-md px-4">
+                <span className="hidden sm:inline">Cari</span>
+                <ArrowRight aria-hidden="true" />
+              </Button>
             </form>
           </div>
-          <div className="relative min-h-56 overflow-hidden sm:min-h-72 md:min-h-0">
+          {/*
+            Foto ikut disembunyikan di HP, sama seperti `/home`. Di layar sempit
+            foto hanya menumpuk di bawah panel hijau dan memanjangkan layar
+            pertama tanpa menambah informasi, jadi yang tersisa panel hijaunya
+            saja. Dari `md` ke atas foto jadi kolom di samping teks.
+          */}
+          <div className="relative hidden overflow-hidden md:block lg:min-h-80">
             <img
               src={heroImage}
               alt="Makanan surplus yang masih baik dan siap diselamatkan"
               width="1600"
               height="863"
-              fetchPriority="high"
+              // `hidden` alone still downloads the 120 kB photo on phones that
+              // never show it. `loading="lazy"` makes Chrome skip a fetch for a
+              // `display:none` image entirely, and from `md` up the photo is in
+              // the first viewport, where lazy images still load immediately.
+              loading="lazy"
               className="absolute inset-0 size-full object-cover"
             />
+            {/*
+              Fades the green panel into the photo instead of butting the two
+              against each other. The photo now only ever renders as a side
+              column, so the fade only ever runs rightward.
+            */}
+            <div className="absolute inset-0 bg-gradient-to-r from-brand-green via-brand-green/20 to-transparent" />
           </div>
         </section>
 
