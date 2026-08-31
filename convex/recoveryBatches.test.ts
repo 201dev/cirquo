@@ -9,15 +9,19 @@ import schema from './schema'
 const modules = import.meta.glob('./**/*.ts')
 const HOUR_MS = 60 * 60 * 1_000
 
-test('routing menawarkan satu per satu, retry tiga kali, dan terminalnya idempoten', async () => {
+test('Merchant memilih Organic Processor yang eligible dan tidak ada assignment otomatis', async () => {
   const t = convexTest(schema, modules)
   const now = Date.now()
+  const merchantToken = 'r'.repeat(43)
   const ids = await t.run(async (ctx) => {
     const merchantOwnerId = await ctx.db.insert('users', {
       name: 'Merchant Routing', email: 'merchant.routing.m403@example.com', passwordHash: 'test', role: 'merchant', status: 'active', createdAt: now,
     })
     const merchantId = await ctx.db.insert('merchants', {
       ownerId: merchantOwnerId, name: 'Merchant Routing', address: 'Semarang', city: 'Semarang', latitude: -6.9932, longitude: 110.4203, verificationStatus: 'verified', createdAt: now,
+    })
+    await ctx.db.insert('sessions', {
+      userId: merchantOwnerId, tokenHash: await hashSessionToken(merchantToken), expiresAt: now + HOUR_MS, createdAt: now,
     })
     const processorIds = await Promise.all([0, 1, 2].map(async (offset) => {
       const ownerId = await ctx.db.insert('users', {
@@ -46,10 +50,11 @@ test('routing menawarkan satu per satu, retry tiga kali, dan terminalnya idempot
     return { batchId, noCandidateBatchId, processorIds }
   })
 
-  await Promise.all([
-    t.mutation(internal.recoveryBatches.runRouting, {}),
-    t.mutation(internal.recoveryBatches.runRouting, {}),
-  ])
+  let candidates = await t.query(api.recoveryBatches.listEligibleProcessors, { sessionToken: merchantToken, batchId: ids.batchId, now })
+  expect(candidates.map((candidate) => candidate.processorId)).toEqual(ids.processorIds)
+  await t.mutation(api.recoveryBatches.selectProcessor, {
+    sessionToken: merchantToken, batchId: ids.batchId, processorId: candidates[0].processorId,
+  })
   let batch = await t.run((ctx) => ctx.db.get(ids.batchId))
   expect(batch).toMatchObject({ status: 'offered', processorId: ids.processorIds[0], routingAttempts: 1 })
   let routedEvents = await t.run((ctx) =>
@@ -61,6 +66,12 @@ test('routing menawarkan satu per satu, retry tiga kali, dan terminalnya idempot
     const overdueAt = Date.now() - 1
     await t.run((ctx) => ctx.db.patch(ids.batchId, { offerExpiresAt: overdueAt }))
     await t.mutation(internal.recoveryBatches.expireOffer, { batchId: ids.batchId, offerExpiresAt: overdueAt })
+    batch = await t.run((ctx) => ctx.db.get(ids.batchId))
+    expect(batch).toMatchObject({ status: 'pending' })
+    expect(batch).not.toHaveProperty('processorId')
+    candidates = await t.query(api.recoveryBatches.listEligibleProcessors, { sessionToken: merchantToken, batchId: ids.batchId, now: Date.now() })
+    expect(candidates.map((candidate) => candidate.processorId)).toContain(processorId)
+    await t.mutation(api.recoveryBatches.selectProcessor, { sessionToken: merchantToken, batchId: ids.batchId, processorId })
     batch = await t.run((ctx) => ctx.db.get(ids.batchId))
     expect(batch).toMatchObject({ status: 'offered', processorId })
   }
@@ -82,19 +93,18 @@ test('routing menawarkan satu per satu, retry tiga kali, dan terminalnya idempot
     { weightDeltaGrams: 0, recoveryBatchId: ids.batchId },
   ])
 
-  await t.mutation(internal.recoveryBatches.runRouting, {})
   const noCandidateBatch = await t.run((ctx) => ctx.db.get(ids.noCandidateBatchId))
-  expect(noCandidateBatch).toMatchObject({ status: 'unroutable', routingAttempts: 0 })
+  expect(noCandidateBatch).toMatchObject({ status: 'pending', routingAttempts: 0 })
+  expect(await t.query(api.recoveryBatches.listEligibleProcessors, {
+    sessionToken: merchantToken, batchId: ids.noCandidateBatchId, now,
+  })).toEqual([])
+  await expect(t.mutation(api.recoveryBatches.selectProcessor, {
+    sessionToken: merchantToken, batchId: ids.noCandidateBatchId, processorId: ids.processorIds[0],
+  })).rejects.toThrow('VALIDATION_FAILED')
   const noCandidateEvents = await t.run((ctx) =>
     ctx.db.query('materialFlowLedger').withIndex('by_rescue_item', (q) => q.eq('surplusItemId', noCandidateBatch!.surplusItemId)).collect(),
   )
-  expect(noCandidateEvents).toMatchObject([{ eventType: 'ROUTING_FAILED', weightDeltaGrams: 0 }])
-  await t.mutation(internal.recoveryBatches.runRouting, {})
-  expect(
-    await t.run((ctx) =>
-      ctx.db.query('materialFlowLedger').withIndex('by_rescue_item', (q) => q.eq('surplusItemId', noCandidateBatch!.surplusItemId)).collect(),
-    ),
-  ).toHaveLength(1)
+  expect(noCandidateEvents).toEqual([])
 })
 
 test('Merchant hanya melihat batch miliknya tanpa data pickup', async () => {
@@ -295,7 +305,8 @@ test('Processor terverifikasi menyelesaikan offer, intake, outcome, dan decline 
     sessionToken: processorToken, batchId: ids.declineBatchId, reason: 'capacity', note: 'Kapasitas penuh',
   })
   const declined = await t.run((ctx) => ctx.db.get(ids.declineBatchId))
-  expect(declined).toMatchObject({ processorId: ids.otherProcessorId, status: 'offered', declinedByProcessorIds: [ids.processorId] })
+  expect(declined).toMatchObject({ status: 'pending', declinedByProcessorIds: [ids.processorId] })
+  expect(declined).not.toHaveProperty('processorId')
   const events = await t.run((ctx) => ctx.db.query('materialFlowLedger').withIndex('by_rescue_item', (q) => q.eq('surplusItemId', ids.itemId)).collect())
   expect(events.filter((event) => event.eventType === 'INTAKE_ACCEPTED')).toMatchObject([{ weightDeltaGrams: 450 }])
   expect(events.filter((event) => event.eventType === 'PROCESSED')).toMatchObject([{ weightDeltaGrams: -450 }])
