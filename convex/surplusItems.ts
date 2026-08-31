@@ -7,7 +7,6 @@ import { requireVerifiedMerchant, requireOwnership, requireRole } from './lib/gu
 import { recordLedgerEvent } from './lib/ledger'
 import { createNotification } from './lib/notifications'
 import { queueSandboxRefund } from './lib/refunds'
-import { internal } from './_generated/api'
 import { createRecoveryBatchForItem } from './recoveryBatches'
 import { calculateHaversineDistanceMeters } from '../src/lib/geo'
 
@@ -308,7 +307,6 @@ export const publish = mutation({
 
     if (item.processingOnly) {
       await createRecoveryBatchForItem(ctx, item, merchant._id)
-      await ctx.scheduler.runAfter(0, internal.recoveryBatches.runRouting, {})
     }
   }
 })

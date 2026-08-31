@@ -11,7 +11,6 @@ import { recordLedgerEvent } from './lib/ledger'
 import { createNotification } from './lib/notifications'
 import { recordAdminAction } from './lib/adminAudit'
 
-const ROUTING_BATCH_SIZE = 50
 const NOTE_MAX_LENGTH = 500
 const queueTab = v.union(v.literal('offered'), v.literal('accepted'), v.literal('collected'))
 const declineReasons = ['capacity', 'material_mismatch', 'distance', 'schedule', 'other'] as const
@@ -37,9 +36,9 @@ const dashboardView = v.object({
   recoveryRatePercent: v.union(v.number(), v.null()),
 })
 
-type RouteResult = 'offered' | 'unroutable' | 'skipped'
+type RouteResult = 'offered' | 'pending' | 'unroutable' | 'skipped'
 type BatchHistory = { attemptedProcessorIds: Id<'processors'>[]; declinedByProcessorIds: Id<'processors'>[] }
-type LoadedRoutingProcessor = RoutingProcessor & { processorId: Id<'processors'> }
+type LoadedRoutingProcessor = RoutingProcessor & { processorId: Id<'processors'>; name: string }
 
 function fail(code: string, message: string): never {
   throw new ConvexError({ code, message })
@@ -116,17 +115,17 @@ async function markUnroutable(ctx: MutationCtx, batch: Doc<'recoveryBatches'>, r
   return 'unroutable'
 }
 
-async function loadRoutingProcessors(ctx: MutationCtx): Promise<LoadedRoutingProcessor[]> {
-  const processors = await ctx.db.query('processors').withIndex('by_verification', (q) => q.eq('verificationStatus', 'verified')).collect()
-  const now = Date.now()
+async function loadRoutingProcessors(ctx: QueryCtx | MutationCtx, now: number): Promise<LoadedRoutingProcessor[]> {
+  const processors = await ctx.db.query('processors').withIndex('by_verification', (q) => q.eq('verificationStatus', 'verified')).take(500)
   const today = startOfWibDay(now)
   const candidates: LoadedRoutingProcessor[] = []
   for (const processor of processors) {
     if (processor.latitude === undefined || processor.longitude === undefined || processor.acceptedMaterialTypes === undefined || processor.dailyCapacityGrams === undefined || processor.maxPickupRadiusMeters === undefined) continue
-    const acceptedToday = await ctx.db.query('recoveryBatches').withIndex('by_processor_and_accepted_at', (q) => q.eq('processorId', processor._id).gte('acceptedAt', today).lte('acceptedAt', now)).collect()
+    // ponytail: bounded daily commitments are enough for the pilot; aggregate when a facility can exceed 500 accepts/day.
+    const acceptedToday = await ctx.db.query('recoveryBatches').withIndex('by_processor_and_accepted_at', (q) => q.eq('processorId', processor._id).gte('acceptedAt', today).lte('acceptedAt', now)).take(500)
     const committedGrams = acceptedToday.reduce((total, batch) => total + batch.offeredWeightGrams, 0)
     candidates.push({
-      id: String(processor._id), processorId: processor._id,
+      id: String(processor._id), processorId: processor._id, name: processor.name,
       verificationStatus: processor.verificationStatus, acceptedMaterialTypes: processor.acceptedMaterialTypes,
       latitude: processor.latitude, longitude: processor.longitude,
       maxPickupRadiusMeters: processor.maxPickupRadiusMeters,
@@ -142,7 +141,7 @@ async function routePendingBatch(ctx: MutationCtx, batch: Doc<'recoveryBatches'>
   const [item, merchant] = await Promise.all([ctx.db.get(batch.surplusItemId), ctx.db.get(batch.merchantId)])
   if (!item) return markUnroutable(ctx, batch, 'rescue_item_missing')
   if (merchant?.latitude === undefined || merchant.longitude === undefined) return markUnroutable(ctx, batch, 'merchant_location_missing')
-  const processors = await loadRoutingProcessors(ctx)
+  const processors = await loadRoutingProcessors(ctx, now)
   const winner = rankEligibleProcessors(
     { offeredWeightGrams: batch.offeredWeightGrams, ...batchHistory(batch) },
     { materialType: item.materialType },
@@ -214,6 +213,83 @@ export const listForMerchant = query({
         routingAttempts: batch.routingAttempts ?? 0, offerExpiresAt: batch.offerExpiresAt, processorName: processor?.name,
       }
     }))).filter((batch): batch is NonNullable<typeof batch> => batch !== null)
+  },
+})
+
+export const listEligibleProcessors = query({
+  args: { sessionToken: v.optional(v.string()), batchId: v.id('recoveryBatches'), now: v.number() },
+  returns: v.array(v.object({
+    processorId: v.id('processors'), name: v.string(), distanceMeters: v.number(), remainingCapacityGrams: v.number(),
+  })),
+  handler: async (ctx, args) => {
+    if (!Number.isInteger(args.now)) fail('VALIDATION_FAILED', 'Waktu pemilihan Processor tidak valid.')
+    const user = await requireRole(ctx, args.sessionToken, ['merchant'])
+    const merchant = await requireVerifiedMerchant(ctx, user)
+    const batch = await ctx.db.get(args.batchId)
+    if (!batch) fail('NOT_FOUND', 'Batch recovery tidak ditemukan.')
+    if (batch.merchantId !== merchant._id) fail('FORBIDDEN', 'Batch recovery bukan milik Merchant ini.')
+    if (batch.status !== 'pending' || merchant.latitude === undefined || merchant.longitude === undefined) return []
+    const item = await ctx.db.get(batch.surplusItemId)
+    if (!item) fail('NOT_FOUND', 'Rescue Item sumber tidak ditemukan.')
+    const processors = await loadRoutingProcessors(ctx, args.now)
+    return rankEligibleProcessors(
+      { offeredWeightGrams: batch.offeredWeightGrams, ...batchHistory(batch) },
+      { materialType: item.materialType },
+      { latitude: merchant.latitude, longitude: merchant.longitude },
+      processors,
+    ).map((candidate) => ({
+      ...candidate,
+      processorId: processors.find((processor) => processor.id === candidate.processorId)!.processorId,
+      name: processors.find((processor) => processor.id === candidate.processorId)!.name,
+    }))
+  },
+})
+
+export const selectProcessor = mutation({
+  args: { sessionToken: v.optional(v.string()), batchId: v.id('recoveryBatches'), processorId: v.id('processors') },
+  returns: v.object({ status: v.literal('offered'), offerExpiresAt: v.number() }),
+  handler: async (ctx, args) => {
+    const user = await requireRole(ctx, args.sessionToken, ['merchant'])
+    const merchant = await requireVerifiedMerchant(ctx, user)
+    const batch = await ctx.db.get(args.batchId)
+    if (!batch) fail('NOT_FOUND', 'Batch recovery tidak ditemukan.')
+    if (batch.merchantId !== merchant._id) fail('FORBIDDEN', 'Batch recovery bukan milik Merchant ini.')
+    if (batch.status !== 'pending') fail('INVALID_TRANSITION', 'Batch tidak sedang menunggu pilihan Organic Processor.')
+    if ((batch.routingAttempts ?? 0) >= MAX_ROUTING_ATTEMPTS) fail('INVALID_TRANSITION', 'Batas percobaan Circular Routing telah tercapai.')
+    if (merchant.latitude === undefined || merchant.longitude === undefined) fail('VALIDATION_FAILED', 'Lokasi Merchant belum lengkap.')
+    const item = await ctx.db.get(batch.surplusItemId)
+    if (!item) fail('NOT_FOUND', 'Rescue Item sumber tidak ditemukan.')
+    const processors = await loadRoutingProcessors(ctx, Date.now())
+    const selected = rankEligibleProcessors(
+      { offeredWeightGrams: batch.offeredWeightGrams, ...batchHistory(batch) },
+      { materialType: item.materialType },
+      { latitude: merchant.latitude, longitude: merchant.longitude },
+      processors,
+    ).find((candidate) => candidate.processorId === String(args.processorId))
+    if (!selected) fail('VALIDATION_FAILED', 'Organic Processor tidak memenuhi syarat untuk batch ini.')
+
+    const now = Date.now()
+    const routingAttempts = (batch.routingAttempts ?? 0) + 1
+    const offerExpiresAt = now + OFFER_TTL_MS
+    const history = batchHistory(batch)
+    await ctx.db.patch(batch._id, {
+      processorId: args.processorId, status: 'offered', offerExpiresAt, routingAttempts,
+      attemptedProcessorIds: uniqueProcessorIds([...history.attemptedProcessorIds, args.processorId]),
+      declinedByProcessorIds: history.declinedByProcessorIds,
+    })
+    await recordLedgerEvent(ctx, {
+      surplusItemId: batch.surplusItemId, recoveryBatchId: batch._id, eventType: 'ROUTED', weightDeltaGrams: 0,
+      actorId: user._id, actorRole: 'merchant',
+      metadata: { processorId: args.processorId, distanceMeters: selected.distanceMeters, remainingCapacityGrams: selected.remainingCapacityGrams, attempt: routingAttempts, offerExpiresAt },
+    })
+    const processor = processors.find((candidate) => candidate.processorId === args.processorId)!
+    const processorProfile = await ctx.db.get(args.processorId)
+    if (processorProfile) await createNotification(ctx, {
+      userId: processorProfile.ownerId, type: 'batch_routed', title: 'Batch recovery baru',
+      body: `${item.name} dipilih Merchant untuk fasilitas ${processor.name}.`, href: `/processor/recovery/${batch._id}`,
+    })
+    await ctx.scheduler.runAt(offerExpiresAt, internal.recoveryBatches.expireOffer, { batchId: batch._id, offerExpiresAt })
+    return { status: 'offered' as const, offerExpiresAt }
   },
 })
 
@@ -298,7 +374,7 @@ export const accept = mutation({
 
 export const decline = mutation({
   args: { sessionToken: v.optional(v.string()), batchId: v.id('recoveryBatches'), reason: v.string(), note: v.optional(v.string()) },
-  returns: v.object({ status: v.literal('pending') }),
+  returns: v.object({ status: v.union(v.literal('pending'), v.literal('unroutable')) }),
   handler: async (ctx, args) => {
     const { user, processor, batch } = await requireOwnedBatch(ctx, args.sessionToken, args.batchId)
     if (batch.status !== 'offered') fail('INVALID_TRANSITION', 'Batch tidak lagi berstatus ditawarkan.')
@@ -310,8 +386,12 @@ export const decline = mutation({
       surplusItemId: batch.surplusItemId, recoveryBatchId: batch._id, eventType: 'INTAKE_DECLINED', weightDeltaGrams: 0,
       actorId: user._id, actorRole: 'processor', metadata: { processorId: processor._id, reason: args.reason, note },
     })
-    const pending = await ctx.db.get(batch._id)
-    if (pending) await routePendingBatch(ctx, pending, Date.now())
+    if ((batch.routingAttempts ?? 0) >= MAX_ROUTING_ATTEMPTS) {
+      await markUnroutable(ctx, batch, 'max_attempts_reached', {
+        attemptedProcessorIds: batch.attemptedProcessorIds ?? [], declinedByProcessorIds,
+      })
+      return { status: 'unroutable' as const }
+    }
     return { status: 'pending' as const }
   },
 })
@@ -410,24 +490,9 @@ export const logOutcome = mutation({
   },
 })
 
-export const runRouting = internalMutation({
-  args: {}, returns: v.object({ scanned: v.number(), routed: v.number(), unroutable: v.number() }),
-  handler: async (ctx) => {
-    const pending = await ctx.db.query('recoveryBatches').withIndex('by_status', (q) => q.eq('status', 'pending')).take(ROUTING_BATCH_SIZE)
-    let routed = 0
-    let unroutable = 0
-    for (const batch of pending) {
-      const result = await routePendingBatch(ctx, batch, Date.now())
-      if (result === 'offered') routed += 1
-      if (result === 'unroutable') unroutable += 1
-    }
-    return { scanned: pending.length, routed, unroutable }
-  },
-})
-
 export const expireOffer = internalMutation({
   args: { batchId: v.id('recoveryBatches'), offerExpiresAt: v.number() },
-  returns: v.union(v.literal('offered'), v.literal('unroutable'), v.literal('skipped')),
+  returns: v.union(v.literal('offered'), v.literal('pending'), v.literal('unroutable'), v.literal('skipped')),
   handler: async (ctx, args): Promise<RouteResult> => {
     const batch = await ctx.db.get(args.batchId)
     const now = Date.now()
@@ -442,7 +507,6 @@ export const expireOffer = internalMutation({
       status: 'pending', processorId: undefined, offerExpiresAt: undefined, routingAttempts: batch.routingAttempts ?? 0,
       attemptedProcessorIds: nextHistory.attemptedProcessorIds, declinedByProcessorIds: nextHistory.declinedByProcessorIds,
     })
-    const pending = await ctx.db.get(batch._id)
-    return pending ? routePendingBatch(ctx, pending, now) : 'skipped'
+    return 'pending'
   },
 })

@@ -1,21 +1,91 @@
 import { ArrowLeft, Clock3, RotateCcw, Scale, ShieldAlert } from "lucide-react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
+import { toast } from "sonner";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
 import { PageHeader } from "@/components/common/page-header";
 import { QueryErrorBoundary } from "@/components/common/query-error-boundary";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
+import { getErrorMessage } from "@/lib/errors";
 import {
+  formatDistance,
   formatIdr,
   formatKg,
   formatPickupWindow,
   formatWibDate,
   formatWibTime,
 } from "@/lib/format";
+
+function ProcessorPicker({ batchId, sessionToken }: { batchId: Id<"recoveryBatches">; sessionToken: string }) {
+  const [now] = useState(Date.now);
+  const processors = useQuery(api.recoveryBatches.listEligibleProcessors, { batchId, sessionToken, now });
+  const selectProcessor = useMutation(api.recoveryBatches.selectProcessor);
+  const [processorId, setProcessorId] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (processors === undefined) return <Skeleton className="h-32 w-full" />;
+
+  const submit = async () => {
+    if (!processorId) return toast.error("Pilih Organic Processor terlebih dahulu.");
+    setIsSubmitting(true);
+    try {
+      await selectProcessor({ batchId, processorId: processorId as Id<"processors">, sessionToken });
+      toast.success("Organic Processor berhasil dipilih.");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Organic Processor gagal dipilih."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="rounded-xl border bg-card p-5">
+      <h2 className="font-semibold">Pilih Organic Processor</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Pilihan berikut sudah sesuai jenis material, jarak pickup, dan kapasitas harian.
+      </p>
+      {processors.length ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+          <div className="space-y-2">
+            <Label htmlFor="organic-processor">Organic Processor</Label>
+            <Select value={processorId} onValueChange={setProcessorId}>
+              <SelectTrigger id="organic-processor">
+                <SelectValue placeholder="Pilih fasilitas" />
+              </SelectTrigger>
+              <SelectContent>
+                {processors.map((processor) => (
+                  <SelectItem key={processor.processorId} value={processor.processorId}>
+                    {processor.name} · {formatDistance(processor.distanceMeters)} · sisa {formatKg(processor.remainingCapacityGrams)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={submit} disabled={!processorId || isSubmitting}>
+            {isSubmitting ? "Mengirim..." : "Kirim ke Processor"}
+          </Button>
+        </div>
+      ) : (
+        <p role="status" className="mt-4 text-sm text-muted-foreground">
+          Belum ada Organic Processor yang memenuhi syarat untuk batch ini.
+        </p>
+      )}
+    </section>
+  );
+}
 
 function RecoveryStatus({
   status,
@@ -207,7 +277,12 @@ function SurplusDetailContent() {
       <section className="mt-6 space-y-4" aria-label="Status material">
         <RescuedStatus count={item.pickedUpOrderCount} weightGrams={item.rescuedWeightGrams} />
         {recoveryBatch ? (
-          <RecoveryStatus {...recoveryBatch} />
+          <>
+            <RecoveryStatus {...recoveryBatch} />
+            {recoveryBatch.status === "pending" && sessionToken ? (
+              <ProcessorPicker batchId={recoveryBatch._id} sessionToken={sessionToken} />
+            ) : null}
+          </>
         ) : item.status === "recovery_pending" ? (
           <div role="status" className="rounded-xl border border-in-progress/30 bg-in-progress/10 p-5">
             <RotateCcw className="size-5" aria-hidden="true" />
