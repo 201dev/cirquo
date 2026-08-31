@@ -105,7 +105,7 @@ function MerchantNotFound() {
       <h1 className="mt-4 text-2xl font-semibold">Mitra Usaha tidak ditemukan</h1>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
         Mitra ini belum punya Rescue Item aktif, atau berada di luar radius 30 km
-        dari Tembalang.
+        dari lokasimu.
       </p>
       <Button asChild className="mt-5">
         <Link to="/explore">Kembali menjelajah</Link>

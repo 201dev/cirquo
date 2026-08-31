@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCurrentLocation } from "@/features/discovery/use-current-location";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import {
@@ -149,8 +150,15 @@ export default function ExplorePage() {
     }, { replace: true });
   };
 
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [locationDenied, setLocationDenied] = useState(false);
+  // Shared with the header chip, so the label up there and the distances down
+  // here can never disagree. `use-current-location` owns the permission prompt,
+  // the 8s timeout, and the Tembalang fallback that used to live in this file.
+  const {
+    latitude,
+    longitude,
+    label: locationLabel,
+    isFallback: locationDenied,
+  } = useCurrentLocation();
   const [mapError, setMapError] = useState(false);
   const [mapLoading, setMapLoading] = useState(true);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -158,75 +166,21 @@ export default function ExplorePage() {
 
   const [selectedItemId, setSelectedItemId] = useState<Id<"surplusItems"> | null>(null);
 
-  useEffect(() => {
-    // Get user location or fallback to Semarang
-    const fallbackLocation = { lat: -6.9932, lng: 110.4203 }; // Semarang center
-    
-    let isMounted = true;
-    let hasResolved = false;
-    let timeoutId: ReturnType<typeof setTimeout>;
-
-    const onSuccess = (pos: GeolocationPosition) => {
-      if (isMounted) {
-        hasResolved = true;
-        clearTimeout(timeoutId);
-        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      }
-    };
-
-    const onError = () => {
-      if (isMounted) {
-        hasResolved = true;
-        clearTimeout(timeoutId);
-        setLocationDenied(true);
-        setLocation(fallbackLocation);
-      }
-    };
-
-    if (navigator.geolocation) {
-      timeoutId = setTimeout(() => {
-        if (isMounted && !hasResolved) {
-          hasResolved = true;
-          setLocationDenied(true);
-          setLocation(fallbackLocation);
-        }
-      }, 8000); // 8s timeout
-
-      navigator.geolocation.getCurrentPosition(onSuccess, onError, {
-        enableHighAccuracy: true,
-        timeout: 8000,
-        maximumAge: 0
-      });
-    } else {
-      setLocationDenied(true);
-      setLocation(fallbackLocation);
-    }
-
-    return () => {
-      isMounted = false;
-      clearTimeout(timeoutId);
-    };
-  }, []);
-
   // Convert dietary string to array
   const dietaryTags = dietary === "all" ? undefined : [dietary];
 
-  // Fetch nearby items via Convex
-  const nearbyData = useQuery(
-    api.discovery.listNearby,
-    location
-      ? {
-          latitude: location.lat,
-          longitude: location.lng,
-          radiusMeters: Number(maxDistance),
-          materialType: category === "all" ? undefined : category,
-          dietaryTags,
-          maxPrice: maxPrice === "all" ? undefined : Number(maxPrice),
-          // We can handle pickup time filtering using server or client, here server takes timestamps but our UI uses simple flags.
-          // Due to simplicity, we can just do basic filter on client or adapt for server.
-        }
-      : "skip"
-  );
+  // Fetch nearby items via Convex. There is no "skip" case any more: the shared
+  // location hook always has usable coordinates, starting from the fallback.
+  const nearbyData = useQuery(api.discovery.listNearby, {
+    latitude,
+    longitude,
+    radiusMeters: Number(maxDistance),
+    materialType: category === "all" ? undefined : category,
+    dietaryTags,
+    maxPrice: maxPrice === "all" ? undefined : Number(maxPrice),
+    // We can handle pickup time filtering using server or client, here server takes timestamps but our UI uses simple flags.
+    // Due to simplicity, we can just do basic filter on client or adapt for server.
+  });
 
   const filtered = useMemo(() => {
     if (!nearbyData) return [];
@@ -325,8 +279,13 @@ export default function ExplorePage() {
   const dietaryNotice =
     "Preferensi berasal dari deklarasi merchant, bukan jaminan keamanan alergi atau bebas kontaminasi silang.";
 
+  // Read inside the map bootstrap without making the coordinates a dependency of
+  // it. Keyed on `location` the map used to be torn down and rebuilt whenever the
+  // object identity changed; recentring is an animation, not a rebuild.
+  const coordsRef = useRef({ latitude, longitude });
+  coordsRef.current = { latitude, longitude };
+
   useEffect(() => {
-    if (!location) return;
     const accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
     if (!accessToken) {
       setMapError(true);
@@ -348,7 +307,7 @@ export default function ExplorePage() {
         const map = new mapboxgl.Map({
           container: mapContainerRef.current,
           style: MAP_STYLE_URL,
-          center: [location.lng, location.lat],
+          center: [coordsRef.current.longitude, coordsRef.current.latitude],
           zoom: 13,
           attributionControl: false,
         });
@@ -401,7 +360,13 @@ export default function ExplorePage() {
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [location]);
+  }, []);
+
+  // The device fix usually lands a moment after the fallback centre, so the map
+  // slides across instead of being thrown away and rebuilt.
+  useEffect(() => {
+    mapRef.current?.easeTo({ center: [longitude, latitude], duration: 600 });
+  }, [latitude, longitude]);
 
   // Update map source when filtered data changes
   useEffect(() => {
@@ -428,11 +393,16 @@ export default function ExplorePage() {
           <AlertCircle className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
           <div>
             <h2 className="text-sm font-semibold">
-              Lokasi tidak diizinkan, menampilkan area Semarang
+              Lokasi perangkat belum terpakai, menampilkan area pilot
             </h2>
+            {/*
+              The label is named rather than hardcoded so this can never claim a
+              centre the list was not actually measured from.
+            */}
             <p className="mt-0.5 text-xs leading-relaxed">
-              Jarak dihitung dari Tembalang, bukan dari posisimu. Izinkan akses
-              lokasi di browser untuk jarak yang akurat.
+              Jarak dihitung dari {locationLabel}, bukan dari posisimu. Izinkan
+              akses lokasi di browser, lalu tekan chip lokasi di header untuk
+              jarak yang akurat.
             </p>
           </div>
         </div>
