@@ -182,17 +182,18 @@ export default function ConsumerHomePage() {
 
   return (
     <div className="space-y-10 sm:space-y-14">
-      <section className="grid overflow-hidden rounded-xl bg-brand-green text-brand-charcoal lg:grid-cols-[1.15fr_.85fr]">
+      {/*
+        Baris lokasi tidak diulang di sini — site-header sudah menampilkan
+        "Tembalang, Semarang · radius 30 km" di desktop dan mobile. Gaya banner
+        ini dan hero landing (`src/pages/welcome-page.tsx`) dijaga sama.
+      */}
+      <section className="grid overflow-hidden rounded-xl bg-brand-green text-white lg:grid-cols-[1.15fr_.85fr]">
         <div className="flex flex-col justify-center px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
-          <p className="flex items-center gap-2 text-sm font-medium text-brand-charcoal/75">
-            <MapPin className="size-4" aria-hidden="true" />
-            Tembalang, Semarang · radius 30 km
-          </p>
-          <h1 className="mt-3 max-w-2xl text-3xl font-bold leading-tight tracking-[-0.025em] sm:text-4xl">
+          <h1 className="max-w-2xl text-3xl font-bold leading-tight tracking-[-0.025em] sm:text-4xl">
             {firstName ? `Halo, ${firstName}. ` : ""}Makanan baik di dekatmu,
             siap diselamatkan.
           </h1>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-brand-charcoal/75 sm:text-base">
+          <p className="mt-3 max-w-xl text-sm leading-relaxed sm:text-base">
             Pilih Rescue Item, reservasi, lalu ambil langsung di Mitra Usaha.
           </p>
           <form

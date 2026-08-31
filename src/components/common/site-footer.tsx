@@ -1,3 +1,4 @@
+import { Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import logoMarkWhite from "@/assets/landing/logo-mark-white.svg";
 import mascotWave from "@/assets/mascot/mascot-wave.webp";
@@ -29,6 +30,18 @@ export function SiteFooter() {
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/90 sm:text-base">
               Download aplikasi Cirquo dan temukan Rescue Item terdekat darimu.
             </p>
+            {/*
+              The copy has always said "download"; until now there was nothing to
+              press. `id="download"` stays on the footer so older `/#download`
+              links keep landing somewhere sensible.
+            */}
+            <Link
+              to="/download"
+              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-semibold text-[#107333] transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <Download className="size-4" aria-hidden="true" />
+              Pasang aplikasinya
+            </Link>
           </div>
           {/*
             A square box with `object-contain` keeps the aspect ratio without
