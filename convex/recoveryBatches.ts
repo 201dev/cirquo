@@ -222,8 +222,8 @@ export const listEligibleProcessors = query({
     processorId: v.id('processors'), name: v.string(), distanceMeters: v.number(), remainingCapacityGrams: v.number(),
   })),
   handler: async (ctx, args) => {
-    if (!Number.isInteger(args.now)) fail('VALIDATION_FAILED', 'Waktu pemilihan Processor tidak valid.')
     const user = await requireRole(ctx, args.sessionToken, ['merchant'])
+    if (!Number.isInteger(args.now)) fail('VALIDATION_FAILED', 'Waktu pemilihan Processor tidak valid.')
     const merchant = await requireVerifiedMerchant(ctx, user)
     const batch = await ctx.db.get(args.batchId)
     if (!batch) fail('NOT_FOUND', 'Batch recovery tidak ditemukan.')
