@@ -1,5 +1,5 @@
 import { ChevronRight, Clock3, Info, MapPin, ShieldCheck, Store } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Breadcrumbs } from "@/components/common/breadcrumbs";
@@ -14,6 +14,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useAuth } from "@/contexts/auth-context";
+import { useCurrentLocation } from "@/features/discovery/use-current-location";
 import { useNearbyRescueItems } from "@/features/discovery/use-nearby-rescue-items";
 import { toRescueItemPreview } from "@/lib/discovery";
 import { getErrorMessage } from "@/lib/errors";
@@ -99,39 +100,20 @@ function ItemDetailContent() {
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isReserving, setIsReserving] = useState(false);
-  const [distanceMeters, setDistanceMeters] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (!item) {
-      setDistanceMeters(null);
-      return;
-    }
-
-    let mounted = true;
-    const fallbackLocation = { lat: -6.9932, lng: 110.4203 };
-    const updateDistance = (latitude: number, longitude: number) => {
-      if (!mounted) return;
-      setDistanceMeters(
-        calculateHaversineDistanceMeters(
+  // Same centre as the header chip and the /explore list. This page used to run
+  // its own `getCurrentPosition`, which meant a third prompt and a distance that
+  // could disagree with the one on the card the reader just tapped.
+  const { latitude, longitude } = useCurrentLocation();
+  const distanceMeters =
+    item === undefined || item === null
+      ? null
+      : calculateHaversineDistanceMeters(
           latitude,
           longitude,
           item.merchant.latitude,
           item.merchant.longitude,
-        ),
-      );
-    };
-
-    updateDistance(fallbackLocation.lat, fallbackLocation.lng);
-    navigator.geolocation?.getCurrentPosition(
-      (position) => updateDistance(position.coords.latitude, position.coords.longitude),
-      () => undefined,
-      { timeout: 8_000, maximumAge: 0 },
-    );
-
-    return () => {
-      mounted = false;
-    };
-  }, [item]);
+        );
 
   if (item === undefined) {
     return (
