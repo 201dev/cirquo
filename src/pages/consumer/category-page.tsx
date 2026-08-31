@@ -129,7 +129,7 @@ export default function CategoryPage() {
           Alamat kategori ini tidak dikenali.
         </p>
         <Button asChild className="mt-5">
-          <Link to="/">Kembali ke beranda</Link>
+          <Link to="/home">Kembali ke beranda</Link>
         </Button>
       </div>
     );
@@ -137,7 +137,7 @@ export default function CategoryPage() {
 
   return (
     <div>
-      <div className="-mx-4 sm:-mx-6">
+      <div className="-mx-4 sm:-mx-6 lg:-mx-8">
         <div className="relative h-40 overflow-hidden sm:h-56">
           <img
             src={category.image}
@@ -148,12 +148,12 @@ export default function CategoryPage() {
             className="absolute inset-0 bg-gradient-to-t from-ink-900/85 via-ink-900/45 to-ink-900/10"
             aria-hidden="true"
           />
-          <div className="absolute inset-x-0 bottom-0 px-4 pb-5 sm:px-6 sm:pb-7">
-            <div className="mx-auto max-w-7xl">
-              <h1 className="text-3xl font-bold tracking-[-0.03em] text-white sm:text-4xl">
+          <div className="absolute inset-x-0 bottom-0 pb-5 sm:pb-7">
+            <div className="site-container">
+              <h1 className="text-2xl font-bold tracking-[-0.03em] text-white sm:text-3xl lg:text-4xl">
                 {category.label}
               </h1>
-              <p className="mt-1 max-w-lg text-sm text-white/80">
+              <p className="mt-1 max-w-lg text-xs text-white/80 sm:text-sm">
                 {category.blurb} · dalam radius 30 km dari Tembalang
               </p>
             </div>

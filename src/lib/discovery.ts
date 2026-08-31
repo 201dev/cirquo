@@ -49,18 +49,6 @@ const pickupTimeFormatter = new Intl.DateTimeFormat("id-ID", {
   timeZone: "Asia/Jakarta",
 });
 
-const pickupDateFormatter = new Intl.DateTimeFormat("id-ID", {
-  day: "numeric",
-  month: "short",
-  timeZone: "Asia/Jakarta",
-});
-
-function previewCategory(materialType: string): RescueItemPreview["category"] {
-  if (materialType === "bakery") return "bakery";
-  if (materialType === "produce") return "produce";
-  return "meal";
-}
-
 /** Whole minutes left before the pickup window closes. Never negative. */
 export function pickupMinutesLeft(pickupEndAt: number, now: number) {
   return Math.max(0, Math.ceil((pickupEndAt - now) / 60_000));
@@ -95,13 +83,11 @@ export function toRescueItemPreview(
     weightPerItemGrams: item.weightPerItemGrams,
     pickupWindow: `${pickupTimeFormatter.format(item.pickupStartAt)}-${pickupTimeFormatter.format(item.pickupEndAt)} WIB`,
     status: "active",
-    category: previewCategory(item.materialType),
     description: "",
     image: item.imageUrl || fallbackImage,
     address: item.merchant.address,
     distanceKm: Number((item.distanceMeters / 1_000).toFixed(1)),
     dietaryTags: item.dietaryTags,
-    pickupDate: pickupDateFormatter.format(item.pickupStartAt),
     pickupEndAt: item.pickupEndAt,
   };
 }

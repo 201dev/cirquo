@@ -12,8 +12,6 @@ export type ConsumerOrderDetail = NonNullable<
   FunctionReturnType<typeof api.orders.get>
 >;
 
-export type ConsumerOrderStatus = ConsumerOrderSummary["status"];
-
 /**
  * Reactive order history for the signed-in Consumer. Scoped server-side by the
  * session — no userId is ever sent from the client.

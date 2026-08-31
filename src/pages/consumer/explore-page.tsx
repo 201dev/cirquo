@@ -1,5 +1,4 @@
-import { Search, AlertCircle, Loader2 } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Search, AlertCircle, Loader2, SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/common/page-header";
@@ -18,10 +17,12 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
 } from "@/components/ui/sheet";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { FeatureCollection } from "geojson";
@@ -60,11 +61,7 @@ type MapItem = {
   merchant: { latitude: number; longitude: number };
 };
 
-/** A light basemap under a dark shell reads as a hole in the page, not a map. */
-const MAP_STYLE_URLS = {
-  light: "mapbox://styles/mapbox/light-v11",
-  dark: "mapbox://styles/mapbox/dark-v11",
-} as const;
+const MAP_STYLE_URL = "mapbox://styles/mapbox/light-v11";
 
 function updateMapSource(map: MapboxMap, items: readonly MapItem[]) {
   const source = map.getSource("rescue-items") as GeoJSONSource | undefined;
@@ -81,11 +78,6 @@ function updateMapSource(map: MapboxMap, items: readonly MapItem[]) {
   } satisfies FeatureCollection);
 }
 
-/**
- * Switching basemaps discards every source and layer the app added, so the
- * cluster layers have to be rebuilt on each `style.load` — the initial load and
- * every later theme change run the exact same setup.
- */
 function installRescueLayers(map: MapboxMap, items: readonly MapItem[]) {
   if (map.getSource("rescue-items")) return;
 
@@ -164,21 +156,6 @@ export default function ExplorePage() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
 
-  /**
-   * The basemap follows the shell's theme, but rebuilding the map on every
-   * toggle would lose the viewport the user panned to — so the theme reaches
-   * initialisation through a ref and later changes go through setStyle().
-   */
-  const { resolvedTheme } = useTheme();
-  const mapStyle = resolvedTheme === "dark" ? "dark" : "light";
-  const styleRef = useRef<keyof typeof MAP_STYLE_URLS>(mapStyle);
-
-  useEffect(() => {
-    if (styleRef.current === mapStyle) return;
-    styleRef.current = mapStyle;
-    mapRef.current?.setStyle(MAP_STYLE_URLS[mapStyle]);
-  }, [mapStyle]);
-  
   const [selectedItemId, setSelectedItemId] = useState<Id<"surplusItems"> | null>(null);
 
   useEffect(() => {
@@ -285,6 +262,69 @@ export default function ExplorePage() {
     dietary !== "all",
   ].filter(Boolean).length;
 
+  /*
+    Declared once and rendered twice: inline at `sm` and up, inside a bottom
+    sheet below it. Four stacked selects plus a search box and a chip row used
+    to make the sticky bar ~210px tall, which on a 667px phone left 42% of the
+    viewport permanently occupied by chrome before a single result showed.
+  */
+  const filterFields = [
+    {
+      label: "Jarak",
+      value: maxDistance,
+      onChange: (value: string) => setFilter("distance", value, "30000"),
+      options: [
+        ["30000", "Semua jarak"],
+        ["2000", "Maks. 2 km"],
+        ["3000", "Maks. 3 km"],
+        ["5000", "Maks. 5 km"],
+      ] as [string, string][],
+    },
+    {
+      label: "Harga",
+      value: maxPrice,
+      onChange: (value: string) => setFilter("price", value, "all"),
+      options: [
+        ["all", "Semua harga"],
+        ["15000", "Maks. Rp15 ribu"],
+        ["20000", "Maks. Rp20 ribu"],
+        ["30000", "Maks. Rp30 ribu"],
+      ] as [string, string][],
+    },
+    {
+      label: "Pickup",
+      value: pickupWindow,
+      onChange: (value: string) => setFilter("pickup", value, "all"),
+      options: [
+        ["all", "Semua waktu"],
+        ["before_18", "Mulai ≤18.00"],
+        ["after_18", "Mulai >18.00"],
+      ] as [string, string][],
+    },
+    {
+      label: "Preferensi",
+      value: dietary,
+      onChange: (value: string) => setFilter("dietary", value, "all"),
+      options: [
+        ["all", "Semua preferensi"],
+        ["Vegetarian", "Vegetarian"],
+        ["Vegan", "Vegan"],
+        ["Tanpa babi", "Tanpa babi"],
+      ] as [string, string][],
+    },
+  ];
+
+  /** Only the fields hidden behind the sheet, so the badge means something. */
+  const sheetFilterCount = [
+    maxDistance !== "30000",
+    maxPrice !== "all",
+    pickupWindow !== "all",
+    dietary !== "all",
+  ].filter(Boolean).length;
+
+  const dietaryNotice =
+    "Preferensi berasal dari deklarasi merchant, bukan jaminan keamanan alergi atau bebas kontaminasi silang.";
+
   useEffect(() => {
     if (!location) return;
     const accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -307,7 +347,7 @@ export default function ExplorePage() {
         mapboxgl.accessToken = accessToken;
         const map = new mapboxgl.Map({
           container: mapContainerRef.current,
-          style: MAP_STYLE_URLS[styleRef.current],
+          style: MAP_STYLE_URL,
           center: [location.lng, location.lat],
           zoom: 13,
           attributionControl: false,
@@ -398,11 +438,16 @@ export default function ExplorePage() {
         </div>
       )}
 
-      <div className="sticky top-[4.5rem] z-20 -mx-4 border-y bg-background/95 px-4 py-3 backdrop-blur-xl sm:mx-0 sm:rounded-xl sm:border sm:p-4 mt-4">
+      {/*
+        Sticky below `lg` only. At `lg` the map beside the results is also
+        sticky, and two stacked stickies of unknown height meant the map slid
+        under this bar — the old fixed 14rem guess was ~3.5rem short.
+      */}
+      <div className="mt-4 -mx-4 border-y bg-background/95 px-4 py-3 backdrop-blur-xl sm:mx-0 sm:rounded-xl sm:border sm:p-4 max-lg:sticky max-lg:top-[var(--site-header-h)] max-lg:z-20">
         <div className="flex gap-2">
-          <label className="relative flex-1">
+          <label className="relative min-w-0 flex-1">
             <span className="sr-only">Cari Rescue Item</span>
-            <Search className="absolute left-3 top-3.5 size-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}
               onChange={(event) => setFilter("q", event.target.value, "")}
@@ -410,9 +455,51 @@ export default function ExplorePage() {
               placeholder="Cari makanan atau merchant"
             />
           </label>
+
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="shrink-0 sm:hidden">
+                <SlidersHorizontal aria-hidden="true" />
+                Filter
+                {sheetFilterCount > 0 ? (
+                  <span
+                    className="grid size-5 place-items-center rounded-full bg-primary text-[0.6875rem] font-semibold text-primary-foreground"
+                    aria-label={`${sheetFilterCount} filter aktif`}
+                  >
+                    {sheetFilterCount}
+                  </span>
+                ) : null}
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="bottom"
+              className="max-h-[85svh] overflow-y-auto rounded-t-2xl pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
+            >
+              <SheetHeader className="text-left">
+                <SheetTitle>Filter Rescue Item</SheetTitle>
+                <SheetDescription>
+                  Filter berlaku langsung dan tersimpan di alamat halaman.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-5 grid gap-4">
+                {filterFields.map((field) => (
+                  <FilterSelect key={field.label} {...field} />
+                ))}
+              </div>
+              {dietary !== "all" ? (
+                <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+                  {dietaryNotice}
+                </p>
+              ) : null}
+              <SheetClose asChild>
+                <Button className="mt-5 h-11 w-full">Lihat hasil</Button>
+              </SheetClose>
+            </SheetContent>
+          </Sheet>
         </div>
+
         <div
-          className="mt-3 flex gap-2 overflow-x-auto pb-1"
+          className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1"
           aria-label="Filter kategori"
         >
           {categories.map((item) => (
@@ -428,55 +515,16 @@ export default function ExplorePage() {
             </Button>
           ))}
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <FilterSelect
-            label="Jarak"
-            value={maxDistance}
-            onChange={(value) => setFilter("distance", value, "30000")}
-            options={[
-              ["30000", "Semua jarak"],
-              ["2000", "Maks. 2 km"],
-              ["3000", "Maks. 3 km"],
-              ["5000", "Maks. 5 km"],
-            ]}
-          />
-          <FilterSelect
-            label="Harga"
-            value={maxPrice}
-            onChange={(value) => setFilter("price", value, "all")}
-            options={[
-              ["all", "Semua harga"],
-              ["15000", "Maks. Rp15 ribu"],
-              ["20000", "Maks. Rp20 ribu"],
-              ["30000", "Maks. Rp30 ribu"],
-            ]}
-          />
-          <FilterSelect
-            label="Pickup"
-            value={pickupWindow}
-            onChange={(value) => setFilter("pickup", value, "all")}
-            options={[
-              ["all", "Semua waktu"],
-              ["before_18", "Mulai ≤18.00"],
-              ["after_18", "Mulai >18.00"],
-            ]}
-          />
-          <FilterSelect
-            label="Preferensi"
-            value={dietary}
-            onChange={(value) => setFilter("dietary", value, "all")}
-            options={[
-              ["all", "Semua preferensi"],
-              ["Vegetarian", "Vegetarian"],
-              ["Vegan", "Vegan"],
-              ["Tanpa babi", "Tanpa babi"],
-            ]}
-          />
+
+        <div className="mt-3 hidden gap-2 sm:grid sm:grid-cols-2 lg:grid-cols-4">
+          {filterFields.map((field) => (
+            <FilterSelect key={field.label} {...field} />
+          ))}
         </div>
+
         {dietary !== "all" ? (
-          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-            Preferensi berasal dari deklarasi merchant, bukan jaminan keamanan
-            alergi atau bebas kontaminasi silang.
+          <p className="mt-3 hidden text-xs leading-relaxed text-muted-foreground sm:block">
+            {dietaryNotice}
           </p>
         ) : null}
       </div>
@@ -498,7 +546,7 @@ export default function ExplorePage() {
           
           {nearbyData === undefined ? (
             <div
-              className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2"
+              className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2"
               aria-label="Memuat Rescue Item"
             >
               {[0, 1, 2].map((index) => (
@@ -513,7 +561,9 @@ export default function ExplorePage() {
               ))}
             </div>
           ) : filtered.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+            /* Horizontal cards need width: 2-up only from `md`, where each
+               track is still ~350px, not the ~296px an `sm` split leaves. */
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
               {filtered.map((item) => (
                 <div key={item._id}>
                   <RescueItemCard
@@ -551,7 +601,7 @@ export default function ExplorePage() {
         </section>
 
         <aside
-          className="h-72 overflow-hidden rounded-xl border bg-muted/20 sm:h-96 lg:sticky lg:top-[14rem] lg:h-[calc(100vh-16rem)] lg:min-h-[300px]"
+          className="h-72 overflow-hidden rounded-xl border bg-muted/20 sm:h-96 lg:sticky lg:top-[calc(var(--site-header-h)+1.5rem)] lg:h-[calc(100svh-var(--site-header-h)-3rem)] lg:min-h-[300px]"
           aria-label="Peta lokasi merchant"
         >
           {mapError ? (

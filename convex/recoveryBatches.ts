@@ -1,7 +1,7 @@
 import { ConvexError, v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
-import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
+import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { calculateHaversineDistanceMeters } from '../src/lib/geo'
 import { getOfferProblem, intakeResult, outcomeResult, startOfWibDay, summarizeProcessorDashboard } from '../src/lib/recovery'
 import { MAX_ROUTING_ATTEMPTS, OFFER_TTL_MS, rankEligibleProcessors, type RoutingProcessor } from '../src/lib/routing'
@@ -189,11 +189,6 @@ export async function createRecoveryBatchForItem(
     createdAt: Date.now(),
   })
 }
-
-export const listByStatus = internalQuery({
-  args: { status: recoveryBatchStatus }, returns: v.array(v.any()),
-  handler: async (ctx, { status }) => ctx.db.query('recoveryBatches').withIndex('by_status', (q) => q.eq('status', status)).collect(),
-})
 
 export const listForMerchant = query({
   args: { sessionToken: v.optional(v.string()) },

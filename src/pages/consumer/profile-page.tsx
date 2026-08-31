@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/page-header";
-import { ThemeToggle } from "@/components/common/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useMutation } from "convex/react";
@@ -72,15 +71,6 @@ export default function ProfilePage() {
             <ChevronRight className="size-4 text-muted-foreground" />
           </Link>
         ) : null}
-        <div className="flex min-h-20 items-center gap-3">
-          <span className="flex-1">
-            <strong className="block text-sm">Tampilan</strong>
-            <span className="text-xs text-muted-foreground">
-              Ikuti tema perangkat atau pilih terang dan gelap
-            </span>
-          </span>
-          <ThemeToggle />
-        </div>
       </div>
       {user ? (
         <Button

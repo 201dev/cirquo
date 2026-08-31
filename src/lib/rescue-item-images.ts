@@ -67,10 +67,6 @@ export function materialCategory(materialType: string) {
   return byType.get(materialType);
 }
 
-export function materialCategoryLabel(materialType: string) {
-  return byType.get(materialType)?.label ?? "Paket campur";
-}
-
 export function rescueItemImageForMaterialType(materialType: string) {
   return byType.get(materialType)?.image ?? mixedImage;
 }

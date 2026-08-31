@@ -2,14 +2,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
-/*
- * Fixed ramps. These do not flip between light and dark — a component picks
- * the step it wants. Semantic tokens (--primary, --warning, …) are the ones
- * that flip. Before reaching for an opacity modifier like `bg-primary/10`,
- * check whether a ramp step already says what you mean.
- */
+/* Fixed ramps used by the single light theme. */
 :root {
   --leaf-50: #f0faf3;
   --leaf-100: #dcf5e5;
@@ -43,6 +36,9 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   --radius: 0.75rem;
+  /* The sticky header's height. Filter bars and in-page anchors offset by this
+     instead of each guessing its own near-miss value. */
+  --site-header-h: 4.5rem;
   --brand-green: #1bac4b;
   --brand-plum: #444053;
   --brand-mint: #45de78;
@@ -65,8 +61,7 @@
   --accent: #e2f8e9;
   --accent-foreground: var(--brand-charcoal);
   --destructive: oklch(0.58 0.22 27);
-  /* Caution surfaces (nearly-expired pickup, location fallbacks). Raw
-     yellow-* utilities were used here before and stayed light in dark mode. */
+  /* Caution surfaces for nearly-expired pickup and location fallbacks. */
   --warning: #fff6da;
   --warning-foreground: #6b4e00;
   --warning-border: #f3dc99;
@@ -89,43 +84,6 @@
   --sidebar-primary-foreground: var(--primary-foreground);
   --sidebar-accent: var(--accent);
   --sidebar-accent-foreground: var(--accent-foreground);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--ring);
-}
-
-.dark {
-  --background: #1f1f20;
-  --foreground: #f4f7f5;
-  --card: var(--brand-charcoal);
-  --card-foreground: #f4f7f5;
-  --popover: #302f34;
-  --popover-foreground: #f4f7f5;
-  --primary: var(--brand-mint);
-  --primary-foreground: var(--brand-charcoal);
-  --secondary: var(--brand-plum);
-  --secondary-foreground: #f4f7f5;
-  --muted: #333237;
-  --muted-foreground: #d0cdd6;
-  --accent: #3a3940;
-  --accent-foreground: #f4f7f5;
-  --destructive: oklch(0.68 0.19 25);
-  --warning: #3b2f0d;
-  --warning-foreground: #ffe08a;
-  --warning-border: #6d5817;
-  --warning-solid: var(--brand-yellow);
-  --border: #4f4c57;
-  --input: #625e6b;
-  --ring: var(--brand-mint);
-  --rescued: var(--brand-mint);
-  --recovered: var(--brand-yellow);
-  --residual: oklch(0.73 0.08 67);
-  --in-progress: oklch(0.72 0.1 231);
-  --sidebar: #242427;
-  --sidebar-foreground: #f4f7f5;
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: var(--secondary);
-  --sidebar-accent-foreground: var(--secondary-foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 }
@@ -244,6 +202,36 @@
 }
 
 @layer components {
+  /*
+    One gutter recipe for the header, the landing page, and every consumer
+    route. There used to be three: `px-5 md:px-6 lg:px-0` on the header and
+    landing main, `px-4 sm:px-6` on the consumer main. That staggered every
+    page's content 4px away from its own header on mobile, and `lg:px-0`
+    dropped the gutter to zero between 1024px and the 1280px cap, so text ran
+    into the viewport edge on laptops.
+  */
+  .site-container {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  /*
+    A row that scrolls edge to edge on small screens while its first card still
+    lines up with the heading above it. Pairs with `.site-container` — change
+    the gutter in one place and the bleed follows.
+  */
+  .site-bleed {
+    @apply -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8;
+  }
+
+  /* Hides the scrollbar on the bleed rows without hiding the overflow. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   .skip-link {
     @apply fixed left-4 top-3 z-[100] -translate-y-20 rounded-md bg-foreground px-4 py-2 text-sm font-semibold text-background transition-transform focus:translate-y-0;
   }
@@ -257,13 +245,6 @@
     animation: hero-reveal 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
-  .welcome-enter > img {
-    animation: welcome-image 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
-  .welcome-enter section {
-    animation: welcome-copy 700ms 80ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
 }
 
 @keyframes hero-reveal {
@@ -274,28 +255,6 @@
   to {
     opacity: 1;
     clip-path: inset(0 0 0 0 round 1rem);
-  }
-}
-
-@keyframes welcome-image {
-  from {
-    opacity: 0.82;
-    transform: scale(1.025);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes welcome-copy {
-  from {
-    opacity: 0;
-    transform: translateY(1.25rem);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 

@@ -6,6 +6,7 @@ import { AuthLayout } from "@/layouts/auth-layout";
 import { ConsumerLayout } from "@/layouts/consumer-layout";
 import { MerchantLayout } from "@/layouts/merchant-layout";
 import { ProcessorLayout } from "@/layouts/processor-layout";
+import { PublicLayout } from "@/layouts/public-layout";
 import {
   GuestRoute,
   PostAuthRoute,
@@ -66,12 +67,24 @@ const PendingVerificationPage = lazy(
   () => import("@/pages/auth/pending-verification-page"),
 );
 const NotificationsPage = lazy(() => import("@/pages/notifications-page"));
+const AboutPage = lazy(() => import("@/pages/about-page"));
+const DownloadPage = lazy(() => import("@/pages/download-page"));
 const routes = [
+  { path: "/", element: <WelcomePage /> },
+
+  // --- Public content pages, readable without an account ---
+  {
+    element: <PublicLayout />,
+    children: [
+      { path: "about", element: <AboutPage /> },
+      { path: "download", element: <DownloadPage /> },
+    ],
+  },
+
   // --- Guest-only routes (login, register) ---
   {
     element: <GuestRoute />,
     children: [
-      { path: "welcome", element: <WelcomePage /> },
       {
         element: <AuthLayout />,
         children: [
@@ -130,7 +143,7 @@ const routes = [
       {
         element: <ConsumerLayout />,
         children: [
-          { index: true, element: <ConsumerHomePage /> },
+          { path: "home", element: <ConsumerHomePage /> },
           { path: "category/:categorySlug", element: <CategoryPage /> },
           { path: "merchant/:merchantId", element: <ConsumerMerchantPage /> },
           { path: "discover", element: <ExplorePage /> },

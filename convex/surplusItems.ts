@@ -1,8 +1,8 @@
-import { internalMutation, internalQuery, mutation, query } from './_generated/server'
+import { internalMutation, mutation, query } from './_generated/server'
 import { v, ConvexError } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import type { MutationCtx } from './_generated/server'
-import { rescueItemStatus, materialType } from './schema'
+import { materialType } from './schema'
 import { requireVerifiedMerchant, requireOwnership, requireRole } from './lib/guards'
 import { recordLedgerEvent } from './lib/ledger'
 import { createNotification } from './lib/notifications'
@@ -10,14 +10,6 @@ import { queueSandboxRefund } from './lib/refunds'
 import { internal } from './_generated/api'
 import { createRecoveryBatchForItem } from './recoveryBatches'
 import { calculateHaversineDistanceMeters } from '../src/lib/geo'
-
-export const listByStatus = internalQuery({
-  args: { status: rescueItemStatus },
-  handler: async (ctx, { status }) => ctx.db
-    .query('surplusItems')
-    .withIndex('by_status', (q) => q.eq('status', status))
-    .collect(),
-})
 
 const surplusItemInputArgs = {
   name: v.string(),
