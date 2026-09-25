@@ -1,7 +1,7 @@
 import { Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import logoMarkWhite from "@/assets/landing/logo-mark-white.svg";
-import mascotWave from "@/assets/mascot/mascot-wave.webp";
+import mascotWave from "@/assets/mascot/mascot-wave.svg";
 
 /**
  * Shared landing-style closing CTA for consumer-facing pages.
