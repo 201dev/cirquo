@@ -180,22 +180,17 @@ function WhyCard({
   body: string;
 }) {
   return (
-    <article className="flex w-[240px] shrink-0 snap-start flex-col overflow-hidden rounded-[20px] bg-[#e9fddd] p-2 text-[#272727] sm:w-full">
-      {/*
-        The mascot used to be one sprite sheet cropped with per-breakpoint pixel
-        offsets, which came apart at every width in between. One image per card,
-        contained in a fixed-ratio box, needs no offsets at all.
-      */}
-      <div className="aspect-[4/3] overflow-hidden rounded-[12px] bg-[#c3e994]/50 p-3">
+    <article className="flex w-[240px] shrink-0 snap-start flex-col overflow-hidden rounded-[20px] bg-[#e9fddd] p-2.5 text-[#272727] sm:w-full">
+      <div className="aspect-[209/146] w-full overflow-hidden rounded-[14px]">
         <img
           src={image}
           alt=""
           loading="lazy"
-          className="size-full object-contain"
+          className="size-full object-cover"
         />
       </div>
-      <h3 className="mt-4 px-3 text-base font-bold leading-snug">{title}</h3>
-      <p className="mt-2 px-3 pb-3 text-sm font-medium leading-5 text-[#5b5b5b]">
+      <h3 className="mt-4 px-2.5 text-base font-bold leading-snug">{title}</h3>
+      <p className="mt-2 px-2.5 pb-3 text-sm font-medium leading-5 text-[#5b5b5b]">
         {body}
       </p>
     </article>
