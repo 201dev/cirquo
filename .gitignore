@@ -46,3 +46,8 @@ GEMINI.md
 skills-lock.json
 
 .env
+Cirquo_Pitch_Deck.pdf
+Cirquo_Pitch_Deck.pptx
+.~lock.Cirquo_Pitch_Deck.pptx#
+prepare_ppt_assets.py
+generate_pitch_deck.py
